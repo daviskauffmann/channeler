@@ -26,49 +26,32 @@ struct message
     enum message_type type;
 };
 
-struct id_message
+struct message_id
 {
     enum message_type type;
     int id;
 };
 
-struct connect_ok_message
-{
-    enum message_type type;
-    int assigned_id;
-    struct
-    {
-        int id;
-        float x;
-        float y;
-    } clients[MAX_CLIENTS];
-    struct world world;
-};
-
-struct connect_broadcast_message
-{
-    enum message_type type;
-    int new_client_id;
-    int new_client_x;
-    int new_client_y;
-};
-
-struct input_request_message
+struct message_input
 {
     enum message_type type;
     int id;
-    float dx;
-    float dy;
+    float acc_x;
+    float acc_y;
 };
 
-struct world_state_broadcast_message
+struct message_world_state
 {
     enum message_type type;
     struct
     {
         int id;
-        float x;
-        float y;
+        float pos_x;
+        float pos_y;
+        float vel_x;
+        float vel_y;
+        float acc_x;
+        float acc_y;
     } clients[MAX_CLIENTS];
     struct world world;
 };

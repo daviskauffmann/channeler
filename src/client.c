@@ -22,8 +22,12 @@
 struct client
 {
     int id;
-    float x;
-    float y;
+    float pos_x;
+    float pos_y;
+    float vel_x;
+    float vel_y;
+    float acc_x;
+    float acc_y;
 };
 
 int client_main(int argc, char *argv[])
@@ -134,23 +138,10 @@ int client_main(int argc, char *argv[])
             {
             case MESSAGE_CONNECT_OK:
             {
-                struct connect_ok_message *connect_ok_message = (struct connect_ok_message *)message;
+                struct message_id *message_id = (struct message_id *)message;
 
-                client_id = connect_ok_message->assigned_id;
+                client_id = message_id->id;
                 printf("ID %d assigned by server\n", client_id);
-
-                for (int i = 0; i < MAX_CLIENTS; i++)
-                {
-                    clients[i].id = connect_ok_message->clients[i].id;
-                    clients[i].x = connect_ok_message->clients[i].x;
-                    clients[i].y = connect_ok_message->clients[i].y;
-                }
-                for (int i = 0; i < NUM_MOBS; i++)
-                {
-                    world.mobs[i].alive = connect_ok_message->world.mobs[i].alive;
-                    world.mobs[i].x = connect_ok_message->world.mobs[i].x;
-                    world.mobs[i].y = connect_ok_message->world.mobs[i].y;
-                }
             }
             break;
             case MESSAGE_CONNECT_FULL:
@@ -170,14 +161,14 @@ int client_main(int argc, char *argv[])
 
         if (online)
         {
-            struct id_message *id_message = (struct id_message *)malloc(sizeof(*id_message));
-            id_message->type = MESSAGE_UDP_CONNECT_REQUEST;
-            id_message->id = client_id;
+            struct message_id *message_id = (struct message_id *)malloc(sizeof(*message_id));
+            message_id->type = MESSAGE_UDP_CONNECT_REQUEST;
+            message_id->id = client_id;
 
             UDPpacket *packet = SDLNet_AllocPacket(PACKET_SIZE);
             packet->address = server_address;
-            packet->data = (unsigned char *)id_message;
-            packet->len = sizeof(*id_message);
+            packet->data = (unsigned char *)message_id;
+            packet->len = sizeof(*message_id);
 
             if (!SDLNet_UDP_Send(udp_socket, -1, packet))
             {
@@ -192,12 +183,16 @@ int client_main(int argc, char *argv[])
     {
         client_id = 0;
         clients[client_id].id = 0;
-        clients[client_id].x = 100;
-        clients[client_id].y = 100;
+        clients[client_id].pos_x = 100.0f;
+        clients[client_id].pos_y = 100.0f;
+        clients[client_id].vel_x = 0.0f;
+        clients[client_id].vel_y = 0.0f;
+        clients[client_id].acc_x = 0.0f;
+        clients[client_id].acc_y = 0.0f;
 
         world_init(&world);
 
-        printf("Starting in offline mode");
+        printf("Starting in offline mode\n");
     }
 
     SDL_Texture *sprites = IMG_LoadTexture(renderer, "assets/sprites.png");
@@ -236,21 +231,21 @@ int client_main(int argc, char *argv[])
                     {
                     case MESSAGE_CONNECT_BROADCAST:
                     {
-                        struct id_message *id_message = (struct id_message *)message;
+                        struct message_id *message_id = (struct message_id *)message;
 
                         // TODO: initialize new player
-                        clients[id_message->id].id = id_message->id;
+                        clients[message_id->id].id = message_id->id;
 
-                        printf("Client with ID %d has joined\n", id_message->id);
+                        printf("Client with ID %d has joined\n", message_id->id);
                     }
                     break;
                     case MESSAGE_DISCONNECT_BROADCAST:
                     {
-                        struct id_message *id_message = (struct id_message *)message;
+                        struct message_id *message_id = (struct message_id *)message;
 
-                        clients[id_message->id].id = -1;
+                        clients[message_id->id].id = -1;
 
-                        printf("Client with ID %d has disconnected\n", id_message->id);
+                        printf("Client with ID %d has disconnected\n", message_id->id);
                     }
                     break;
                     default:
@@ -272,19 +267,23 @@ int client_main(int argc, char *argv[])
                     {
                     case MESSAGE_WORLD_STATE_BROADCAST:
                     {
-                        struct world_state_broadcast_message *world_state_broadcast_message = (struct world_state_broadcast_message *)message;
+                        struct message_world_state *message_world_state = (struct message_world_state *)message;
 
                         for (int i = 0; i < MAX_CLIENTS; i++)
                         {
-                            clients[i].id = world_state_broadcast_message->clients[i].id;
-                            clients[i].x = world_state_broadcast_message->clients[i].x;
-                            clients[i].y = world_state_broadcast_message->clients[i].y;
+                            clients[i].id = message_world_state->clients[i].id;
+                            clients[i].pos_x = message_world_state->clients[i].pos_x;
+                            clients[i].pos_y = message_world_state->clients[i].pos_y;
+                            clients[i].vel_x = message_world_state->clients[i].vel_x;
+                            clients[i].vel_y = message_world_state->clients[i].vel_y;
+                            clients[i].acc_x = message_world_state->clients[i].acc_x;
+                            clients[i].acc_y = message_world_state->clients[i].acc_y;
                         }
                         for (int i = 0; i < NUM_MOBS; i++)
                         {
-                            world.mobs[i].alive = world_state_broadcast_message->world.mobs[i].alive;
-                            world.mobs[i].x = world_state_broadcast_message->world.mobs[i].x;
-                            world.mobs[i].y = world_state_broadcast_message->world.mobs[i].y;
+                            world.mobs[i].alive = message_world_state->world.mobs[i].alive;
+                            world.mobs[i].x = message_world_state->world.mobs[i].x;
+                            world.mobs[i].y = message_world_state->world.mobs[i].y;
                         }
                     }
                     break;
@@ -341,40 +340,46 @@ int client_main(int argc, char *argv[])
             }
         }
 
-        float dx = 0;
-        float dy = 0;
+        clients[client_id].acc_x = 0;
+        clients[client_id].acc_y = 0;
 
         if (keys[SDL_SCANCODE_W])
         {
-            dy = -1;
+            clients[client_id].acc_y = -1;
         }
         if (keys[SDL_SCANCODE_A])
         {
-            dx = -1;
+            clients[client_id].acc_x = -1;
         }
         if (keys[SDL_SCANCODE_S])
         {
-            dy = 1;
+            clients[client_id].acc_y = 1;
         }
         if (keys[SDL_SCANCODE_D])
         {
-            dx = 1;
+            clients[client_id].acc_x = 1;
         }
 
-        client_move(dx, dy, delta_time, &clients[client_id].x, &clients[client_id].y);
+        for (int i = 0; i < MAX_CLIENTS; i++)
+        {
+            if (clients[i].id != -1)
+            {
+                client_accelerate(&clients[i].pos_x, &clients[i].pos_y, &clients[i].vel_x, &clients[i].vel_y, &clients[i].acc_x, &clients[i].acc_y, delta_time);
+            }
+        }
 
         if (online)
         {
-            struct input_request_message *input_request_message = (struct input_request_message *)malloc(sizeof(*input_request_message));
-            input_request_message->type = MESSAGE_INPUT_REQUEST;
-            input_request_message->id = client_id;
-            input_request_message->dx = dx;
-            input_request_message->dy = dy;
+            struct message_input *message_input = (struct input_request_message *)malloc(sizeof(*message_input));
+            message_input->type = MESSAGE_INPUT_REQUEST;
+            message_input->id = client_id;
+            message_input->acc_x = clients[client_id].acc_x;
+            message_input->acc_y = clients[client_id].acc_y;
 
             UDPpacket *packet = SDLNet_AllocPacket(PACKET_SIZE);
             packet->address = server_address;
-            packet->data = (unsigned char *)input_request_message;
-            packet->len = sizeof(*input_request_message);
+            packet->data = (unsigned char *)message_input;
+            packet->len = sizeof(*message_input);
 
             if (!SDLNet_UDP_Send(udp_socket, -1, packet))
             {
@@ -404,7 +409,7 @@ int client_main(int argc, char *argv[])
         {
             if (clients[i].id != -1)
             {
-                SDL_Rect render_quad = {clients[i].x, clients[i].y, player_clip.w * 2, player_clip.h * 2};
+                SDL_Rect render_quad = {clients[i].pos_x, clients[i].pos_y, player_clip.w * 2, player_clip.h * 2};
                 SDL_RenderCopy(renderer, sprites, &player_clip, &render_quad);
             }
         }
@@ -452,17 +457,26 @@ int client_main(int argc, char *argv[])
     return 0;
 }
 
-void client_move(float dx, float dy, float delta_time, float *new_x, float *new_y)
+void client_accelerate(float *pos_x, float *pos_y, float *vel_x, float *vel_y, float *acc_x, float *acc_y, float delta_time)
 {
-    float speed = 100.0f;
+    float speed = 2000.0f;
+    float drag = 10.0f;
 
-    float dlen = sqrt(dx * dx + dy * dy);
-    if (dlen > 1.0f)
+    float acc_len = sqrt(*acc_x * *acc_x + *acc_y * *acc_y);
+    if (acc_len > 1.0f)
     {
-        dx *= 1 / dlen;
-        dy *= 1 / dlen;
+        *acc_x *= 1 / acc_len;
+        *acc_y *= 1 / acc_len;
     }
 
-    *new_x += dx * speed * delta_time;
-    *new_y += dy * speed * delta_time;
+    *acc_x *= speed;
+    *acc_y *= speed;
+
+    *acc_x -= *vel_x * drag;
+    *acc_y -= *vel_y * drag;
+
+    *pos_x = 0.5f * *acc_x * powf(delta_time, 2) + *vel_x * delta_time + *pos_x;
+    *pos_y = 0.5f * *acc_y * powf(delta_time, 2) + *vel_y * delta_time + *pos_y;
+    *vel_x = *acc_x * delta_time + *vel_x;
+    *vel_y = *acc_y * delta_time + *vel_y;
 }

@@ -14,13 +14,19 @@
 #define TICK_RATE 60
 #define FRAME_DELAY (1000 / TICK_RATE)
 
+#define UPDATE_CLIENTS_RATE 20
+
 struct client
 {
     int id;
     TCPsocket socket;
     IPaddress udp_address;
-    float x;
-    float y;
+    float pos_x;
+    float pos_y;
+    float vel_x;
+    float vel_y;
+    float acc_x;
+    float acc_y;
 };
 
 int server_main(int argc, char *argv[])
@@ -108,43 +114,31 @@ int server_main(int argc, char *argv[])
 
                         clients[new_client_id].id = new_client_id;
                         clients[new_client_id].socket = socket;
-                        clients[new_client_id].x = 100.0f;
-                        clients[new_client_id].y = 100.0f;
+                        clients[new_client_id].pos_x = 100.0f;
+                        clients[new_client_id].pos_y = 100.0f;
+                        clients[new_client_id].vel_x = 0.0f;
+                        clients[new_client_id].vel_y = 0.0f;
+                        clients[new_client_id].acc_x = 0.0f;
+                        clients[new_client_id].acc_y = 0.0f;
 
                         SDLNet_TCP_AddSocket(socket_set, clients[new_client_id].socket);
 
-                        struct connect_ok_message connect_ok_message;
-                        connect_ok_message.type = MESSAGE_CONNECT_OK;
-                        connect_ok_message.assigned_id = new_client_id;
-                        for (int i = 0; i < MAX_CLIENTS; i++)
-                        {
-                            connect_ok_message.clients[i].id = clients[i].id;
-                            connect_ok_message.clients[i].x = clients[i].x;
-                            connect_ok_message.clients[i].y = clients[i].y;
-                        }
-                        for (int i = 0; i < NUM_MOBS; i++)
-                        {
-                            connect_ok_message.world.mobs[i].alive = world.mobs[i].alive;
-                            connect_ok_message.world.mobs[i].x = world.mobs[i].x;
-                            connect_ok_message.world.mobs[i].y = world.mobs[i].y;
-                        }
+                        struct message_id message_id;
+                        message_id.type = MESSAGE_CONNECT_OK;
+                        message_id.id = new_client_id;
 
-                        if (SDLNet_TCP_Send(socket, &connect_ok_message, sizeof(connect_ok_message)) < (int)sizeof(connect_ok_message))
+                        if (SDLNet_TCP_Send(socket, &message_id, sizeof(message_id)) < (int)sizeof(message_id))
                         {
                             printf("Error: Failed to send TCP packet: %s\n", SDLNet_GetError());
                         }
 
-                        struct connect_broadcast_message connect_broadcast_message;
-                        connect_broadcast_message.type = MESSAGE_CONNECT_BROADCAST;
-                        connect_broadcast_message.new_client_id = new_client_id;
-                        connect_broadcast_message.new_client_x = clients[new_client_id].x;
-                        connect_broadcast_message.new_client_y = clients[new_client_id].y;
+                        message_id.type = MESSAGE_CONNECT_BROADCAST;
 
                         for (int i = 0; i < MAX_CLIENTS; i++)
                         {
                             if (clients[i].id != -1 && clients[i].id != clients[new_client_id].id)
                             {
-                                if (SDLNet_TCP_Send(clients[i].socket, &connect_broadcast_message, sizeof(connect_broadcast_message)) < (int)sizeof(connect_broadcast_message))
+                                if (SDLNet_TCP_Send(clients[i].socket, &message_id, sizeof(message_id)) < (int)sizeof(message_id))
                                 {
                                     printf("Error: Failed to send TCP packet: %s\n", SDLNet_GetError());
                                 }
@@ -181,15 +175,15 @@ int server_main(int argc, char *argv[])
                             {
                                 printf("Client %d disconnected\n", clients[i].id);
 
-                                struct id_message id_message;
-                                id_message.type = MESSAGE_DISCONNECT_BROADCAST;
-                                id_message.id = clients[i].id;
+                                struct message_id message_id;
+                                message_id.type = MESSAGE_DISCONNECT_BROADCAST;
+                                message_id.id = clients[i].id;
 
                                 for (int j = 0; j < MAX_CLIENTS; j++)
                                 {
                                     if (clients[j].id != -1 && clients[j].id != clients[i].id)
                                     {
-                                        if (SDLNet_TCP_Send(clients[j].socket, &id_message, sizeof(id_message)) < (int)sizeof(id_message))
+                                        if (SDLNet_TCP_Send(clients[j].socket, &message_id, sizeof(message_id)) < (int)sizeof(message_id))
                                         {
                                             printf("Error: Failed to send TCP packet: %s\n", SDLNet_GetError());
                                         }
@@ -224,18 +218,19 @@ int server_main(int argc, char *argv[])
                     {
                     case MESSAGE_UDP_CONNECT_REQUEST:
                     {
-                        struct id_message *id_message = (struct id_message *)message;
+                        struct message_id *message_id = (struct message_id *)message;
 
-                        clients[id_message->id].udp_address = packet->address;
+                        clients[message_id->id].udp_address = packet->address;
 
-                        printf("Saving UDP info of client %d\n", id_message->id);
+                        printf("Saving UDP info of client %d\n", message_id->id);
                     }
                     break;
                     case MESSAGE_INPUT_REQUEST:
                     {
-                        struct input_request_message *input_request_message = (struct input_request_message *)message;
+                        struct message_input *message_input = (struct message_input *)message;
 
-                        client_move(input_request_message->dx, input_request_message->dy, delta_time, &clients[input_request_message->id].x, &clients[input_request_message->id].y);
+                        clients[message_input->id].acc_x = message_input->acc_x;
+                        clients[message_input->id].acc_y = message_input->acc_y;
                     }
                     break;
                     default:
@@ -249,24 +244,38 @@ int server_main(int argc, char *argv[])
             }
         }
 
+        for (int i = 0; i < MAX_CLIENTS; i++)
+        {
+            client_accelerate(&clients[i].pos_x, &clients[i].pos_y, &clients[i].vel_x, &clients[i].vel_y, &clients[i].acc_x, &clients[i].acc_y, delta_time);
+        }
+
         world_update(&world, delta_time);
 
+        static float update_clients_timer = 0;
+        update_clients_timer += delta_time;
+        if (update_clients_timer >= 1.0f / UPDATE_CLIENTS_RATE)
         {
+            update_clients_timer = 0;
+
             UDPpacket *packet = SDLNet_AllocPacket(PACKET_SIZE);
 
-            struct world_state_broadcast_message *world_state_broadcast_message = (struct world_state_broadcast_message *)malloc(sizeof(*world_state_broadcast_message));
-            world_state_broadcast_message->type = MESSAGE_WORLD_STATE_BROADCAST;
+            struct message_world_state *message_world_state = (struct message_world_state *)malloc(sizeof(*message_world_state));
+            message_world_state->type = MESSAGE_WORLD_STATE_BROADCAST;
             for (int i = 0; i < MAX_CLIENTS; i++)
             {
-                world_state_broadcast_message->clients[i].id = clients[i].id;
-                world_state_broadcast_message->clients[i].x = clients[i].x;
-                world_state_broadcast_message->clients[i].y = clients[i].y;
+                message_world_state->clients[i].id = clients[i].id;
+                message_world_state->clients[i].pos_x = clients[i].pos_x;
+                message_world_state->clients[i].pos_y = clients[i].pos_y;
+                message_world_state->clients[i].vel_x = clients[i].vel_x;
+                message_world_state->clients[i].vel_y = clients[i].vel_y;
+                message_world_state->clients[i].acc_x = clients[i].acc_x;
+                message_world_state->clients[i].acc_y = clients[i].acc_y;
             }
             for (int i = 0; i < NUM_MOBS; i++)
             {
-                world_state_broadcast_message->world.mobs[i].alive = world.mobs[i].alive;
-                world_state_broadcast_message->world.mobs[i].x = world.mobs[i].x;
-                world_state_broadcast_message->world.mobs[i].y = world.mobs[i].y;
+                message_world_state->world.mobs[i].alive = world.mobs[i].alive;
+                message_world_state->world.mobs[i].x = world.mobs[i].x;
+                message_world_state->world.mobs[i].y = world.mobs[i].y;
             }
 
             for (int i = 0; i < MAX_CLIENTS; i++)
@@ -274,8 +283,8 @@ int server_main(int argc, char *argv[])
                 if (clients[i].id != -1)
                 {
                     packet->address = clients[i].udp_address;
-                    packet->data = (unsigned char *)world_state_broadcast_message;
-                    packet->len = sizeof(*world_state_broadcast_message);
+                    packet->data = (unsigned char *)message_world_state;
+                    packet->len = sizeof(*message_world_state);
 
                     if (!SDLNet_UDP_Send(udp_socket, -1, packet))
                     {
