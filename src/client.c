@@ -8,6 +8,7 @@
 #include <stdio.h>
 
 #include "message.h"
+#include "world.h"
 
 #define WINDOW_WIDTH 1280
 #define WINDOW_HEIGHT 720
@@ -21,6 +22,8 @@
 struct client
 {
     int id;
+    float x;
+    float y;
 };
 
 int client_main(int argc, char *argv[])
@@ -74,40 +77,40 @@ int client_main(int argc, char *argv[])
         return 1;
     }
 
-    SDL_Texture *sprites = IMG_LoadTexture(renderer, "assets/sprites.png");
-
     if (Mix_OpenAudio(MIX_DEFAULT_FREQUENCY, MIX_DEFAULT_FORMAT, MIX_DEFAULT_CHANNELS, 1024) != 0)
     {
         printf("Failed to initialize the mixer API: %s\n", Mix_GetError());
         return 1;
     }
 
+    bool online = true;
+
     IPaddress server_address;
     if (SDLNet_ResolveHost(&server_address, SERVER_HOST, SERVER_PORT))
     {
         printf("Error: Failed to resolve host: %s\n", SDLNet_GetError());
-        return 1;
+        online = false;
     }
 
     TCPsocket tcp_socket = SDLNet_TCP_Open(&server_address);
     if (!tcp_socket)
     {
         printf("Error: Failed to open TCP socket: %s\n", SDLNet_GetError());
-        return 1;
+        online = false;
     }
 
     UDPsocket udp_socket = SDLNet_UDP_Open(0);
     if (!udp_socket)
     {
         printf("Error: Failed to open UDP socket: %s\n", SDLNet_GetError());
-        return 1;
+        online = false;
     }
 
     SDLNet_SocketSet socket_set = SDLNet_AllocSocketSet(2);
     if (!socket_set)
     {
         printf("Error: Failed to allocate socket set: %s\n", SDLNet_GetError());
-        return 1;
+        online = false;
     }
     SDLNet_TCP_AddSocket(socket_set, tcp_socket);
     SDLNet_UDP_AddSocket(socket_set, udp_socket);
@@ -118,7 +121,10 @@ int client_main(int argc, char *argv[])
         clients[i].id = -1;
     }
 
+    struct world world;
+
     int client_id = -1;
+    if (online)
     {
         char buffer[PACKET_SIZE];
         if (SDLNet_TCP_Recv(tcp_socket, buffer, sizeof(buffer)) > 1)
@@ -130,30 +136,42 @@ int client_main(int argc, char *argv[])
             {
                 struct connect_ok_message *connect_ok_message = (struct connect_ok_message *)message;
 
-                client_id = connect_ok_message->id;
+                client_id = connect_ok_message->assigned_id;
                 printf("ID %d assigned by server\n", client_id);
 
-                // TODO: initialize all players
+                for (int i = 0; i < MAX_CLIENTS; i++)
+                {
+                    clients[i].id = connect_ok_message->clients[i].id;
+                    clients[i].x = connect_ok_message->clients[i].x;
+                    clients[i].y = connect_ok_message->clients[i].y;
+                }
+                for (int i = 0; i < NUM_MOBS; i++)
+                {
+                    world.mobs[i].alive = connect_ok_message->world.mobs[i].alive;
+                    world.mobs[i].x = connect_ok_message->world.mobs[i].x;
+                    world.mobs[i].y = connect_ok_message->world.mobs[i].y;
+                }
             }
             break;
             case MESSAGE_CONNECT_FULL:
             {
                 printf("Error: Server is full\n");
-                return 1;
+                online = false;
             }
             break;
             default:
             {
                 printf("Error: Unknown server response\n");
-                return 1;
+                online = false;
             }
             break;
             }
         }
 
+        if (online)
         {
             struct id_message *id_message = (struct id_message *)malloc(sizeof(*id_message));
-            id_message->message.type = MESSAGE_UDP_CONNECT_REQUEST;
+            id_message->type = MESSAGE_UDP_CONNECT_REQUEST;
             id_message->id = client_id;
 
             UDPpacket *packet = SDLNet_AllocPacket(PACKET_SIZE);
@@ -164,12 +182,37 @@ int client_main(int argc, char *argv[])
             if (!SDLNet_UDP_Send(udp_socket, -1, packet))
             {
                 printf("Error: Failed to make UDP connection\n");
-                return 1;
+                online = false;
             }
 
             SDLNet_FreePacket(packet);
         }
     }
+    else
+    {
+        client_id = 0;
+        clients[client_id].id = 0;
+        clients[client_id].x = 100;
+        clients[client_id].y = 100;
+
+        world_init(&world);
+
+        printf("Starting in offline mode");
+    }
+
+    SDL_Texture *sprites = IMG_LoadTexture(renderer, "assets/sprites.png");
+
+    SDL_Rect player_clip;
+    player_clip.x = 493;
+    player_clip.y = 0;
+    player_clip.w = 16;
+    player_clip.h = 16;
+
+    SDL_Rect mob_clip;
+    mob_clip.x = 493;
+    mob_clip.y = 86;
+    mob_clip.w = 16;
+    mob_clip.h = 16;
 
     unsigned int current_time = 0;
 
@@ -181,7 +224,7 @@ int client_main(int argc, char *argv[])
         current_time = frame_start;
         float delta_time = (current_time - previous_time) / 1000.0f;
 
-        while (SDLNet_CheckSockets(socket_set, 0) > 0)
+        while (online && SDLNet_CheckSockets(socket_set, 0) > 0)
         {
             if (SDLNet_SocketReady(tcp_socket))
             {
@@ -196,6 +239,7 @@ int client_main(int argc, char *argv[])
                         struct id_message *id_message = (struct id_message *)message;
 
                         // TODO: initialize new player
+                        clients[id_message->id].id = id_message->id;
 
                         printf("Client with ID %d has joined\n", id_message->id);
                     }
@@ -226,6 +270,24 @@ int client_main(int argc, char *argv[])
                     struct message *message = (struct message *)packet->data;
                     switch (message->type)
                     {
+                    case MESSAGE_WORLD_STATE_BROADCAST:
+                    {
+                        struct world_state_broadcast_message *world_state_broadcast_message = (struct world_state_broadcast_message *)message;
+
+                        for (int i = 0; i < MAX_CLIENTS; i++)
+                        {
+                            clients[i].id = world_state_broadcast_message->clients[i].id;
+                            clients[i].x = world_state_broadcast_message->clients[i].x;
+                            clients[i].y = world_state_broadcast_message->clients[i].y;
+                        }
+                        for (int i = 0; i < NUM_MOBS; i++)
+                        {
+                            world.mobs[i].alive = world_state_broadcast_message->world.mobs[i].alive;
+                            world.mobs[i].x = world_state_broadcast_message->world.mobs[i].x;
+                            world.mobs[i].y = world_state_broadcast_message->world.mobs[i].y;
+                        }
+                    }
+                    break;
                     default:
                     {
                         printf("Error: Unknown UDP packet type: %d\n", message->type);
@@ -279,8 +341,74 @@ int client_main(int argc, char *argv[])
             }
         }
 
+        float dx = 0;
+        float dy = 0;
+
+        if (keys[SDL_SCANCODE_W])
+        {
+            dy = -1;
+        }
+        if (keys[SDL_SCANCODE_A])
+        {
+            dx = -1;
+        }
+        if (keys[SDL_SCANCODE_S])
+        {
+            dy = 1;
+        }
+        if (keys[SDL_SCANCODE_D])
+        {
+            dx = 1;
+        }
+
+        client_move(dx, dy, delta_time, &clients[client_id].x, &clients[client_id].y);
+
+        if (online)
+        {
+            struct input_request_message *input_request_message = (struct input_request_message *)malloc(sizeof(*input_request_message));
+            input_request_message->type = MESSAGE_INPUT_REQUEST;
+            input_request_message->id = client_id;
+            input_request_message->dx = dx;
+            input_request_message->dy = dy;
+
+            UDPpacket *packet = SDLNet_AllocPacket(PACKET_SIZE);
+            packet->address = server_address;
+            packet->data = (unsigned char *)input_request_message;
+            packet->len = sizeof(*input_request_message);
+
+            if (!SDLNet_UDP_Send(udp_socket, -1, packet))
+            {
+                printf("Error: Failed to send UDP packet\n");
+            }
+
+            SDLNet_FreePacket(packet);
+        }
+
+        if (!online)
+        {
+            world_update(&world, delta_time);
+        }
+
         SDL_RenderClear(renderer);
-        SDL_RenderCopy(renderer, sprites, NULL, NULL);
+
+        for (int i = 0; i < NUM_MOBS; i++)
+        {
+            if (world.mobs[i].alive)
+            {
+                SDL_Rect render_quad = {world.mobs[i].x, world.mobs[i].y, mob_clip.w * 2, mob_clip.h * 2};
+                SDL_RenderCopy(renderer, sprites, &mob_clip, &render_quad);
+            }
+        }
+
+        for (int i = 0; i < MAX_CLIENTS; i++)
+        {
+            if (clients[i].id != -1)
+            {
+                SDL_Rect render_quad = {clients[i].x, clients[i].y, player_clip.w * 2, player_clip.h * 2};
+                SDL_RenderCopy(renderer, sprites, &player_clip, &render_quad);
+            }
+        }
+
         SDL_RenderPresent(renderer);
 
         unsigned int frame_end = SDL_GetTicks();
@@ -291,6 +419,7 @@ int client_main(int argc, char *argv[])
         }
     }
 
+    if (online)
     {
         struct message message;
         message.type = MESSAGE_DISCONNECT_REQUEST;
@@ -321,4 +450,19 @@ int client_main(int argc, char *argv[])
     SDL_Quit();
 
     return 0;
+}
+
+void client_move(float dx, float dy, float delta_time, float *new_x, float *new_y)
+{
+    float speed = 100.0f;
+
+    float dlen = sqrt(dx * dx + dy * dy);
+    if (dlen > 1.0f)
+    {
+        dx *= 1 / dlen;
+        dy *= 1 / dlen;
+    }
+
+    *new_x += dx * speed * delta_time;
+    *new_y += dy * speed * delta_time;
 }

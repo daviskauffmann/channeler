@@ -9,7 +9,8 @@ LDLIBS =
 SRC = \
 	src/client.c \
 	src/main.c \
-	src/server.c
+	src/server.c \
+	src/world.c
 TARGET = bin/ph
 
 .PHONY: all
