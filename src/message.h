@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 
+#include "player.h"
 #include "world.h"
 
 #define PACKET_SIZE 1024
@@ -46,12 +47,7 @@ struct message_world_state
     struct
     {
         int id;
-        float pos_x;
-        float pos_y;
-        float vel_x;
-        float vel_y;
-        float acc_x;
-        float acc_y;
+        struct player player;
     } clients[MAX_CLIENTS];
     struct world world;
 };

@@ -8,6 +8,7 @@
 #include <stdio.h>
 
 #include "message.h"
+#include "player.h"
 #include "world.h"
 
 #define WINDOW_WIDTH 1280
@@ -22,12 +23,7 @@
 struct client
 {
     int id;
-    float pos_x;
-    float pos_y;
-    float vel_x;
-    float vel_y;
-    float acc_x;
-    float acc_y;
+    struct player player;
 };
 
 int client_main(int argc, char *argv[])
@@ -183,12 +179,7 @@ int client_main(int argc, char *argv[])
     {
         client_id = 0;
         clients[client_id].id = 0;
-        clients[client_id].pos_x = 100.0f;
-        clients[client_id].pos_y = 100.0f;
-        clients[client_id].vel_x = 0.0f;
-        clients[client_id].vel_y = 0.0f;
-        clients[client_id].acc_x = 0.0f;
-        clients[client_id].acc_y = 0.0f;
+        player_init(&clients[client_id].player);
 
         world_init(&world);
 
@@ -272,12 +263,12 @@ int client_main(int argc, char *argv[])
                         for (int i = 0; i < MAX_CLIENTS; i++)
                         {
                             clients[i].id = message_world_state->clients[i].id;
-                            clients[i].pos_x = message_world_state->clients[i].pos_x;
-                            clients[i].pos_y = message_world_state->clients[i].pos_y;
-                            clients[i].vel_x = message_world_state->clients[i].vel_x;
-                            clients[i].vel_y = message_world_state->clients[i].vel_y;
-                            clients[i].acc_x = message_world_state->clients[i].acc_x;
-                            clients[i].acc_y = message_world_state->clients[i].acc_y;
+                            clients[i].player.pos_x = message_world_state->clients[i].player.pos_x;
+                            clients[i].player.pos_y = message_world_state->clients[i].player.pos_y;
+                            clients[i].player.vel_x = message_world_state->clients[i].player.vel_x;
+                            clients[i].player.vel_y = message_world_state->clients[i].player.vel_y;
+                            clients[i].player.acc_x = message_world_state->clients[i].player.acc_x;
+                            clients[i].player.acc_y = message_world_state->clients[i].player.acc_y;
                         }
                         for (int i = 0; i < NUM_MOBS; i++)
                         {
@@ -340,32 +331,24 @@ int client_main(int argc, char *argv[])
             }
         }
 
-        clients[client_id].acc_x = 0;
-        clients[client_id].acc_y = 0;
+        clients[client_id].player.acc_x = 0;
+        clients[client_id].player.acc_y = 0;
 
         if (keys[SDL_SCANCODE_W])
         {
-            clients[client_id].acc_y = -1;
+            clients[client_id].player.acc_y = -1;
         }
         if (keys[SDL_SCANCODE_A])
         {
-            clients[client_id].acc_x = -1;
+            clients[client_id].player.acc_x = -1;
         }
         if (keys[SDL_SCANCODE_S])
         {
-            clients[client_id].acc_y = 1;
+            clients[client_id].player.acc_y = 1;
         }
         if (keys[SDL_SCANCODE_D])
         {
-            clients[client_id].acc_x = 1;
-        }
-
-        for (int i = 0; i < MAX_CLIENTS; i++)
-        {
-            if (clients[i].id != -1)
-            {
-                client_accelerate(&clients[i].pos_x, &clients[i].pos_y, &clients[i].vel_x, &clients[i].vel_y, &clients[i].acc_x, &clients[i].acc_y, delta_time);
-            }
+            clients[client_id].player.acc_x = 1;
         }
 
         if (online)
@@ -373,8 +356,8 @@ int client_main(int argc, char *argv[])
             struct message_input *message_input = (struct input_request_message *)malloc(sizeof(*message_input));
             message_input->type = MESSAGE_INPUT_REQUEST;
             message_input->id = client_id;
-            message_input->acc_x = clients[client_id].acc_x;
-            message_input->acc_y = clients[client_id].acc_y;
+            message_input->acc_x = clients[client_id].player.acc_x;
+            message_input->acc_y = clients[client_id].player.acc_y;
 
             UDPpacket *packet = SDLNet_AllocPacket(PACKET_SIZE);
             packet->address = server_address;
@@ -387,6 +370,15 @@ int client_main(int argc, char *argv[])
             }
 
             SDLNet_FreePacket(packet);
+        }
+
+        for (int i = 0; i < MAX_CLIENTS; i++)
+        {
+            if (clients[i].id != -1)
+            {
+                struct player *player = &clients[i].player;
+                player_accelerate(&player->pos_x, &player->pos_y, &player->vel_x, &player->vel_y, &player->acc_x, &player->acc_y, delta_time);
+            }
         }
 
         if (!online)
@@ -409,7 +401,7 @@ int client_main(int argc, char *argv[])
         {
             if (clients[i].id != -1)
             {
-                SDL_Rect render_quad = {clients[i].pos_x, clients[i].pos_y, player_clip.w * 2, player_clip.h * 2};
+                SDL_Rect render_quad = {clients[i].player.pos_x, clients[i].player.pos_y, player_clip.w * 2, player_clip.h * 2};
                 SDL_RenderCopy(renderer, sprites, &player_clip, &render_quad);
             }
         }
@@ -455,28 +447,4 @@ int client_main(int argc, char *argv[])
     SDL_Quit();
 
     return 0;
-}
-
-void client_accelerate(float *pos_x, float *pos_y, float *vel_x, float *vel_y, float *acc_x, float *acc_y, float delta_time)
-{
-    float speed = 2000.0f;
-    float drag = 10.0f;
-
-    float acc_len = sqrt(*acc_x * *acc_x + *acc_y * *acc_y);
-    if (acc_len > 1.0f)
-    {
-        *acc_x *= 1 / acc_len;
-        *acc_y *= 1 / acc_len;
-    }
-
-    *acc_x *= speed;
-    *acc_y *= speed;
-
-    *acc_x -= *vel_x * drag;
-    *acc_y -= *vel_y * drag;
-
-    *pos_x = 0.5f * *acc_x * powf(delta_time, 2) + *vel_x * delta_time + *pos_x;
-    *pos_y = 0.5f * *acc_y * powf(delta_time, 2) + *vel_y * delta_time + *pos_y;
-    *vel_x = *acc_x * delta_time + *vel_x;
-    *vel_y = *acc_y * delta_time + *vel_y;
 }

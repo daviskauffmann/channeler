@@ -5,8 +5,8 @@
 #include <stdbool.h>
 #include <stdio.h>
 
-#include "client.h"
 #include "message.h"
+#include "player.h"
 #include "world.h"
 
 #define SERVER_PORT 3000
@@ -21,12 +21,7 @@ struct client
     int id;
     TCPsocket socket;
     IPaddress udp_address;
-    float pos_x;
-    float pos_y;
-    float vel_x;
-    float vel_y;
-    float acc_x;
-    float acc_y;
+    struct player player;
 };
 
 int server_main(int argc, char *argv[])
@@ -114,12 +109,7 @@ int server_main(int argc, char *argv[])
 
                         clients[new_client_id].id = new_client_id;
                         clients[new_client_id].socket = socket;
-                        clients[new_client_id].pos_x = 100.0f;
-                        clients[new_client_id].pos_y = 100.0f;
-                        clients[new_client_id].vel_x = 0.0f;
-                        clients[new_client_id].vel_y = 0.0f;
-                        clients[new_client_id].acc_x = 0.0f;
-                        clients[new_client_id].acc_y = 0.0f;
+                        player_init(&clients[new_client_id].player);
 
                         SDLNet_TCP_AddSocket(socket_set, clients[new_client_id].socket);
 
@@ -229,8 +219,8 @@ int server_main(int argc, char *argv[])
                     {
                         struct message_input *message_input = (struct message_input *)message;
 
-                        clients[message_input->id].acc_x = message_input->acc_x;
-                        clients[message_input->id].acc_y = message_input->acc_y;
+                        clients[message_input->id].player.acc_x = message_input->acc_x;
+                        clients[message_input->id].player.acc_y = message_input->acc_y;
                     }
                     break;
                     default:
@@ -246,7 +236,11 @@ int server_main(int argc, char *argv[])
 
         for (int i = 0; i < MAX_CLIENTS; i++)
         {
-            client_accelerate(&clients[i].pos_x, &clients[i].pos_y, &clients[i].vel_x, &clients[i].vel_y, &clients[i].acc_x, &clients[i].acc_y, delta_time);
+            struct player *player = &clients[i].player;
+            player_accelerate(&player->pos_x, &player->pos_y, &player->vel_x, &player->vel_y, &player->acc_x, &player->acc_y, delta_time);
+
+            player->acc_x = 0;
+            player->acc_y = 0;
         }
 
         world_update(&world, delta_time);
@@ -264,12 +258,12 @@ int server_main(int argc, char *argv[])
             for (int i = 0; i < MAX_CLIENTS; i++)
             {
                 message_world_state->clients[i].id = clients[i].id;
-                message_world_state->clients[i].pos_x = clients[i].pos_x;
-                message_world_state->clients[i].pos_y = clients[i].pos_y;
-                message_world_state->clients[i].vel_x = clients[i].vel_x;
-                message_world_state->clients[i].vel_y = clients[i].vel_y;
-                message_world_state->clients[i].acc_x = clients[i].acc_x;
-                message_world_state->clients[i].acc_y = clients[i].acc_y;
+                message_world_state->clients[i].player.pos_x = clients[i].player.pos_x;
+                message_world_state->clients[i].player.pos_y = clients[i].player.pos_y;
+                message_world_state->clients[i].player.vel_x = clients[i].player.vel_x;
+                message_world_state->clients[i].player.vel_y = clients[i].player.vel_y;
+                message_world_state->clients[i].player.acc_x = clients[i].player.acc_x;
+                message_world_state->clients[i].player.acc_y = clients[i].player.acc_y;
             }
             for (int i = 0; i < NUM_MOBS; i++)
             {
