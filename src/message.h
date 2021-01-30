@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 
+#include "input.h"
 #include "player.h"
 #include "world.h"
 
@@ -37,8 +38,7 @@ struct message_input
 {
     enum message_type type;
     int id;
-    float acc_x;
-    float acc_y;
+    struct input input;
 };
 
 struct message_world_state

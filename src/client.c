@@ -7,17 +7,18 @@
 #include <stdbool.h>
 #include <stdio.h>
 
+#include "input.h"
 #include "message.h"
 #include "player.h"
 #include "world.h"
 
-#define WINDOW_WIDTH 1280
-#define WINDOW_HEIGHT 720
+#define WINDOW_WIDTH 640
+#define WINDOW_HEIGHT 480
 
 #define SERVER_HOST "127.0.0.1"
 #define SERVER_PORT 3000
 
-#define FPS_CAP 60
+#define FPS_CAP 144
 #define FRAME_DELAY (1000 / FPS_CAP)
 
 struct client
@@ -331,24 +332,25 @@ int client_main(int argc, char *argv[])
             }
         }
 
-        clients[client_id].player.acc_x = 0;
-        clients[client_id].player.acc_y = 0;
+        struct input input;
+        input.dx = 0;
+        input.dy = 0;
 
         if (keys[SDL_SCANCODE_W])
         {
-            clients[client_id].player.acc_y = -1;
+            input.dy = -1;
         }
         if (keys[SDL_SCANCODE_A])
         {
-            clients[client_id].player.acc_x = -1;
+            input.dx = -1;
         }
         if (keys[SDL_SCANCODE_S])
         {
-            clients[client_id].player.acc_y = 1;
+            input.dy = 1;
         }
         if (keys[SDL_SCANCODE_D])
         {
-            clients[client_id].player.acc_x = 1;
+            input.dx = 1;
         }
 
         if (online)
@@ -356,8 +358,8 @@ int client_main(int argc, char *argv[])
             struct message_input *message_input = (struct input_request_message *)malloc(sizeof(*message_input));
             message_input->type = MESSAGE_INPUT_REQUEST;
             message_input->id = client_id;
-            message_input->acc_x = clients[client_id].player.acc_x;
-            message_input->acc_y = clients[client_id].player.acc_y;
+            message_input->input.dx = input.dx;
+            message_input->input.dy = input.dy;
 
             UDPpacket *packet = SDLNet_AllocPacket(PACKET_SIZE);
             packet->address = server_address;
@@ -371,6 +373,9 @@ int client_main(int argc, char *argv[])
 
             SDLNet_FreePacket(packet);
         }
+
+        clients[client_id].player.acc_x = input.dx;
+        clients[client_id].player.acc_y = input.dy;
 
         for (int i = 0; i < MAX_CLIENTS; i++)
         {

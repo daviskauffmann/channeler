@@ -22,6 +22,7 @@ struct client
     TCPsocket socket;
     IPaddress udp_address;
     struct player player;
+    struct input input;
 };
 
 int server_main(int argc, char *argv[])
@@ -219,8 +220,8 @@ int server_main(int argc, char *argv[])
                     {
                         struct message_input *message_input = (struct message_input *)message;
 
-                        clients[message_input->id].player.acc_x = message_input->acc_x;
-                        clients[message_input->id].player.acc_y = message_input->acc_y;
+                        clients[message_input->id].input.dx = message_input->input.dx;
+                        clients[message_input->id].input.dy = message_input->input.dy;
                     }
                     break;
                     default:
@@ -236,11 +237,11 @@ int server_main(int argc, char *argv[])
 
         for (int i = 0; i < MAX_CLIENTS; i++)
         {
+            clients[i].player.acc_x = clients[i].input.dx;
+            clients[i].player.acc_y = clients[i].input.dy;
+
             struct player *player = &clients[i].player;
             player_accelerate(&player->pos_x, &player->pos_y, &player->vel_x, &player->vel_y, &player->acc_x, &player->acc_y, delta_time);
-
-            player->acc_x = 0;
-            player->acc_y = 0;
         }
 
         world_update(&world, delta_time);

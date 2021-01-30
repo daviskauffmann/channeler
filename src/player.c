@@ -14,8 +14,8 @@ void player_init(struct player *player)
 
 void player_accelerate(float *pos_x, float *pos_y, float *vel_x, float *vel_y, float *acc_x, float *acc_y, float delta_time)
 {
-    float speed = 2000.0f;
-    float drag = 10.0f;
+    float speed = 4000.0f;
+    float drag = 20.0f;
 
     float acc_len = sqrt(*acc_x * *acc_x + *acc_y * *acc_y);
     if (acc_len > 1.0f)
@@ -34,4 +34,7 @@ void player_accelerate(float *pos_x, float *pos_y, float *vel_x, float *vel_y, f
     *pos_y = 0.5f * *acc_y * powf(delta_time, 2) + *vel_y * delta_time + *pos_y;
     *vel_x = *acc_x * delta_time + *vel_x;
     *vel_y = *acc_y * delta_time + *vel_y;
+
+    *acc_x = 0;
+    *acc_y = 0;
 }
