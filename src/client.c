@@ -12,6 +12,7 @@
 #include "player.h"
 #include "world.h"
 
+#define WINDOW_TITLE "Project Hypernova"
 #define WINDOW_WIDTH 640
 #define WINDOW_HEIGHT 480
 
@@ -56,7 +57,7 @@ int client_main(int argc, char *argv[])
     }
 
     SDL_Window *window = SDL_CreateWindow(
-        "Project Hypernova",
+        WINDOW_TITLE,
         SDL_WINDOWPOS_UNDEFINED,
         SDL_WINDOWPOS_UNDEFINED,
         WINDOW_WIDTH,
@@ -176,7 +177,8 @@ int client_main(int argc, char *argv[])
             SDLNet_FreePacket(packet);
         }
     }
-    else
+    
+    if (!online)
     {
         client_id = 0;
         clients[client_id].id = 0;
