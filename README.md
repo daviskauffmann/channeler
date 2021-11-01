@@ -2,13 +2,6 @@
 
 ## Getting Started
 
-### Dependencies
-
-- SDL2
-- SDL2_image
-- SDL2_mixer
-- SDL2_net
-
 ### Download
 
 ```sh
@@ -16,20 +9,19 @@ git clone https://github.com/daviskauffmann/project-hypernova.git
 cd project-hypernova
 ```
 
+### Install Dependencies
+
+Install the following using the package manager of your choice:
+
+- SDL2
+- SDL2-image
+- SDL2-mixer
+- SDL2-net
+
 ### Build
 
 ```sh
-make
-```
-
-### Build & Run
-
-```sh
-make run
-```
-
-### Cleanup
-
-```sh
-make clean
+mkdir build
+cd build
+cmake ..
 ```
