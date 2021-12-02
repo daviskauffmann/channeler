@@ -1,4 +1,4 @@
-#include "world.h"
+#include <shared/world.h>
 
 #include <stdbool.h>
 #include <stdlib.h>

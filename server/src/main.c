@@ -1,13 +1,10 @@
-#include "server.h"
-
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_net.h>
+#include <shared/message.h>
+#include <shared/player.h>
+#include <shared/world.h>
 #include <stdbool.h>
 #include <stdio.h>
-
-#include "message.h"
-#include "player.h"
-#include "world.h"
 
 #define SERVER_PORT 3000
 
@@ -25,17 +22,17 @@ struct client
     struct input input;
 };
 
-int server_main(int argc, char *argv[])
+int main(int argc, char *argv[])
 {
     if (SDL_Init(0) != 0)
     {
-        printf("Failed to initialize SDL: %s\n", SDL_GetError());
+        printf("Error: Failed to initialize SDL: %s\n", SDL_GetError());
         return 1;
     }
 
     if (SDLNet_Init() != 0)
     {
-        printf("Failed to initialize SDL_net: %s\n", SDLNet_GetError());
+        printf("Error: Failed to initialize SDL_net: %s\n", SDLNet_GetError());
         return 1;
     }
 

@@ -1,16 +1,13 @@
-#include "client.h"
-
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 #include <SDL2/SDL_mixer.h>
 #include <SDL2/SDL_net.h>
+#include <shared/input.h>
+#include <shared/message.h>
+#include <shared/player.h>
+#include <shared/world.h>
 #include <stdbool.h>
 #include <stdio.h>
-
-#include "input.h"
-#include "message.h"
-#include "player.h"
-#include "world.h"
 
 #define WINDOW_TITLE "Project Hypernova"
 #define WINDOW_WIDTH 640
@@ -28,31 +25,31 @@ struct client
     struct player player;
 };
 
-int client_main(int argc, char *argv[])
+int main(int argc, char *argv[])
 {
     if (SDL_Init(SDL_INIT_AUDIO | SDL_INIT_VIDEO) != 0)
     {
-        printf("Failed to initialize SDL: %s\n", SDL_GetError());
+        printf("Error: Failed to initialize SDL: %s\n", SDL_GetError());
         return 1;
     }
 
     int img_flags = IMG_INIT_JPG | IMG_INIT_PNG;
     if (IMG_Init(img_flags) != img_flags)
     {
-        printf("Failed to initialize SDL_image: %s\n", IMG_GetError());
+        printf("Error: Failed to initialize SDL_image: %s\n", IMG_GetError());
         return 1;
     }
 
     int mix_flags = 0;
     if (Mix_Init(mix_flags) != mix_flags)
     {
-        printf("Failed to initialize SDL_mixer: %s\n", Mix_GetError());
+        printf("Error: Failed to initialize SDL_mixer: %s\n", Mix_GetError());
         return 1;
     }
 
     if (SDLNet_Init() != 0)
     {
-        printf("Failed to initialize SDL_net: %s\n", SDLNet_GetError());
+        printf("Error: Failed to initialize SDL_net: %s\n", SDLNet_GetError());
         return 1;
     }
 
@@ -65,7 +62,7 @@ int client_main(int argc, char *argv[])
         0);
     if (!window)
     {
-        printf("Failed to create window: %s\n", SDL_GetError());
+        printf("Error: Failed to create window: %s\n", SDL_GetError());
         return 1;
     }
 
@@ -75,13 +72,13 @@ int client_main(int argc, char *argv[])
         SDL_RENDERER_ACCELERATED);
     if (!renderer)
     {
-        printf("Failed to create renderer: %s\n", SDL_GetError());
+        printf("Error: Failed to create renderer: %s\n", SDL_GetError());
         return 1;
     }
 
     if (Mix_OpenAudio(MIX_DEFAULT_FREQUENCY, MIX_DEFAULT_FORMAT, MIX_DEFAULT_CHANNELS, 1024) != 0)
     {
-        printf("Failed to initialize the mixer API: %s\n", Mix_GetError());
+        printf("Error: Failed to initialize the mixer API: %s\n", Mix_GetError());
         return 1;
     }
 
@@ -177,7 +174,7 @@ int client_main(int argc, char *argv[])
             SDLNet_FreePacket(packet);
         }
     }
-    
+
     if (!online)
     {
         client_id = 0;
@@ -357,7 +354,7 @@ int client_main(int argc, char *argv[])
 
         if (online)
         {
-            struct message_input *message_input = (struct input_request_message *)malloc(sizeof(*message_input));
+            struct message_input *message_input = (struct message_input *)malloc(sizeof(*message_input));
             message_input->type = MESSAGE_INPUT_REQUEST;
             message_input->id = client_id;
             message_input->input.dx = input.dx;
@@ -376,8 +373,8 @@ int client_main(int argc, char *argv[])
             SDLNet_FreePacket(packet);
         }
 
-        clients[client_id].player.acc_x = input.dx;
-        clients[client_id].player.acc_y = input.dy;
+        clients[client_id].player.acc_x = (float)input.dx;
+        clients[client_id].player.acc_y = (float)input.dy;
 
         for (int i = 0; i < MAX_CLIENTS; i++)
         {
@@ -399,7 +396,7 @@ int client_main(int argc, char *argv[])
         {
             if (world.mobs[i].alive)
             {
-                SDL_Rect render_quad = {world.mobs[i].x, world.mobs[i].y, mob_clip.w * 2, mob_clip.h * 2};
+                SDL_Rect render_quad = {(int)world.mobs[i].x, (int)world.mobs[i].y, mob_clip.w * 2, mob_clip.h * 2};
                 SDL_RenderCopy(renderer, sprites, &mob_clip, &render_quad);
             }
         }
@@ -408,7 +405,7 @@ int client_main(int argc, char *argv[])
         {
             if (clients[i].id != -1)
             {
-                SDL_Rect render_quad = {clients[i].player.pos_x, clients[i].player.pos_y, player_clip.w * 2, player_clip.h * 2};
+                SDL_Rect render_quad = {(int)clients[i].player.pos_x, (int)clients[i].player.pos_y, player_clip.w * 2, player_clip.h * 2};
                 SDL_RenderCopy(renderer, sprites, &player_clip, &render_quad);
             }
         }
@@ -434,6 +431,8 @@ int client_main(int argc, char *argv[])
         }
     }
 
+    SDL_DestroyTexture(sprites);
+
     SDLNet_UDP_DelSocket(socket_set, udp_socket);
     SDLNet_TCP_DelSocket(socket_set, tcp_socket);
 
@@ -444,8 +443,9 @@ int client_main(int argc, char *argv[])
 
     Mix_CloseAudio();
 
-    SDL_DestroyWindow(window);
     SDL_DestroyRenderer(renderer);
+
+    SDL_DestroyWindow(window);
 
     IMG_Quit();
     Mix_Quit();
