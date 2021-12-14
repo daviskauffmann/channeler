@@ -19,6 +19,8 @@
 #define FPS_CAP 144
 #define FRAME_DELAY (1000 / FPS_CAP)
 
+#define SPRITE_SIZE 16
+
 struct client
 {
     int id;
@@ -177,34 +179,33 @@ int main(int argc, char *argv[])
 
     if (!online)
     {
-        client_id = 0;
-        clients[client_id].id = 0;
-        player_init(&clients[client_id].player);
+        printf("Starting in offline mode\n");
 
         world_init(&world);
 
-        printf("Starting in offline mode\n");
+        client_id = 0;
+        clients[client_id].id = 0;
+        player_init(&clients[client_id].player, &world);
     }
 
     SDL_Texture *sprites = IMG_LoadTexture(renderer, "assets/sprites.png");
 
-    SDL_Rect player_clip;
-    player_clip.x = 493;
-    player_clip.y = 0;
-    player_clip.w = 16;
-    player_clip.h = 16;
+    SDL_Rect player_rect;
+    player_rect.x = 28 * SPRITE_SIZE;
+    player_rect.y = 0 * SPRITE_SIZE;
+    player_rect.w = SPRITE_SIZE;
+    player_rect.h = SPRITE_SIZE;
 
-    SDL_Rect mob_clip;
-    mob_clip.x = 493;
-    mob_clip.y = 86;
-    mob_clip.w = 16;
-    mob_clip.h = 16;
-
-    unsigned int current_time = 0;
+    SDL_Rect mob_rect;
+    mob_rect.x = 28 * SPRITE_SIZE;
+    mob_rect.y = 5 * SPRITE_SIZE;
+    mob_rect.w = SPRITE_SIZE;
+    mob_rect.h = SPRITE_SIZE;
 
     bool quit = false;
     while (!quit)
     {
+        static unsigned int current_time = 0;
         unsigned int frame_start = SDL_GetTicks();
         unsigned int previous_time = current_time;
         current_time = frame_start;
@@ -320,6 +321,24 @@ int main(int argc, char *argv[])
                     }
                 }
                 break;
+                case SDLK_SPACE:
+                {
+                    if (online)
+                    {
+                        struct message message;
+                        message.type = MESSAGE_ATTACK_REQUEST;
+
+                        if (SDLNet_TCP_Send(tcp_socket, &message, sizeof(message)) < (int)sizeof(message))
+                        {
+                            printf("Error: Failed to send TCP packet: %s\n", SDLNet_GetError());
+                        }
+                    }
+                    else
+                    {
+                        player_attack(&clients[client_id].player);
+                    }
+                }
+                break;
                 }
             }
             break;
@@ -396,8 +415,8 @@ int main(int argc, char *argv[])
         {
             if (world.mobs[i].alive)
             {
-                SDL_Rect render_quad = {(int)world.mobs[i].x, (int)world.mobs[i].y, mob_clip.w * 2, mob_clip.h * 2};
-                SDL_RenderCopy(renderer, sprites, &mob_clip, &render_quad);
+                SDL_Rect dstrect = {(int)world.mobs[i].x, (int)world.mobs[i].y, mob_rect.w, mob_rect.h};
+                SDL_RenderCopy(renderer, sprites, &mob_rect, &dstrect);
             }
         }
 
@@ -405,8 +424,8 @@ int main(int argc, char *argv[])
         {
             if (clients[i].id != -1)
             {
-                SDL_Rect render_quad = {(int)clients[i].player.pos_x, (int)clients[i].player.pos_y, player_clip.w * 2, player_clip.h * 2};
-                SDL_RenderCopy(renderer, sprites, &player_clip, &render_quad);
+                SDL_Rect dstrect = {(int)clients[i].player.pos_x, (int)clients[i].player.pos_y, player_rect.w, player_rect.h};
+                SDL_RenderCopy(renderer, sprites, &player_rect, &dstrect);
             }
         }
 

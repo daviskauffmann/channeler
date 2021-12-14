@@ -75,11 +75,10 @@ int main(int argc, char *argv[])
     struct world world;
     world_init(&world);
 
-    unsigned int current_time = 0;
-
     bool quit = false;
     while (!quit)
     {
+        static unsigned int current_time = 0;
         unsigned int frame_start = SDL_GetTicks();
         unsigned int previous_time = current_time;
         current_time = frame_start;
@@ -107,7 +106,7 @@ int main(int argc, char *argv[])
 
                         clients[new_client_id].id = new_client_id;
                         clients[new_client_id].socket = socket;
-                        player_init(&clients[new_client_id].player);
+                        player_init(&clients[new_client_id].player, &world);
 
                         SDLNet_TCP_AddSocket(socket_set, clients[new_client_id].socket);
 
@@ -185,6 +184,13 @@ int main(int argc, char *argv[])
                                 clients[i].socket = NULL;
                             }
                             break;
+                            case MESSAGE_ATTACK_REQUEST:
+                            {
+                                printf("Client %d attacking\n", clients[i].id);
+
+                                player_attack(&clients[i].player);
+                            }
+                            break;
                             default:
                             {
                                 printf("Error: Unknown TCP packet type: %d\n", message->type);
@@ -234,8 +240,8 @@ int main(int argc, char *argv[])
 
         for (int i = 0; i < MAX_CLIENTS; i++)
         {
-            clients[i].player.acc_x = clients[i].input.dx;
-            clients[i].player.acc_y = clients[i].input.dy;
+            clients[i].player.acc_x = (float)clients[i].input.dx;
+            clients[i].player.acc_y = (float)clients[i].input.dy;
 
             struct player *player = &clients[i].player;
             player_accelerate(&player->pos_x, &player->pos_y, &player->vel_x, &player->vel_y, &player->acc_x, &player->acc_y, delta_time);

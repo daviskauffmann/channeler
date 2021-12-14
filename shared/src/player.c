@@ -1,9 +1,12 @@
 #include <shared/player.h>
 
 #include <math.h>
+#include <shared/world.h>
+#include <stdbool.h>
 
-void player_init(struct player *player)
+void player_init(struct player *player, struct world *world)
 {
+    player->world = world;
     player->pos_x = 100.0f;
     player->pos_y = 100.0f;
     player->vel_x = 0.0f;
@@ -37,4 +40,21 @@ void player_accelerate(float *pos_x, float *pos_y, float *vel_x, float *vel_y, f
 
     *acc_x = 0;
     *acc_y = 0;
+}
+
+void player_attack(struct player *player)
+{
+    struct world *world = player->world;
+    for (int i = 0; i < NUM_MOBS; i++)
+    {
+        struct mob *mob = &world->mobs[i];
+        if (mob->alive)
+        {
+            float distance = sqrtf(powf(player->pos_x - mob->x, 2) + powf(player->pos_y - mob->y, 2));
+            if (distance < 20.0f)
+            {
+                mob->alive = false;
+            }
+        }
+    }
 }

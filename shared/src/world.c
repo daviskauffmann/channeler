@@ -11,23 +11,23 @@ void world_init(struct world *world)
     for (int i = 0; i < NUM_MOBS; i++)
     {
         world->mobs[i].alive = true;
-        world->mobs[i].x = rand() % 1000;
-        world->mobs[i].y = rand() % 500;
+        world->mobs[i].x = (float)(rand() % 1000);
+        world->mobs[i].y = (float)(rand() % 500);
     }
 }
 
 void world_update(struct world *world, float delta_time)
 {
-    static float timer = 0;
-    timer += delta_time;
-    if (timer >= 2.0f)
-    {
-        timer = 0;
+    // static float timer = 0;
+    // timer += delta_time;
+    // if (timer >= 2.0f)
+    // {
+    //     timer = 0;
 
-        for (int i = 0; i < NUM_MOBS; i++)
-        {
-            world->mobs[i].x = rand() % 1000;
-            world->mobs[i].y = rand() % 500;
-        }
-    }
+    //     for (int i = 0; i < NUM_MOBS; i++)
+    //     {
+    //         world->mobs[i].x = rand() % 1000;
+    //         world->mobs[i].y = rand() % 500;
+    //     }
+    // }
 }
