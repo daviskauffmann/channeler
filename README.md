@@ -13,6 +13,7 @@ cd project-hypernova
 
 Install the following using the package manager of your choice:
 
+- json-c
 - SDL2
 - SDL2-image
 - SDL2-mixer

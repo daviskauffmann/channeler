@@ -73,7 +73,7 @@ int main(int argc, char *argv[])
     }
 
     struct world world;
-    world_init(&world);
+    world_load(&world, "assets/tiles.json", "assets/sprites.json");
 
     bool quit = false;
     while (!quit)
@@ -240,11 +240,14 @@ int main(int argc, char *argv[])
 
         for (int i = 0; i < MAX_CLIENTS; i++)
         {
-            clients[i].player.acc_x = (float)clients[i].input.dx;
-            clients[i].player.acc_y = (float)clients[i].input.dy;
+            if (clients[i].id != -1)
+            {
+                clients[i].player.acc_x = (float)clients[i].input.dx;
+                clients[i].player.acc_y = (float)clients[i].input.dy;
 
-            struct player *player = &clients[i].player;
-            player_accelerate(&player->pos_x, &player->pos_y, &player->vel_x, &player->vel_y, &player->acc_x, &player->acc_y, delta_time);
+                struct player *player = &clients[i].player;
+                player_accelerate(player, delta_time);
+            }
         }
 
         world_update(&world, delta_time);

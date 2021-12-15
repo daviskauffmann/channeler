@@ -4,6 +4,8 @@
 #include <shared/world.h>
 #include <stdbool.h>
 
+#include <stdio.h>
+
 void player_init(struct player *player, struct world *world)
 {
     player->world = world;
@@ -15,31 +17,68 @@ void player_init(struct player *player, struct world *world)
     player->acc_y = 0.0f;
 }
 
-void player_accelerate(float *pos_x, float *pos_y, float *vel_x, float *vel_y, float *acc_x, float *acc_y, float delta_time)
+void player_accelerate(struct player *player, float delta_time)
 {
     float speed = 4000.0f;
     float drag = 20.0f;
 
-    float acc_len = sqrt(*acc_x * *acc_x + *acc_y * *acc_y);
+    float acc_len = sqrtf(player->acc_x * player->acc_x + player->acc_y * player->acc_y);
     if (acc_len > 1.0f)
     {
-        *acc_x *= 1 / acc_len;
-        *acc_y *= 1 / acc_len;
+        player->acc_x *= 1 / acc_len;
+        player->acc_y *= 1 / acc_len;
     }
 
-    *acc_x *= speed;
-    *acc_y *= speed;
+    player->acc_x *= speed;
+    player->acc_y *= speed;
 
-    *acc_x -= *vel_x * drag;
-    *acc_y -= *vel_y * drag;
+    player->acc_x -= player->vel_x * drag;
+    player->acc_y -= player->vel_y * drag;
 
-    *pos_x = 0.5f * *acc_x * powf(delta_time, 2) + *vel_x * delta_time + *pos_x;
-    *pos_y = 0.5f * *acc_y * powf(delta_time, 2) + *vel_y * delta_time + *pos_y;
-    *vel_x = *acc_x * delta_time + *vel_x;
-    *vel_y = *acc_y * delta_time + *vel_y;
+    float new_pos_x = 0.5f * player->acc_x * powf(delta_time, 2) + player->vel_x * delta_time + player->pos_x;
+    float new_pos_y = 0.5f * player->acc_y * powf(delta_time, 2) + player->vel_y * delta_time + player->pos_y;
 
-    *acc_x = 0;
-    *acc_y = 0;
+    int tile_nx_x = (int)roundf(new_pos_x / player->world->tile_width);
+    int tile_nx_y = (int)roundf(player->pos_y / player->world->tile_height);
+    if (tile_nx_x >= 0 && tile_nx_x < player->world->width && tile_nx_y >= 0 && tile_nx_y < player->world->height)
+    {
+        int tile_nx = player->world->tiles[tile_nx_x + tile_nx_y * player->world->width];
+        struct tile_data *tile_data_nx = &player->world->tile_data[tile_nx];
+        if (tile_data_nx->solid)
+        {
+            player->vel_x = 0;
+        }
+        else
+        {
+            player->pos_x = new_pos_x;
+            player->vel_x = player->acc_x * delta_time + player->vel_x;
+        }
+    }
+    else
+    {
+        player->vel_x = 0;
+    }
+
+    int tile_ny_x = (int)roundf(player->pos_x / player->world->tile_width);
+    int tile_ny_y = (int)roundf(new_pos_y / player->world->tile_height);
+    if (tile_ny_x >= 0 && tile_ny_x < player->world->width && tile_ny_y >= 0 && tile_ny_y < player->world->height)
+    {
+        int tile_ny = player->world->tiles[tile_ny_x + tile_ny_y * player->world->width];
+        struct tile_data *tile_data_ny = &player->world->tile_data[tile_ny];
+        if (tile_data_ny->solid)
+        {
+            player->vel_y = 0;
+        }
+        else
+        {
+            player->pos_y = new_pos_y;
+            player->vel_y = player->acc_y * delta_time + player->vel_y;
+        }
+    }
+    else
+    {
+        player->vel_y = 0;
+    }
 }
 
 void player_attack(struct player *player)

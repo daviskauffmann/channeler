@@ -177,11 +177,11 @@ int main(int argc, char *argv[])
         }
     }
 
+    world_load(&world, "assets/tiles.json", "assets/sprites.json");
+
     if (!online)
     {
         printf("Starting in offline mode\n");
-
-        world_init(&world);
 
         client_id = 0;
         clients[client_id].id = 0;
@@ -264,6 +264,7 @@ int main(int argc, char *argv[])
                         for (int i = 0; i < MAX_CLIENTS; i++)
                         {
                             clients[i].id = message_world_state->clients[i].id;
+                            clients[i].player.world = &world;
                             clients[i].player.pos_x = message_world_state->clients[i].player.pos_x;
                             clients[i].player.pos_y = message_world_state->clients[i].player.pos_y;
                             clients[i].player.vel_x = message_world_state->clients[i].player.vel_x;
@@ -400,7 +401,10 @@ int main(int argc, char *argv[])
             if (clients[i].id != -1)
             {
                 struct player *player = &clients[i].player;
-                player_accelerate(&player->pos_x, &player->pos_y, &player->vel_x, &player->vel_y, &player->acc_x, &player->acc_y, delta_time);
+                player_accelerate(player, delta_time);
+
+                clients[i].player.acc_x = 0;
+                clients[i].player.acc_y = 0;
             }
         }
 
@@ -410,6 +414,24 @@ int main(int argc, char *argv[])
         }
 
         SDL_RenderClear(renderer);
+
+        for (int y = 0; y < world.height; y++)
+        {
+            for (int x = 0; x < world.width; x++)
+            {
+                int tile = world.tiles[x + y * world.width];
+                struct tile_data *tile_data = &world.tile_data[tile];
+
+                SDL_Rect tile_rect;
+                tile_rect.x = tile * world.tile_width;
+                tile_rect.y = 0 * world.tile_height;
+                tile_rect.w = world.tile_width;
+                tile_rect.h = world.tile_height;
+
+                SDL_Rect dstrect = {x * tile_rect.w, y * tile_rect.h, tile_rect.w, tile_rect.h};
+                SDL_RenderCopy(renderer, sprites, &tile_rect, &dstrect);
+            }
+        }
 
         for (int i = 0; i < NUM_MOBS; i++)
         {
