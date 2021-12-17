@@ -15,6 +15,7 @@ void tileset_load(struct tileset *tileset, const char *filename)
     fread(str, 1, len, f);
     fclose(f);
     json_object *root = json_tokener_parse_ex(tok, str, len);
+    free(str);
     json_tokener_free(tok);
 
     json_object *columns;
@@ -58,6 +59,11 @@ void tileset_load(struct tileset *tileset, const char *filename)
             }
         }
     }
+}
+
+void tileset_delete(struct tileset *tileset)
+{
+    free(tileset->tile_data);
 }
 
 struct tile_data *tileset_get_tile_data(struct tileset *tileset, int gid)

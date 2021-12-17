@@ -18,6 +18,7 @@ struct tileset
 };
 
 void tileset_load(struct tileset *tileset, const char *filename);
+void tileset_delete(struct tileset *tileset);
 struct tile_data *tileset_get_tile_data(struct tileset *tileset, int gid);
 
 #endif

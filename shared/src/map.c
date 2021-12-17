@@ -16,6 +16,7 @@ void map_load(struct map *map, const char *filename)
     fread(str, 1, len, f);
     fclose(f);
     json_object *root = json_tokener_parse_ex(tok, str, len);
+    free(str);
     json_tokener_free(tok);
 
     json_object *width;
@@ -103,6 +104,17 @@ void map_load(struct map *map, const char *filename)
 
         tileset_load(&map->tilesets[i], "assets/colored-transparent_packed.json"); // TODO: tileset.source = >.tsx->.json
     }
+}
+
+void map_delete(struct map *map)
+{
+    free(map->tiles);
+
+    for (int i = 0; i < map->tileset_count; i++)
+    {
+        tileset_delete(&map->tilesets[i]);
+    }
+    free(map->tilesets);
 }
 
 void map_update(struct map *map, float delta_time)

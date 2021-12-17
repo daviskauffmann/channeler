@@ -315,6 +315,8 @@ int main(int argc, char *argv[])
         }
     }
 
+    map_delete(&map);
+
     SDLNet_UDP_DelSocket(socket_set, udp_socket);
     SDLNet_TCP_DelSocket(socket_set, tcp_socket);
 
