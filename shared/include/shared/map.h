@@ -44,7 +44,7 @@ struct map
 };
 
 void map_load(struct map *map, const char *filename);
-void map_delete(struct map *map);
+void map_unload(struct map *map);
 void map_update(struct map *map, float delta_time);
 struct tile *map_get_tile(struct map *map, int x, int y);
 struct tileset *map_get_tileset(struct map *map, int gid);

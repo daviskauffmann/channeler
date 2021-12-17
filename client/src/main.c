@@ -538,7 +538,7 @@ int main(int argc, char *argv[])
     }
     free(sprites);
 
-    map_delete(&map);
+    map_unload(&map);
 
     SDLNet_UDP_DelSocket(socket_set, udp_socket);
     SDLNet_TCP_DelSocket(socket_set, tcp_socket);

@@ -106,13 +106,13 @@ void map_load(struct map *map, const char *filename)
     }
 }
 
-void map_delete(struct map *map)
+void map_unload(struct map *map)
 {
     free(map->tiles);
 
     for (int i = 0; i < map->tileset_count; i++)
     {
-        tileset_delete(&map->tilesets[i]);
+        tileset_unload(&map->tilesets[i]);
     }
     free(map->tilesets);
 }

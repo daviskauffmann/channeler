@@ -61,7 +61,7 @@ void tileset_load(struct tileset *tileset, const char *filename)
     }
 }
 
-void tileset_delete(struct tileset *tileset)
+void tileset_unload(struct tileset *tileset)
 {
     free(tileset->tile_data);
 }
