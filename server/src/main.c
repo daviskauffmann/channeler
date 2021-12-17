@@ -73,7 +73,7 @@ int main(int argc, char *argv[])
     }
 
     struct world world;
-    world_load(&world, "assets/tiles.json", "assets/sprites.json");
+    world_load(&world, "assets/tiles.json");
 
     bool quit = false;
     while (!quit)
@@ -272,7 +272,7 @@ int main(int argc, char *argv[])
                 message_world_state->clients[i].player.acc_x = clients[i].player.acc_x;
                 message_world_state->clients[i].player.acc_y = clients[i].player.acc_y;
             }
-            for (int i = 0; i < NUM_MOBS; i++)
+            for (int i = 0; i < MAX_MOBS; i++)
             {
                 message_world_state->world.mobs[i].alive = world.mobs[i].alive;
                 message_world_state->world.mobs[i].x = world.mobs[i].x;

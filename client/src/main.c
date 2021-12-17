@@ -20,6 +20,7 @@
 #define FRAME_DELAY (1000 / FPS_CAP)
 
 #define SPRITE_SIZE 16
+#define SPRITE_SCALE 2
 
 struct client
 {
@@ -122,8 +123,6 @@ int main(int argc, char *argv[])
         clients[i].id = -1;
     }
 
-    struct world world;
-
     int client_id = -1;
     if (online)
     {
@@ -177,30 +176,31 @@ int main(int argc, char *argv[])
         }
     }
 
-    world_load(&world, "assets/tiles.json", "assets/sprites.json");
+    struct world world;
 
-    if (!online)
+    if (online)
+    {
+        // TODO: file to load should be sent from the server
+        // first pass will be just giving a filename that the client is expected to have locally and erroring if not
+        // second pass might be implementing file transfer from the server if the client does not have the world data
+        world_load(&world, "assets/map1.json");
+    }
+    else
     {
         printf("Starting in offline mode\n");
+
+        world_load(&world, "assets/map1.json");
 
         client_id = 0;
         clients[client_id].id = 0;
         player_init(&clients[client_id].player, &world);
     }
 
-    SDL_Texture *sprites = IMG_LoadTexture(renderer, "assets/sprites.png");
-
-    SDL_Rect player_rect;
-    player_rect.x = 28 * SPRITE_SIZE;
-    player_rect.y = 0 * SPRITE_SIZE;
-    player_rect.w = SPRITE_SIZE;
-    player_rect.h = SPRITE_SIZE;
-
-    SDL_Rect mob_rect;
-    mob_rect.x = 28 * SPRITE_SIZE;
-    mob_rect.y = 5 * SPRITE_SIZE;
-    mob_rect.w = SPRITE_SIZE;
-    mob_rect.h = SPRITE_SIZE;
+    SDL_Texture **sprites = malloc(world.tileset_count * sizeof(sprites[0]));
+    for (int i = 0; i < world.tileset_count; i++)
+    {
+        sprites[i] = IMG_LoadTexture(renderer, world.tilesets[i].image);
+    }
 
     bool quit = false;
     while (!quit)
@@ -225,8 +225,8 @@ int main(int argc, char *argv[])
                     {
                         struct message_id *message_id = (struct message_id *)message;
 
-                        // TODO: initialize new player
                         clients[message_id->id].id = message_id->id;
+                        clients[message_id->id].player.world = &world;
 
                         printf("Client with ID %d has joined\n", message_id->id);
                     }
@@ -272,7 +272,7 @@ int main(int argc, char *argv[])
                             clients[i].player.acc_x = message_world_state->clients[i].player.acc_x;
                             clients[i].player.acc_y = message_world_state->clients[i].player.acc_y;
                         }
-                        for (int i = 0; i < NUM_MOBS; i++)
+                        for (int i = 0; i < MAX_MOBS; i++)
                         {
                             world.mobs[i].alive = message_world_state->world.mobs[i].alive;
                             world.mobs[i].x = message_world_state->world.mobs[i].x;
@@ -419,26 +419,73 @@ int main(int argc, char *argv[])
         {
             for (int x = 0; x < world.width; x++)
             {
-                int tile = world.tiles[x + y * world.width];
-                struct tile_data *tile_data = &world.tile_data[tile];
+                struct tile *tile = world_get_tile(&world, x, y);
+                struct tileset *tileset = world_get_tileset(&world, tile->gid);
 
-                SDL_Rect tile_rect;
-                tile_rect.x = tile * world.tile_width;
-                tile_rect.y = 0 * world.tile_height;
-                tile_rect.w = world.tile_width;
-                tile_rect.h = world.tile_height;
+                SDL_Rect srcrect = {
+                    ((tile->gid - tileset->first_gid) % tileset->columns) * world.tile_width,
+                    ((tile->gid - tileset->first_gid) / tileset->columns) * world.tile_height,
+                    world.tile_width,
+                    world.tile_height};
 
-                SDL_Rect dstrect = {x * tile_rect.w, y * tile_rect.h, tile_rect.w, tile_rect.h};
-                SDL_RenderCopy(renderer, sprites, &tile_rect, &dstrect);
+                SDL_Rect dstrect = {
+                    x * world.tile_width * SPRITE_SCALE,
+                    y * world.tile_height * SPRITE_SCALE,
+                    world.tile_width * SPRITE_SCALE,
+                    world.tile_height * SPRITE_SCALE};
+
+                double angle = 0;
+                if (tile->d_flip)
+                {
+                    if (tile->h_flip)
+                    {
+                        angle = 90;
+                    }
+                    if (tile->v_flip)
+                    {
+                        angle = 270;
+                    }
+                }
+                else
+                {
+                    if (tile->h_flip && tile->v_flip)
+                    {
+                        angle = 180;
+                    }
+                }
+
+                SDL_RenderCopyEx(
+                    renderer,
+                    sprites[tileset->index],
+                    &srcrect,
+                    &dstrect,
+                    angle,
+                    NULL,
+                    SDL_FLIP_NONE);
             }
         }
 
-        for (int i = 0; i < NUM_MOBS; i++)
+        for (int i = 0; i < MAX_MOBS; i++)
         {
+            struct mob *mob = &world.mobs[i];
+
             if (world.mobs[i].alive)
             {
-                SDL_Rect dstrect = {(int)world.mobs[i].x, (int)world.mobs[i].y, mob_rect.w, mob_rect.h};
-                SDL_RenderCopy(renderer, sprites, &mob_rect, &dstrect);
+                struct tileset *tileset = world_get_tileset(&world, mob->gid);
+
+                SDL_Rect srcrect = {
+                    ((mob->gid - tileset->first_gid) % tileset->columns) * world.tile_width,
+                    ((mob->gid - tileset->first_gid) / tileset->columns) * world.tile_height,
+                    world.tile_width,
+                    world.tile_height};
+
+                SDL_Rect dstrect = {
+                    (int)world.mobs[i].x * SPRITE_SCALE,
+                    (int)world.mobs[i].y * SPRITE_SCALE,
+                    world.tile_width * SPRITE_SCALE,
+                    world.tile_height * SPRITE_SCALE};
+
+                SDL_RenderCopy(renderer, sprites[tileset->index], &srcrect, &dstrect);
             }
         }
 
@@ -446,8 +493,22 @@ int main(int argc, char *argv[])
         {
             if (clients[i].id != -1)
             {
-                SDL_Rect dstrect = {(int)clients[i].player.pos_x, (int)clients[i].player.pos_y, player_rect.w, player_rect.h};
-                SDL_RenderCopy(renderer, sprites, &player_rect, &dstrect);
+                int player_gid = 32;
+                struct tileset *tileset = world_get_tileset(&world, player_gid);
+
+                SDL_Rect srcrect = {
+                    ((player_gid - tileset->first_gid) % tileset->columns) * world.tile_width,
+                    ((player_gid - tileset->first_gid) / tileset->columns) * world.tile_height,
+                    world.tile_width,
+                    world.tile_height};
+
+                SDL_Rect dstrect = {
+                    (int)clients[i].player.pos_x * SPRITE_SCALE,
+                    (int)clients[i].player.pos_y * SPRITE_SCALE,
+                    world.tile_width * SPRITE_SCALE,
+                    world.tile_height * SPRITE_SCALE};
+
+                SDL_RenderCopy(renderer, sprites[tileset->index], &srcrect, &dstrect);
             }
         }
 
@@ -472,7 +533,11 @@ int main(int argc, char *argv[])
         }
     }
 
-    SDL_DestroyTexture(sprites);
+    for (int i = 0; i < world.tileset_count; i++)
+    {
+        SDL_DestroyTexture(sprites[i]);
+    }
+    free(sprites);
 
     SDLNet_UDP_DelSocket(socket_set, udp_socket);
     SDLNet_TCP_DelSocket(socket_set, tcp_socket);
