@@ -92,6 +92,7 @@ void player_attack(struct player *player, struct map *map)
             if (distance < 20)
             {
                 mob->alive = false;
+                mob->respawn_timer = 5;
             }
         }
     }

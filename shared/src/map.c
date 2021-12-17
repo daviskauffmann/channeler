@@ -62,21 +62,25 @@ void map_load(struct map *map, const char *filename)
 
     for (int i = 0; i < json_object_array_length(objects); i++)
     {
-        map->mobs[i].alive = true;
-
+        // TODO: check object type, currently all objects are treated as mobs
         json_object *object = json_object_array_get_idx(objects, i);
+
+        struct mob *mob = &map->mobs[i];
 
         json_object *gid;
         json_object_object_get_ex(object, "gid", &gid);
-        map->mobs[i].gid = json_object_get_int(gid);
+        mob->gid = json_object_get_int(gid);
 
         json_object *x;
         json_object_object_get_ex(object, "x", &x);
-        map->mobs[i].x = (float)json_object_get_double(x);
+        mob->origin_x = mob->x = (float)json_object_get_double(x);
 
         json_object *y;
         json_object_object_get_ex(object, "y", &y);
-        map->mobs[i].y = (float)json_object_get_double(y);
+        mob->origin_y = mob->y = (float)json_object_get_double(y);
+
+        mob->alive = true;
+        mob->respawn_timer = 0;
     }
 
     json_object *tilesets;
@@ -103,6 +107,20 @@ void map_load(struct map *map, const char *filename)
 
 void map_update(struct map *map, float delta_time)
 {
+    for (int i = 0; i < MAX_MOBS; i++)
+    {
+        struct mob *mob = &map->mobs[i];
+        if (!mob->alive)
+        {
+            mob->respawn_timer -= delta_time;
+            if (mob->respawn_timer <= 0)
+            {
+                mob->x = mob->origin_x;
+                mob->y = mob->origin_y;
+                mob->alive = true;
+            }
+        }
+    }
 }
 
 struct tile *map_get_tile(struct map *map, int x, int y)

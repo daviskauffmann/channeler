@@ -16,9 +16,15 @@ struct tile
 struct mob
 {
     int gid;
+
+    float origin_x;
+    float origin_y;
+
     float x;
     float y;
+
     int alive;
+    float respawn_timer;
 };
 
 struct map
