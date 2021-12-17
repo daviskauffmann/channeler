@@ -1,8 +1,8 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_net.h>
+#include <shared/map.h>
 #include <shared/message.h>
 #include <shared/player.h>
-#include <shared/world.h>
 #include <stdbool.h>
 #include <stdio.h>
 
@@ -72,8 +72,8 @@ int main(int argc, char *argv[])
         clients[i].id = -1;
     }
 
-    struct world world;
-    world_load(&world, "assets/tiles.json");
+    struct map map;
+    map_load(&map, "assets/map1.json");
 
     bool quit = false;
     while (!quit)
@@ -106,7 +106,7 @@ int main(int argc, char *argv[])
 
                         clients[new_client_id].id = new_client_id;
                         clients[new_client_id].socket = socket;
-                        player_init(&clients[new_client_id].player, &world);
+                        player_init(&clients[new_client_id].player);
 
                         SDLNet_TCP_AddSocket(socket_set, clients[new_client_id].socket);
 
@@ -188,7 +188,7 @@ int main(int argc, char *argv[])
                             {
                                 printf("Client %d attacking\n", clients[i].id);
 
-                                player_attack(&clients[i].player);
+                                player_attack(&clients[i].player, &map);
                             }
                             break;
                             default:
@@ -246,11 +246,11 @@ int main(int argc, char *argv[])
                 clients[i].player.acc_y = (float)clients[i].input.dy;
 
                 struct player *player = &clients[i].player;
-                player_accelerate(player, delta_time);
+                player_accelerate(player, &map, delta_time);
             }
         }
 
-        world_update(&world, delta_time);
+        map_update(&map, delta_time);
 
         static float update_clients_timer = 0;
         update_clients_timer += delta_time;
@@ -260,23 +260,23 @@ int main(int argc, char *argv[])
 
             UDPpacket *packet = SDLNet_AllocPacket(PACKET_SIZE);
 
-            struct message_world_state *message_world_state = (struct message_world_state *)malloc(sizeof(*message_world_state));
-            message_world_state->type = MESSAGE_WORLD_STATE_BROADCAST;
+            struct message_game_state *message_game_state = malloc(sizeof(*message_game_state));
+            message_game_state->type = MESSAGE_GAME_STATE_BROADCAST;
             for (int i = 0; i < MAX_CLIENTS; i++)
             {
-                message_world_state->clients[i].id = clients[i].id;
-                message_world_state->clients[i].player.pos_x = clients[i].player.pos_x;
-                message_world_state->clients[i].player.pos_y = clients[i].player.pos_y;
-                message_world_state->clients[i].player.vel_x = clients[i].player.vel_x;
-                message_world_state->clients[i].player.vel_y = clients[i].player.vel_y;
-                message_world_state->clients[i].player.acc_x = clients[i].player.acc_x;
-                message_world_state->clients[i].player.acc_y = clients[i].player.acc_y;
+                message_game_state->clients[i].id = clients[i].id;
+                message_game_state->clients[i].player.pos_x = clients[i].player.pos_x;
+                message_game_state->clients[i].player.pos_y = clients[i].player.pos_y;
+                message_game_state->clients[i].player.vel_x = clients[i].player.vel_x;
+                message_game_state->clients[i].player.vel_y = clients[i].player.vel_y;
+                message_game_state->clients[i].player.acc_x = clients[i].player.acc_x;
+                message_game_state->clients[i].player.acc_y = clients[i].player.acc_y;
             }
             for (int i = 0; i < MAX_MOBS; i++)
             {
-                message_world_state->world.mobs[i].alive = world.mobs[i].alive;
-                message_world_state->world.mobs[i].x = world.mobs[i].x;
-                message_world_state->world.mobs[i].y = world.mobs[i].y;
+                message_game_state->map.mobs[i].alive = map.mobs[i].alive;
+                message_game_state->map.mobs[i].x = map.mobs[i].x;
+                message_game_state->map.mobs[i].y = map.mobs[i].y;
             }
 
             for (int i = 0; i < MAX_CLIENTS; i++)
@@ -284,8 +284,8 @@ int main(int argc, char *argv[])
                 if (clients[i].id != -1)
                 {
                     packet->address = clients[i].udp_address;
-                    packet->data = (unsigned char *)message_world_state;
-                    packet->len = sizeof(*message_world_state);
+                    packet->data = (unsigned char *)message_game_state;
+                    packet->len = sizeof(*message_game_state);
 
                     if (!SDLNet_UDP_Send(udp_socket, -1, packet))
                     {

@@ -5,7 +5,7 @@
 
 #include "input.h"
 #include "player.h"
-#include "world.h"
+#include "map.h"
 
 #define PACKET_SIZE 1024
 #define MAX_STRLEN 256
@@ -21,7 +21,7 @@ enum message_type
     MESSAGE_DISCONNECT_BROADCAST,
     MESSAGE_INPUT_REQUEST,
     MESSAGE_ATTACK_REQUEST,
-    MESSAGE_WORLD_STATE_BROADCAST
+    MESSAGE_GAME_STATE_BROADCAST
 };
 
 struct message
@@ -42,7 +42,7 @@ struct message_input
     struct input input;
 };
 
-struct message_world_state
+struct message_game_state
 {
     enum message_type type;
     struct
@@ -50,7 +50,7 @@ struct message_world_state
         int id;
         struct player player;
     } clients[MAX_CLIENTS];
-    struct world world;
+    struct map map;
 };
 
 #endif

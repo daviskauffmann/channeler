@@ -3,7 +3,6 @@
 
 struct player
 {
-    struct world *world;
     float pos_x;
     float pos_y;
     float vel_x;
@@ -12,8 +11,8 @@ struct player
     float acc_y;
 };
 
-void player_init(struct player *player, struct world *world);
-void player_accelerate(struct player *player, float delta_time);
-void player_attack(struct player *player);
+void player_init(struct player *player);
+void player_accelerate(struct player *player, struct map *map, float delta_time);
+void player_attack(struct player *player, struct map *map);
 
 #endif

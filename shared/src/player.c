@@ -1,12 +1,12 @@
 #include <shared/player.h>
 
 #include <math.h>
-#include <shared/world.h>
+#include <shared/map.h>
+#include <shared/tileset.h>
 #include <stdbool.h>
 
-void player_init(struct player *player, struct world *world)
+void player_init(struct player *player)
 {
-    player->world = world;
     player->pos_x = 100;
     player->pos_y = 100;
     player->vel_x = 0;
@@ -15,7 +15,7 @@ void player_init(struct player *player, struct world *world)
     player->acc_y = 0;
 }
 
-void player_accelerate(struct player *player, float delta_time)
+void player_accelerate(struct player *player, struct map *map, float delta_time)
 {
     float speed = 4000;
     float drag = 20;
@@ -36,14 +36,12 @@ void player_accelerate(struct player *player, float delta_time)
     float new_pos_x = 0.5f * player->acc_x * powf(delta_time, 2) + player->vel_x * delta_time + player->pos_x;
     float new_pos_y = 0.5f * player->acc_y * powf(delta_time, 2) + player->vel_y * delta_time + player->pos_y;
 
-    struct world *world = player->world;
-
-    int tile_nx_x = (int)roundf(new_pos_x / world->tile_width);
-    int tile_nx_y = (int)roundf(player->pos_y / world->tile_height);
-    if (tile_nx_x >= 0 && tile_nx_x < world->width && tile_nx_y >= 0 && tile_nx_y < world->height)
+    int tile_nx_x = (int)roundf(new_pos_x / map->tile_width);
+    int tile_nx_y = (int)roundf(player->pos_y / map->tile_height);
+    if (tile_nx_x >= 0 && tile_nx_x < map->width && tile_nx_y >= 0 && tile_nx_y < map->height)
     {
-        struct tile *tile = world_get_tile(world, tile_nx_x, tile_nx_y);
-        struct tileset *tileset = world_get_tileset(world, tile->gid);
+        struct tile *tile = map_get_tile(map, tile_nx_x, tile_nx_y);
+        struct tileset *tileset = map_get_tileset(map, tile->gid);
         struct tile_data *tile_data = tileset_get_tile_data(tileset, tile->gid);
         if (tile_data->solid)
         {
@@ -60,12 +58,12 @@ void player_accelerate(struct player *player, float delta_time)
         player->vel_x = 0;
     }
 
-    int tile_ny_x = (int)roundf(player->pos_x / world->tile_width);
-    int tile_ny_y = (int)roundf(new_pos_y / world->tile_height);
-    if (tile_ny_x >= 0 && tile_ny_x < world->width && tile_ny_y >= 0 && tile_ny_y < world->height)
+    int tile_ny_x = (int)roundf(player->pos_x / map->tile_width);
+    int tile_ny_y = (int)roundf(new_pos_y / map->tile_height);
+    if (tile_ny_x >= 0 && tile_ny_x < map->width && tile_ny_y >= 0 && tile_ny_y < map->height)
     {
-        struct tile *tile = world_get_tile(world, tile_ny_x, tile_ny_y);
-        struct tileset *tileset = world_get_tileset(world, tile->gid);
+        struct tile *tile = map_get_tile(map, tile_ny_x, tile_ny_y);
+        struct tileset *tileset = map_get_tileset(map, tile->gid);
         struct tile_data *tile_data = tileset_get_tile_data(tileset, tile->gid);
         if (tile_data->solid)
         {
@@ -83,12 +81,11 @@ void player_accelerate(struct player *player, float delta_time)
     }
 }
 
-void player_attack(struct player *player)
+void player_attack(struct player *player, struct map *map)
 {
-    struct world *world = player->world;
     for (int i = 0; i < MAX_MOBS; i++)
     {
-        struct mob *mob = &world->mobs[i];
+        struct mob *mob = &map->mobs[i];
         if (mob->alive)
         {
             float distance = sqrtf(powf(player->pos_x - mob->x, 2) + powf(player->pos_y - mob->y, 2));
