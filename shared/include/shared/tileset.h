@@ -1,5 +1,5 @@
-#ifndef WORLD_H
-#define WORLD_H
+#ifndef TILESET_H
+#define TILESET_H
 
 #include <stdbool.h>
 

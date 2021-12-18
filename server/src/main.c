@@ -3,6 +3,7 @@
 #include <shared/map.h>
 #include <shared/message.h>
 #include <shared/player.h>
+#include <shared/world.h>
 #include <stdbool.h>
 #include <stdio.h>
 
@@ -72,8 +73,8 @@ int main(int argc, char *argv[])
         clients[i].id = -1;
     }
 
-    struct map map;
-    map_load(&map, "assets/map1.json");
+    struct world world;
+    world_load(&world, "assets/world.json", true);
 
     bool quit = false;
     while (!quit)
@@ -106,7 +107,7 @@ int main(int argc, char *argv[])
 
                         clients[new_client_id].id = new_client_id;
                         clients[new_client_id].socket = socket;
-                        player_init(&clients[new_client_id].player);
+                        player_init(&clients[new_client_id].player, 0);
 
                         SDLNet_TCP_AddSocket(socket_set, clients[new_client_id].socket);
 
@@ -188,7 +189,16 @@ int main(int argc, char *argv[])
                             {
                                 printf("Client %d attacking\n", clients[i].id);
 
-                                player_attack(&clients[i].player, &map);
+                                player_attack(&clients[i].player, &world.maps[clients[i].player.map_index]);
+                            }
+                            break;
+                            case MESSAGE_CHANGE_MAP_REQUEST:
+                            {
+                                struct message_change_map *message_change_map = (struct message_change_map *)message;
+
+                                printf("Client %d changing map to %d\n", clients[i].id, message_change_map->map_index);
+
+                                clients[i].player.map_index = message_change_map->map_index;
                             }
                             break;
                             default:
@@ -246,11 +256,14 @@ int main(int argc, char *argv[])
                 clients[i].player.acc_y = (float)clients[i].input.dy;
 
                 struct player *player = &clients[i].player;
-                player_accelerate(player, &map, delta_time);
+                player_accelerate(player, &world.maps[clients[i].player.map_index], delta_time);
             }
         }
 
-        map_update(&map, delta_time);
+        for (int i = 0; i < world.num_maps; i++)
+        {
+            map_update(&world.maps[i], delta_time);
+        }
 
         static float update_clients_timer = 0;
         update_clients_timer += delta_time;
@@ -258,31 +271,32 @@ int main(int argc, char *argv[])
         {
             update_clients_timer = 0;
 
-            UDPpacket *packet = SDLNet_AllocPacket(PACKET_SIZE);
-
-            struct message_game_state *message_game_state = malloc(sizeof(*message_game_state));
-            message_game_state->type = MESSAGE_GAME_STATE_BROADCAST;
-            for (int i = 0; i < MAX_CLIENTS; i++)
-            {
-                message_game_state->clients[i].id = clients[i].id;
-                message_game_state->clients[i].player.pos_x = clients[i].player.pos_x;
-                message_game_state->clients[i].player.pos_y = clients[i].player.pos_y;
-                message_game_state->clients[i].player.vel_x = clients[i].player.vel_x;
-                message_game_state->clients[i].player.vel_y = clients[i].player.vel_y;
-                message_game_state->clients[i].player.acc_x = clients[i].player.acc_x;
-                message_game_state->clients[i].player.acc_y = clients[i].player.acc_y;
-            }
-            for (int i = 0; i < MAX_MOBS; i++)
-            {
-                message_game_state->map.mobs[i].alive = map.mobs[i].alive;
-                message_game_state->map.mobs[i].x = map.mobs[i].x;
-                message_game_state->map.mobs[i].y = map.mobs[i].y;
-            }
-
             for (int i = 0; i < MAX_CLIENTS; i++)
             {
                 if (clients[i].id != -1)
                 {
+                    UDPpacket *packet = SDLNet_AllocPacket(PACKET_SIZE);
+
+                    struct message_game_state *message_game_state = malloc(sizeof(*message_game_state));
+                    message_game_state->type = MESSAGE_GAME_STATE_BROADCAST;
+                    for (int j = 0; j < MAX_CLIENTS; j++)
+                    {
+                        message_game_state->clients[j].id = clients[j].id;
+                        message_game_state->clients[j].player.map_index = clients[j].player.map_index;
+                        message_game_state->clients[j].player.pos_x = clients[j].player.pos_x;
+                        message_game_state->clients[j].player.pos_y = clients[j].player.pos_y;
+                        message_game_state->clients[j].player.vel_x = clients[j].player.vel_x;
+                        message_game_state->clients[j].player.vel_y = clients[j].player.vel_y;
+                        message_game_state->clients[j].player.acc_x = clients[j].player.acc_x;
+                        message_game_state->clients[j].player.acc_y = clients[j].player.acc_y;
+                    }
+                    for (int j = 0; j < MAX_MOBS; j++)
+                    {
+                        message_game_state->mobs[j].alive = world.maps[clients[i].player.map_index].mobs[j].alive;
+                        message_game_state->mobs[j].x = world.maps[clients[i].player.map_index].mobs[j].x;
+                        message_game_state->mobs[j].y = world.maps[clients[i].player.map_index].mobs[j].y;
+                    }
+
                     packet->address = clients[i].udp_address;
                     packet->data = (unsigned char *)message_game_state;
                     packet->len = sizeof(*message_game_state);
@@ -291,10 +305,10 @@ int main(int argc, char *argv[])
                     {
                         printf("Error: Failed to send UDP packet\n");
                     }
+
+                    SDLNet_FreePacket(packet);
                 }
             }
-
-            SDLNet_FreePacket(packet);
         }
 
         unsigned int frame_end = SDL_GetTicks();
@@ -315,7 +329,7 @@ int main(int argc, char *argv[])
         }
     }
 
-    map_unload(&map);
+    world_unload(&world);
 
     SDLNet_UDP_DelSocket(socket_set, udp_socket);
     SDLNet_TCP_DelSocket(socket_set, tcp_socket);

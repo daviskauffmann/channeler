@@ -21,6 +21,7 @@ enum message_type
     MESSAGE_DISCONNECT_BROADCAST,
     MESSAGE_INPUT_REQUEST,
     MESSAGE_ATTACK_REQUEST,
+    MESSAGE_CHANGE_MAP_REQUEST,
     MESSAGE_GAME_STATE_BROADCAST
 };
 
@@ -42,15 +43,35 @@ struct message_input
     struct input input;
 };
 
+struct message_change_map
+{
+    enum message_type type;
+    int map_index;
+};
+
 struct message_game_state
 {
     enum message_type type;
     struct
     {
         int id;
-        struct player player;
+        struct
+        {
+            int map_index;
+            float pos_x;
+            float pos_y;
+            float vel_x;
+            float vel_y;
+            float acc_x;
+            float acc_y;
+        } player;
     } clients[MAX_CLIENTS];
-    struct map map;
+    struct
+    {
+        float x;
+        float y;
+        int alive;
+    } mobs[MAX_MOBS];
 };
 
 #endif

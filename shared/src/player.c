@@ -4,9 +4,11 @@
 #include <shared/map.h>
 #include <shared/tileset.h>
 #include <stdbool.h>
+#include <string.h>
 
-void player_init(struct player *player)
+void player_init(struct player *player, int map_index)
 {
+    player->map_index = map_index;
     player->pos_x = 100;
     player->pos_y = 100;
     player->vel_x = 0;

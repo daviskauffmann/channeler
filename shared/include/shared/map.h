@@ -29,12 +29,15 @@ struct mob
 
 struct map
 {
+    const char *filename;
+
     int width;
     int height;
     int tile_width;
     int tile_height;
 
-    size_t tileset_count;
+    // TODO: maybe put these on the world, because maps can share tilesets and its redundant to load them multiple times
+    size_t num_tilesets;
     struct tileset *tilesets;
 
     // TODO: layer support

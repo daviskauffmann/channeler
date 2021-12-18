@@ -7,17 +7,9 @@
 
 void map_load(struct map *map, const char *filename)
 {
-    json_tokener *tok = json_tokener_new();
-    FILE *f = fopen(filename, "rb");
-    fseek(f, 0, SEEK_END);
-    long len = ftell(f);
-    fseek(f, 0, SEEK_SET);
-    char *str = malloc(len);
-    fread(str, 1, len, f);
-    fclose(f);
-    json_object *root = json_tokener_parse_ex(tok, str, len);
-    free(str);
-    json_tokener_free(tok);
+    map->filename = filename;
+
+    json_object *root = json_object_from_file(filename);
 
     json_object *width;
     json_object_object_get_ex(root, "width", &width);
@@ -61,6 +53,12 @@ void map_load(struct map *map, const char *filename)
     json_object *objects;
     json_object_object_get_ex(layer1, "objects", &objects);
 
+    for (int i = 0; i < MAX_MOBS; i++)
+    {
+        struct mob *mob = &map->mobs[i];
+        mob->gid = 0;
+    }
+
     for (int i = 0; i < json_object_array_length(objects); i++)
     {
         // TODO: check object type, currently all objects are treated as mobs
@@ -86,9 +84,10 @@ void map_load(struct map *map, const char *filename)
 
     json_object *tilesets;
     json_object_object_get_ex(root, "tilesets", &tilesets);
-    map->tileset_count = json_object_array_length(tilesets);
-    map->tilesets = malloc(map->tileset_count * sizeof(map->tilesets[0]));
-    for (int i = 0; i < map->tileset_count; i++)
+    map->num_tilesets = json_object_array_length(tilesets);
+
+    map->tilesets = malloc(map->num_tilesets * sizeof(map->tilesets[0]));
+    for (int i = 0; i < map->num_tilesets; i++)
     {
         json_object *tileset = json_object_array_get_idx(tilesets, i);
 
@@ -108,13 +107,21 @@ void map_load(struct map *map, const char *filename)
 
 void map_unload(struct map *map)
 {
-    free(map->tiles);
-
-    for (int i = 0; i < map->tileset_count; i++)
+    if (map->tiles)
     {
-        tileset_unload(&map->tilesets[i]);
+        free(map->tiles);
+        map->tiles = NULL;
     }
-    free(map->tilesets);
+
+    if (map->tilesets)
+    {
+        for (int i = 0; i < map->num_tilesets; i++)
+        {
+            tileset_unload(&map->tilesets[i]);
+        }
+        free(map->tilesets);
+        map->tilesets = NULL;
+    }
 }
 
 void map_update(struct map *map, float delta_time)
@@ -122,7 +129,7 @@ void map_update(struct map *map, float delta_time)
     for (int i = 0; i < MAX_MOBS; i++)
     {
         struct mob *mob = &map->mobs[i];
-        if (!mob->alive)
+        if (mob->gid != 0 && !mob->alive)
         {
             mob->respawn_timer -= delta_time;
             if (mob->respawn_timer <= 0)
@@ -143,7 +150,7 @@ struct tile *map_get_tile(struct map *map, int x, int y)
 struct tileset *map_get_tileset(struct map *map, int gid)
 {
     int tileset_index = 0;
-    for (int i = 0; i < map->tileset_count; i++)
+    for (int i = 0; i < map->num_tilesets; i++)
     {
         if (map->tilesets[i].first_gid <= gid)
         {

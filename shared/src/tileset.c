@@ -6,17 +6,7 @@
 
 void tileset_load(struct tileset *tileset, const char *filename)
 {
-    json_tokener *tok = json_tokener_new();
-    FILE *f = fopen(filename, "rb");
-    fseek(f, 0, SEEK_END);
-    long len = ftell(f);
-    fseek(f, 0, SEEK_SET);
-    char *str = malloc(len);
-    fread(str, 1, len, f);
-    fclose(f);
-    json_object *root = json_tokener_parse_ex(tok, str, len);
-    free(str);
-    json_tokener_free(tok);
+    json_object *root = json_object_from_file(filename);
 
     json_object *columns;
     json_object_object_get_ex(root, "columns", &columns);
