@@ -190,10 +190,10 @@ int main(int argc, char *argv[])
 
         // TODO: file to load should be sent from the server
         // first pass will be just giving a filename that the client is expected to have locally and erroring if not
-        // second pass might be implementing file transfer from the server if the client does not have the map data
+        // second pass might be implementing file transfer from the server if the client does not have the world data
         world_load(&world, "assets/world.json", false);
         map = &world.maps[map_index];
-        map_load(map, map->filename);
+        map_load(map);
     }
     else
     {
@@ -207,13 +207,13 @@ int main(int argc, char *argv[])
 
         world_load(&world, "assets/world.json", false);
         map = &world.maps[map_index];
-        map_load(map, map->filename);
+        map_load(map);
     }
 
-    SDL_Texture **sprites = malloc(world.maps[0].num_tilesets * sizeof(sprites[0]));
-    for (int i = 0; i < world.maps[0].num_tilesets; i++)
+    SDL_Texture **sprites = malloc(map->num_tilesets * sizeof(sprites[0]));
+    for (int i = 0; i < map->num_tilesets; i++)
     {
-        sprites[i] = IMG_LoadTexture(renderer, world.maps[0].tilesets[i].image);
+        sprites[i] = IMG_LoadTexture(renderer, map->tilesets[i].image);
     }
 
     bool quit = false;
@@ -274,25 +274,6 @@ int main(int argc, char *argv[])
                     {
                         struct message_game_state *message_game_state = (struct message_game_state *)message;
 
-                        if (clients[client_id].player.map_index != message_game_state->clients[client_id].player.map_index)
-                        {
-                            for (int i = 0; i < map->num_tilesets; i++)
-                            {
-                                SDL_DestroyTexture(sprites[i]);
-                            }
-                            free(sprites);
-
-                            map_unload(map);
-                            map = &world.maps[message_game_state->clients[client_id].player.map_index];
-                            map_load(map, map->filename);
-
-                            sprites = malloc(map->num_tilesets * sizeof(sprites[0]));
-                            for (int i = 0; i < map->num_tilesets; i++)
-                            {
-                                sprites[i] = IMG_LoadTexture(renderer, map->tilesets[i].image);
-                            }
-                        }
-
                         for (int i = 0; i < MAX_CLIENTS; i++)
                         {
                             clients[i].id = message_game_state->clients[i].id;
@@ -304,6 +285,7 @@ int main(int argc, char *argv[])
                             clients[i].player.acc_x = message_game_state->clients[i].player.acc_x;
                             clients[i].player.acc_y = message_game_state->clients[i].player.acc_y;
                         }
+
                         for (int i = 0; i < MAX_MOBS; i++)
                         {
                             world.maps[clients[client_id].player.map_index].mobs[i].alive = message_game_state->mobs[i].alive;
@@ -388,22 +370,6 @@ int main(int argc, char *argv[])
                     else
                     {
                         clients[client_id].player.map_index = 0;
-
-                        for (int i = 0; i < map->num_tilesets; i++)
-                        {
-                            SDL_DestroyTexture(sprites[i]);
-                        }
-                        free(sprites);
-
-                        map_unload(map);
-                        map = &world.maps[clients[client_id].player.map_index];
-                        map_load(map, map->filename);
-
-                        sprites = malloc(map->num_tilesets * sizeof(sprites[0]));
-                        for (int i = 0; i < map->num_tilesets; i++)
-                        {
-                            sprites[i] = IMG_LoadTexture(renderer, map->tilesets[i].image);
-                        }
                     }
                 }
                 break;
@@ -423,22 +389,6 @@ int main(int argc, char *argv[])
                     else
                     {
                         clients[client_id].player.map_index = 1;
-
-                        for (int i = 0; i < map->num_tilesets; i++)
-                        {
-                            SDL_DestroyTexture(sprites[i]);
-                        }
-                        free(sprites);
-
-                        map_unload(map);
-                        map = &world.maps[clients[client_id].player.map_index];
-                        map_load(map, map->filename);
-
-                        sprites = malloc(map->num_tilesets * sizeof(sprites[0]));
-                        for (int i = 0; i < map->num_tilesets; i++)
-                        {
-                            sprites[i] = IMG_LoadTexture(renderer, map->tilesets[i].image);
-                        }
                     }
                 }
                 break;
@@ -450,6 +400,27 @@ int main(int argc, char *argv[])
                 quit = true;
             }
             break;
+            }
+        }
+
+        if (map_index != clients[client_id].player.map_index)
+        {
+            map_index = clients[client_id].player.map_index;
+
+            for (int i = 0; i < map->num_tilesets; i++)
+            {
+                SDL_DestroyTexture(sprites[i]);
+            }
+            free(sprites);
+
+            map_unload(map);
+            map = &world.maps[map_index];
+            map_load(map);
+
+            sprites = malloc(map->num_tilesets * sizeof(sprites[0]));
+            for (int i = 0; i < map->num_tilesets; i++)
+            {
+                sprites[i] = IMG_LoadTexture(renderer, map->tilesets[i].image);
             }
         }
 
@@ -641,7 +612,8 @@ int main(int argc, char *argv[])
     }
     free(sprites);
 
-    world_unload(&world);
+    map_unload(map);
+    world_unload(&world, false);
 
     SDLNet_UDP_DelSocket(socket_set, udp_socket);
     SDLNet_TCP_DelSocket(socket_set, tcp_socket);

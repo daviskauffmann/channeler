@@ -29,7 +29,7 @@ struct mob
 
 struct map
 {
-    const char *filename;
+    char *filename;
 
     int width;
     int height;
@@ -46,9 +46,14 @@ struct map
     struct mob mobs[MAX_MOBS];
 };
 
-void map_load(struct map *map, const char *filename);
+void map_init(struct map *map, char *filename);
+void map_uninit(struct map *map);
+
+void map_load(struct map *map);
 void map_unload(struct map *map);
+
 void map_update(struct map *map, float delta_time);
+
 struct tile *map_get_tile(struct map *map, int x, int y);
 struct tileset *map_get_tileset(struct map *map, int gid);
 

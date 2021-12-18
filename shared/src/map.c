@@ -5,11 +5,22 @@
 #include <stdio.h>
 #include <string.h>
 
-void map_load(struct map *map, const char *filename)
+void map_init(struct map *map, char *filename)
 {
     map->filename = filename;
 
-    json_object *root = json_object_from_file(filename);
+    printf("Map initialized: %s\n", map->filename);
+}
+
+void map_uninit(struct map *map)
+{
+    printf("Map uninitialized: %s\n", map->filename);
+    free(map->filename);
+}
+
+void map_load(struct map *map)
+{
+    json_object *root = json_object_from_file(map->filename);
 
     json_object *width;
     json_object_object_get_ex(root, "width", &width);
@@ -99,29 +110,32 @@ void map_load(struct map *map, const char *filename)
 
         json_object *source;
         json_object_object_get_ex(tileset, "source", &source);
-        const char *s = json_object_get_string(source);
-
-        tileset_load(&map->tilesets[i], "assets/colored-transparent_packed.json"); // TODO: tileset.source = >.tsx->.json
+        const char *source_value = json_object_get_string(source);
+        const char *assets = "assets/";
+        const char *ext = ".json";
+        char *tileset_filename = malloc(strlen(assets) + strlen(source_value) + strlen(ext) + 1);
+        strcpy(tileset_filename, assets);
+        strncat(tileset_filename, source_value, strlen(source_value) - strlen(".tsx"));
+        strcat(tileset_filename, ext);
+        tileset_load(&map->tilesets[i], tileset_filename);
     }
+
+    printf("Map loaded: %s\n", map->filename);
 }
 
 void map_unload(struct map *map)
 {
-    if (map->tiles)
+    for (int i = 0; i < map->num_tilesets; i++)
     {
-        free(map->tiles);
-        map->tiles = NULL;
+        tileset_unload(&map->tilesets[i]);
     }
+    free(map->tilesets);
+    map->tilesets = NULL;
 
-    if (map->tilesets)
-    {
-        for (int i = 0; i < map->num_tilesets; i++)
-        {
-            tileset_unload(&map->tilesets[i]);
-        }
-        free(map->tilesets);
-        map->tilesets = NULL;
-    }
+    free(map->tiles);
+    map->tiles = NULL;
+
+    printf("Map unloaded: %s\n", map->filename);
 }
 
 void map_update(struct map *map, float delta_time)

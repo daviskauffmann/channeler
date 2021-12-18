@@ -4,8 +4,10 @@
 #include <stdio.h>
 #include <string.h>
 
-void tileset_load(struct tileset *tileset, const char *filename)
+void tileset_load(struct tileset *tileset, char *filename)
 {
+    tileset->filename = filename;
+
     json_object *root = json_object_from_file(filename);
 
     json_object *columns;
@@ -14,8 +16,11 @@ void tileset_load(struct tileset *tileset, const char *filename)
 
     json_object *image;
     json_object_object_get_ex(root, "image", &image);
-    tileset->image = json_object_get_string(image);
-    tileset->image = "assets/1bitpack_kenney_1.2/tilesheet/colored-transparent_packed.png";
+    const char *image_value = json_object_get_string(image);
+    const char *assets = "assets/";
+    tileset->image = malloc(strlen(assets) + strlen(image_value) + 1);
+    strcpy(tileset->image, assets);
+    strcat(tileset->image, image_value);
 
     json_object *tilecount;
     json_object_object_get_ex(root, "tilecount", &tilecount);
@@ -49,11 +54,16 @@ void tileset_load(struct tileset *tileset, const char *filename)
             }
         }
     }
+
+    printf("Tileset loaded: %s\n", tileset->filename);
 }
 
 void tileset_unload(struct tileset *tileset)
 {
     free(tileset->tile_data);
+
+    printf("Tileset unloaded: %s\n", tileset->filename);
+    free(tileset->filename);
 }
 
 struct tile_data *tileset_get_tile_data(struct tileset *tileset, int gid)

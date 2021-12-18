@@ -329,7 +329,7 @@ int main(int argc, char *argv[])
         }
     }
 
-    world_unload(&world);
+    world_unload(&world, true);
 
     SDLNet_UDP_DelSocket(socket_set, udp_socket);
     SDLNet_TCP_DelSocket(socket_set, tcp_socket);
