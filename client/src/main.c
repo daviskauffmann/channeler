@@ -182,11 +182,13 @@ int main(int argc, char *argv[])
 
     struct world world;
     struct map *map;
+    struct player *player;
 
     if (online)
     {
         clients[client_id].id = client_id;
-        player_init(&clients[client_id].player, map_index);
+        player = &clients[client_id].player;
+        player_init(player, map_index);
 
         // TODO: file to load should be sent from the server
         // first pass will be just giving a filename that the client is expected to have locally and erroring if not
@@ -203,7 +205,8 @@ int main(int argc, char *argv[])
         map_index = 0;
 
         clients[client_id].id = client_id;
-        player_init(&clients[client_id].player, map_index);
+        player = &clients[client_id].player;
+        player_init(player, map_index);
 
         world_load(&world, "assets/world.json", false);
         map = &world.maps[map_index];
@@ -288,9 +291,9 @@ int main(int argc, char *argv[])
 
                         for (int i = 0; i < MAX_MOBS; i++)
                         {
-                            world.maps[clients[client_id].player.map_index].mobs[i].alive = message_game_state->mobs[i].alive;
-                            world.maps[clients[client_id].player.map_index].mobs[i].x = message_game_state->mobs[i].x;
-                            world.maps[clients[client_id].player.map_index].mobs[i].y = message_game_state->mobs[i].y;
+                            world.maps[player->map_index].mobs[i].alive = message_game_state->mobs[i].alive;
+                            world.maps[player->map_index].mobs[i].x = message_game_state->mobs[i].x;
+                            world.maps[player->map_index].mobs[i].y = message_game_state->mobs[i].y;
                         }
                     }
                     break;
@@ -338,6 +341,8 @@ int main(int argc, char *argv[])
                 break;
                 case SDLK_SPACE:
                 {
+                    player_attack(player, map);
+
                     if (online)
                     {
                         struct message message;
@@ -348,14 +353,12 @@ int main(int argc, char *argv[])
                             printf("Error: Failed to send TCP packet: %s\n", SDLNet_GetError());
                         }
                     }
-                    else
-                    {
-                        player_attack(&clients[client_id].player, map);
-                    }
                 }
                 break;
                 case SDLK_1:
                 {
+                    player->map_index = 0;
+
                     if (online)
                     {
                         struct message_change_map message;
@@ -367,14 +370,12 @@ int main(int argc, char *argv[])
                             printf("Error: Failed to send TCP packet: %s\n", SDLNet_GetError());
                         }
                     }
-                    else
-                    {
-                        clients[client_id].player.map_index = 0;
-                    }
                 }
                 break;
                 case SDLK_2:
                 {
+                    player->map_index = 1;
+
                     if (online)
                     {
                         struct message_change_map message;
@@ -385,10 +386,6 @@ int main(int argc, char *argv[])
                         {
                             printf("Error: Failed to send TCP packet: %s\n", SDLNet_GetError());
                         }
-                    }
-                    else
-                    {
-                        clients[client_id].player.map_index = 1;
                     }
                 }
                 break;
@@ -403,9 +400,9 @@ int main(int argc, char *argv[])
             }
         }
 
-        if (map_index != clients[client_id].player.map_index)
+        if (map_index != player->map_index)
         {
-            map_index = clients[client_id].player.map_index;
+            map_index = player->map_index;
 
             for (int i = 0; i < map->num_tilesets; i++)
             {
@@ -466,12 +463,12 @@ int main(int argc, char *argv[])
             SDLNet_FreePacket(packet);
         }
 
-        clients[client_id].player.acc_x = (float)input.dx;
-        clients[client_id].player.acc_y = (float)input.dy;
+        player->acc_x = (float)input.dx;
+        player->acc_y = (float)input.dy;
 
         for (int i = 0; i < MAX_CLIENTS; i++)
         {
-            if (clients[i].id != -1 && clients[i].player.map_index == clients[client_id].player.map_index)
+            if (clients[i].id != -1 && clients[i].player.map_index == player->map_index)
             {
                 struct player *player = &clients[i].player;
                 player_accelerate(player, map, delta_time);
@@ -486,55 +483,79 @@ int main(int argc, char *argv[])
             map_update(map, delta_time);
         }
 
+        int view_width = WINDOW_WIDTH / SPRITE_SCALE;
+        int view_height = WINDOW_HEIGHT / SPRITE_SCALE;
+        int view_x = (int)player->pos_x - view_width / 2;
+        int view_y = (int)player->pos_y - view_height / 2;
+        if (view_x + view_width > map->width * map->tile_width)
+        {
+            view_x = (map->width * map->tile_width) - view_width;
+        }
+        if (view_x < 0)
+        {
+            view_x = 0;
+        }
+        if (view_y + view_height > map->height * map->tile_height)
+        {
+            view_y = (map->height * map->tile_height) - view_height;
+        }
+        if (view_y < 0)
+        {
+            view_y = 0;
+        }
+
         SDL_RenderClear(renderer);
 
-        for (int y = 0; y < map->height; y++)
+        for (int y = view_y / map->tile_height; y <= (view_y + view_height) / map->tile_height; y++)
         {
-            for (int x = 0; x < map->width; x++)
+            for (int x = view_x / map->tile_width; x <= (view_x + view_width) / map->tile_width; x++)
             {
                 struct tile *tile = map_get_tile(map, x, y);
-                struct tileset *tileset = map_get_tileset(map, tile->gid);
-
-                SDL_Rect srcrect = {
-                    ((tile->gid - tileset->first_gid) % tileset->columns) * map->tile_width,
-                    ((tile->gid - tileset->first_gid) / tileset->columns) * map->tile_height,
-                    map->tile_width,
-                    map->tile_height};
-
-                SDL_Rect dstrect = {
-                    x * map->tile_width * SPRITE_SCALE,
-                    y * map->tile_height * SPRITE_SCALE,
-                    map->tile_width * SPRITE_SCALE,
-                    map->tile_height * SPRITE_SCALE};
-
-                double angle = 0;
-                if (tile->d_flip)
+                if (tile)
                 {
-                    if (tile->h_flip)
-                    {
-                        angle = 90;
-                    }
-                    if (tile->v_flip)
-                    {
-                        angle = 270;
-                    }
-                }
-                else
-                {
-                    if (tile->h_flip && tile->v_flip)
-                    {
-                        angle = 180;
-                    }
-                }
+                    struct tileset *tileset = map_get_tileset(map, tile->gid);
 
-                SDL_RenderCopyEx(
-                    renderer,
-                    sprites[tileset->index],
-                    &srcrect,
-                    &dstrect,
-                    angle,
-                    NULL,
-                    SDL_FLIP_NONE);
+                    SDL_Rect srcrect = {
+                        ((tile->gid - tileset->first_gid) % tileset->columns) * map->tile_width,
+                        ((tile->gid - tileset->first_gid) / tileset->columns) * map->tile_height,
+                        map->tile_width,
+                        map->tile_height};
+
+                    SDL_Rect dstrect = {
+                        ((x * map->tile_width) - view_x) * SPRITE_SCALE,
+                        ((y * map->tile_height) - view_y) * SPRITE_SCALE,
+                        map->tile_width * SPRITE_SCALE,
+                        map->tile_height * SPRITE_SCALE};
+
+                    double angle = 0;
+                    if (tile->d_flip)
+                    {
+                        if (tile->h_flip)
+                        {
+                            angle = 90;
+                        }
+                        if (tile->v_flip)
+                        {
+                            angle = 270;
+                        }
+                    }
+                    else
+                    {
+                        if (tile->h_flip && tile->v_flip)
+                        {
+                            angle = 180;
+                        }
+                    }
+
+                    SDL_RenderCopyEx(
+                        renderer,
+                        sprites[tileset->index],
+                        &srcrect,
+                        &dstrect,
+                        angle,
+                        NULL,
+                        SDL_FLIP_NONE);
+                }
             }
         }
 
@@ -553,8 +574,8 @@ int main(int argc, char *argv[])
                     map->tile_height};
 
                 SDL_Rect dstrect = {
-                    (int)map->mobs[i].x * SPRITE_SCALE,
-                    (int)map->mobs[i].y * SPRITE_SCALE,
+                    ((int)map->mobs[i].x - view_x) * SPRITE_SCALE,
+                    ((int)map->mobs[i].y - view_y) * SPRITE_SCALE,
                     map->tile_width * SPRITE_SCALE,
                     map->tile_height * SPRITE_SCALE};
 
@@ -564,7 +585,7 @@ int main(int argc, char *argv[])
 
         for (int i = 0; i < MAX_CLIENTS; i++)
         {
-            if (clients[i].id != -1 && clients[i].player.map_index == clients[client_id].player.map_index)
+            if (clients[i].id != -1 && clients[i].player.map_index == player->map_index)
             {
                 int player_gid = 32;
                 struct tileset *tileset = map_get_tileset(map, player_gid);
@@ -576,8 +597,8 @@ int main(int argc, char *argv[])
                     map->tile_height};
 
                 SDL_Rect dstrect = {
-                    (int)clients[i].player.pos_x * SPRITE_SCALE,
-                    (int)clients[i].player.pos_y * SPRITE_SCALE,
+                    ((int)clients[i].player.pos_x - view_x) * SPRITE_SCALE,
+                    ((int)clients[i].player.pos_y - view_y) * SPRITE_SCALE,
                     map->tile_width * SPRITE_SCALE,
                     map->tile_height * SPRITE_SCALE};
 

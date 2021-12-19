@@ -40,11 +40,11 @@ void player_accelerate(struct player *player, struct map *map, float delta_time)
 
     int tile_nx_x = (int)roundf(new_pos_x / map->tile_width);
     int tile_nx_y = (int)roundf(player->pos_y / map->tile_height);
-    if (tile_nx_x >= 0 && tile_nx_x < map->width && tile_nx_y >= 0 && tile_nx_y < map->height)
+    struct tile *tile_nx = map_get_tile(map, tile_nx_x, tile_nx_y);
+    if (tile_nx)
     {
-        struct tile *tile = map_get_tile(map, tile_nx_x, tile_nx_y);
-        struct tileset *tileset = map_get_tileset(map, tile->gid);
-        struct tile_data *tile_data = tileset_get_tile_data(tileset, tile->gid);
+        struct tileset *tileset = map_get_tileset(map, tile_nx->gid);
+        struct tile_data *tile_data = tileset_get_tile_data(tileset, tile_nx->gid);
         if (tile_data->solid)
         {
             player->vel_x = 0;
@@ -62,11 +62,11 @@ void player_accelerate(struct player *player, struct map *map, float delta_time)
 
     int tile_ny_x = (int)roundf(player->pos_x / map->tile_width);
     int tile_ny_y = (int)roundf(new_pos_y / map->tile_height);
-    if (tile_ny_x >= 0 && tile_ny_x < map->width && tile_ny_y >= 0 && tile_ny_y < map->height)
+    struct tile *tile_ny = map_get_tile(map, tile_ny_x, tile_ny_y);
+    if (tile_ny)
     {
-        struct tile *tile = map_get_tile(map, tile_ny_x, tile_ny_y);
-        struct tileset *tileset = map_get_tileset(map, tile->gid);
-        struct tile_data *tile_data = tileset_get_tile_data(tileset, tile->gid);
+        struct tileset *tileset = map_get_tileset(map, tile_ny->gid);
+        struct tile_data *tile_data = tileset_get_tile_data(tileset, tile_ny->gid);
         if (tile_data->solid)
         {
             player->vel_y = 0;

@@ -158,7 +158,11 @@ void map_update(struct map *map, float delta_time)
 
 struct tile *map_get_tile(struct map *map, int x, int y)
 {
-    return &map->tiles[x + y * map->width];
+    if (x >= 0 && x < map->width && y >= 0 && y < map->height)
+    {
+        return &map->tiles[x + y * map->width];
+    }
+    return NULL;
 }
 
 struct tileset *map_get_tileset(struct map *map, int gid)
