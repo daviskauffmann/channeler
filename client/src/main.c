@@ -16,7 +16,7 @@
 #define WINDOW_HEIGHT 480
 
 #define SERVER_HOST "127.0.0.1"
-#define SERVER_PORT 3000
+#define SERVER_PORT 8492
 
 #define FPS_CAP 144
 #define FRAME_DELAY (1000 / FPS_CAP)
@@ -129,18 +129,18 @@ int main(int argc, char *argv[])
     int map_index = -1;
     if (online)
     {
-        char buffer[PACKET_SIZE];
-        if (SDLNet_TCP_Recv(tcp_socket, buffer, sizeof(buffer)) > 1)
+        char data[PACKET_SIZE];
+        if (SDLNet_TCP_Recv(tcp_socket, data, sizeof(data)) > 1)
         {
-            struct message *message = (struct message *)buffer;
-            switch (message->type)
+            enum message_type type = ((struct message *)data)->type;
+            switch (type)
             {
             case MESSAGE_CONNECT_OK:
             {
-                struct message_id *message_id = (struct message_id *)message;
+                struct message_connect *message_connect = (struct message_connect *)data;
 
-                client_id = message_id->id;
-                map_index = 0; // TODO: add to message
+                client_id = message_connect->id;
+                map_index = message_connect->map_index;
                 printf("ID %d assigned by server\n", client_id);
             }
             break;
@@ -180,38 +180,26 @@ int main(int argc, char *argv[])
         }
     }
 
-    struct world world;
-    struct map *map;
-    struct player *player;
-
-    if (online)
-    {
-        clients[client_id].id = client_id;
-        player = &clients[client_id].player;
-        player_init(player, map_index);
-
-        // TODO: file to load should be sent from the server
-        // first pass will be just giving a filename that the client is expected to have locally and erroring if not
-        // second pass might be implementing file transfer from the server if the client does not have the world data
-        world_load(&world, "assets/world.json", false);
-        map = &world.maps[map_index];
-        map_load(map);
-    }
-    else
+    if (!online)
     {
         printf("Starting in offline mode\n");
 
         client_id = 0;
         map_index = 0;
-
-        clients[client_id].id = client_id;
-        player = &clients[client_id].player;
-        player_init(player, map_index);
-
-        world_load(&world, "assets/world.json", false);
-        map = &world.maps[map_index];
-        map_load(map);
     }
+
+    // TODO: file to load should be sent from the server
+    // first pass will be just giving a filename that the client is expected to have locally and erroring if not
+    // second pass might be implementing file transfer from the server if the client does not have the world data
+    struct world world;
+    world_load(&world, "assets/world.json", false);
+
+    clients[client_id].id = client_id;
+    struct player *player = &clients[client_id].player;
+    player_init(player, map_index);
+
+    struct map *map = &world.maps[map_index];
+    map_load(map);
 
     SDL_Texture **sprites = malloc(map->num_tilesets * sizeof(sprites[0]));
     for (int i = 0; i < map->num_tilesets; i++)
@@ -232,33 +220,33 @@ int main(int argc, char *argv[])
         {
             if (SDLNet_SocketReady(tcp_socket))
             {
-                char buffer[PACKET_SIZE];
-                if (SDLNet_TCP_Recv(tcp_socket, buffer, sizeof(buffer)) > 1)
+                char data[PACKET_SIZE];
+                if (SDLNet_TCP_Recv(tcp_socket, data, sizeof(data)) > 1)
                 {
-                    struct message *message = (struct message *)buffer;
-                    switch (message->type)
+                    enum message_type type = ((struct message *)data)->type;
+                    switch (type)
                     {
                     case MESSAGE_CONNECT_BROADCAST:
                     {
-                        struct message_id *message_id = (struct message_id *)message;
+                        struct message_id *message = (struct message_id *)data;
 
-                        clients[message_id->id].id = message_id->id;
+                        clients[message->id].id = message->id;
 
-                        printf("Client with ID %d has joined\n", message_id->id);
+                        printf("Client with ID %d has joined\n", message->id);
                     }
                     break;
                     case MESSAGE_DISCONNECT_BROADCAST:
                     {
-                        struct message_id *message_id = (struct message_id *)message;
+                        struct message_id *message = (struct message_id *)data;
 
-                        clients[message_id->id].id = -1;
+                        clients[message->id].id = -1;
 
-                        printf("Client with ID %d has disconnected\n", message_id->id);
+                        printf("Client with ID %d has disconnected\n", message->id);
                     }
                     break;
                     default:
                     {
-                        printf("Error: Unknown TCP packet type: %d\n", message->type);
+                        printf("Error: Unknown TCP packet type: %d\n", type);
                     }
                     break;
                     }
@@ -270,36 +258,36 @@ int main(int argc, char *argv[])
                 UDPpacket *packet = SDLNet_AllocPacket(PACKET_SIZE);
                 if (SDLNet_UDP_Recv(udp_socket, packet) == 1)
                 {
-                    struct message *message = (struct message *)packet->data;
-                    switch (message->type)
+                    enum message_type type = ((struct message *)packet->data)->type;
+                    switch (type)
                     {
                     case MESSAGE_GAME_STATE_BROADCAST:
                     {
-                        struct message_game_state *message_game_state = (struct message_game_state *)message;
+                        struct message_game_state *message = (struct message_game_state *)packet->data;
 
                         for (int i = 0; i < MAX_CLIENTS; i++)
                         {
-                            clients[i].id = message_game_state->clients[i].id;
-                            clients[i].player.map_index = message_game_state->clients[i].player.map_index;
-                            clients[i].player.pos_x = message_game_state->clients[i].player.pos_x;
-                            clients[i].player.pos_y = message_game_state->clients[i].player.pos_y;
-                            clients[i].player.vel_x = message_game_state->clients[i].player.vel_x;
-                            clients[i].player.vel_y = message_game_state->clients[i].player.vel_y;
-                            clients[i].player.acc_x = message_game_state->clients[i].player.acc_x;
-                            clients[i].player.acc_y = message_game_state->clients[i].player.acc_y;
+                            clients[i].id = message->clients[i].id;
+                            clients[i].player.map_index = message->clients[i].player.map_index;
+                            clients[i].player.pos_x = message->clients[i].player.pos_x;
+                            clients[i].player.pos_y = message->clients[i].player.pos_y;
+                            clients[i].player.vel_x = message->clients[i].player.vel_x;
+                            clients[i].player.vel_y = message->clients[i].player.vel_y;
+                            clients[i].player.acc_x = message->clients[i].player.acc_x;
+                            clients[i].player.acc_y = message->clients[i].player.acc_y;
                         }
 
                         for (int i = 0; i < MAX_MOBS; i++)
                         {
-                            world.maps[player->map_index].mobs[i].alive = message_game_state->mobs[i].alive;
-                            world.maps[player->map_index].mobs[i].x = message_game_state->mobs[i].x;
-                            world.maps[player->map_index].mobs[i].y = message_game_state->mobs[i].y;
+                            world.maps[player->map_index].mobs[i].alive = message->mobs[i].alive;
+                            world.maps[player->map_index].mobs[i].x = message->mobs[i].x;
+                            world.maps[player->map_index].mobs[i].y = message->mobs[i].y;
                         }
                     }
                     break;
                     default:
                     {
-                        printf("Error: Unknown UDP packet type: %d\n", message->type);
+                        printf("Error: Unknown UDP packet type: %d\n", type);
                     }
                     break;
                     }
@@ -444,16 +432,16 @@ int main(int argc, char *argv[])
 
         if (online)
         {
-            struct message_input *message_input = (struct message_input *)malloc(sizeof(*message_input));
-            message_input->type = MESSAGE_INPUT_REQUEST;
-            message_input->id = client_id;
-            message_input->input.dx = input.dx;
-            message_input->input.dy = input.dy;
+            struct message_input *message = malloc(sizeof(*message));
+            message->type = MESSAGE_INPUT_REQUEST;
+            message->id = client_id;
+            message->input.dx = input.dx;
+            message->input.dy = input.dy;
 
             UDPpacket *packet = SDLNet_AllocPacket(PACKET_SIZE);
             packet->address = server_address;
-            packet->data = (unsigned char *)message_input;
-            packet->len = sizeof(*message_input);
+            packet->data = (unsigned char *)message;
+            packet->len = sizeof(*message);
 
             if (!SDLNet_UDP_Send(udp_socket, -1, packet))
             {
@@ -472,9 +460,6 @@ int main(int argc, char *argv[])
             {
                 struct player *player = &clients[i].player;
                 player_accelerate(player, map, delta_time);
-
-                player->acc_x = 0;
-                player->acc_y = 0;
             }
         }
 

@@ -36,6 +36,13 @@ struct message_id
     int id;
 };
 
+struct message_connect
+{
+    enum message_type type;
+    int id;
+    int map_index;
+};
+
 struct message_input
 {
     enum message_type type;

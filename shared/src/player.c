@@ -19,14 +19,14 @@ void player_init(struct player *player, int map_index)
 
 void player_accelerate(struct player *player, struct map *map, float delta_time)
 {
-    float speed = 4000;
+    float speed = 2000;
     float drag = 20;
 
-    float acc_len = sqrtf(player->acc_x * player->acc_x + player->acc_y * player->acc_y);
+    float acc_len = sqrtf(powf(player->acc_x, 2) + powf(player->acc_y, 2));
     if (acc_len > 1)
     {
-        player->acc_x *= 1 / acc_len;
-        player->acc_y *= 1 / acc_len;
+        player->acc_x /= acc_len;
+        player->acc_y /= acc_len;
     }
 
     player->acc_x *= speed;
@@ -81,6 +81,9 @@ void player_accelerate(struct player *player, struct map *map, float delta_time)
     {
         player->vel_y = 0;
     }
+
+    player->acc_x = 0;
+    player->acc_y = 0;
 }
 
 void player_attack(struct player *player, struct map *map)

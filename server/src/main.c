@@ -7,7 +7,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 
-#define SERVER_PORT 3000
+#define SERVER_PORT 8492
 
 #define TICK_RATE 60
 #define FRAME_DELAY (1000 / TICK_RATE)
@@ -111,24 +111,29 @@ int main(int argc, char *argv[])
 
                         SDLNet_TCP_AddSocket(socket_set, clients[new_client_id].socket);
 
-                        struct message_id message_id;
-                        message_id.type = MESSAGE_CONNECT_OK;
-                        message_id.id = new_client_id;
-
-                        if (SDLNet_TCP_Send(socket, &message_id, sizeof(message_id)) < (int)sizeof(message_id))
                         {
-                            printf("Error: Failed to send TCP packet: %s\n", SDLNet_GetError());
+                            struct message_connect message;
+                            message.type = MESSAGE_CONNECT_OK;
+                            message.id = new_client_id;
+                            message.map_index = 0;
+                            if (SDLNet_TCP_Send(socket, &message, sizeof(message)) < (int)sizeof(message))
+                            {
+                                printf("Error: Failed to send TCP packet: %s\n", SDLNet_GetError());
+                            }
                         }
 
-                        message_id.type = MESSAGE_CONNECT_BROADCAST;
-
-                        for (int i = 0; i < MAX_CLIENTS; i++)
                         {
-                            if (clients[i].id != -1 && clients[i].id != clients[new_client_id].id)
+                            struct message_id message;
+                            message.type = MESSAGE_CONNECT_BROADCAST;
+                            message.id = new_client_id;
+                            for (int i = 0; i < MAX_CLIENTS; i++)
                             {
-                                if (SDLNet_TCP_Send(clients[i].socket, &message_id, sizeof(message_id)) < (int)sizeof(message_id))
+                                if (clients[i].id != -1 && clients[i].id != clients[new_client_id].id)
                                 {
-                                    printf("Error: Failed to send TCP packet: %s\n", SDLNet_GetError());
+                                    if (SDLNet_TCP_Send(clients[i].socket, &message, sizeof(message)) < (int)sizeof(message))
+                                    {
+                                        printf("Error: Failed to send TCP packet: %s\n", SDLNet_GetError());
+                                    }
                                 }
                             }
                         }
@@ -153,25 +158,24 @@ int main(int argc, char *argv[])
                 {
                     if (SDLNet_SocketReady(clients[i].socket))
                     {
-                        char buffer[PACKET_SIZE];
-                        if (SDLNet_TCP_Recv(clients[i].socket, buffer, sizeof(buffer)) > 1)
+                        char data[PACKET_SIZE];
+                        if (SDLNet_TCP_Recv(clients[i].socket, data, sizeof(data)) > 1)
                         {
-                            struct message *message = (struct message *)buffer;
-                            switch (message->type)
+                            enum message_type type = ((struct message *)data)->type;
+                            switch (type)
                             {
                             case MESSAGE_DISCONNECT_REQUEST:
                             {
                                 printf("Client %d disconnected\n", clients[i].id);
 
-                                struct message_id message_id;
-                                message_id.type = MESSAGE_DISCONNECT_BROADCAST;
-                                message_id.id = clients[i].id;
-
+                                struct message_id message;
+                                message.type = MESSAGE_DISCONNECT_BROADCAST;
+                                message.id = clients[i].id;
                                 for (int j = 0; j < MAX_CLIENTS; j++)
                                 {
                                     if (clients[j].id != -1 && clients[j].id != clients[i].id)
                                     {
-                                        if (SDLNet_TCP_Send(clients[j].socket, &message_id, sizeof(message_id)) < (int)sizeof(message_id))
+                                        if (SDLNet_TCP_Send(clients[j].socket, &message, sizeof(message)) < (int)sizeof(message))
                                         {
                                             printf("Error: Failed to send TCP packet: %s\n", SDLNet_GetError());
                                         }
@@ -194,16 +198,16 @@ int main(int argc, char *argv[])
                             break;
                             case MESSAGE_CHANGE_MAP_REQUEST:
                             {
-                                struct message_change_map *message_change_map = (struct message_change_map *)message;
+                                struct message_change_map *message = (struct message_change_map *)data;
 
-                                printf("Client %d changing map to %d\n", clients[i].id, message_change_map->map_index);
+                                printf("Client %d changing map to %d\n", clients[i].id, message->map_index);
 
-                                clients[i].player.map_index = message_change_map->map_index;
+                                clients[i].player.map_index = message->map_index;
                             }
                             break;
                             default:
                             {
-                                printf("Error: Unknown TCP packet type: %d\n", message->type);
+                                printf("Error: Unknown TCP packet type: %d\n", type);
                             }
                             break;
                             }
@@ -217,29 +221,29 @@ int main(int argc, char *argv[])
                 UDPpacket *packet = SDLNet_AllocPacket(PACKET_SIZE);
                 if (SDLNet_UDP_Recv(udp_socket, packet) == 1)
                 {
-                    struct message *message = (struct message *)packet->data;
-                    switch (message->type)
+                    enum message_type type = ((struct message *)packet->data)->type;
+                    switch (type)
                     {
                     case MESSAGE_UDP_CONNECT_REQUEST:
                     {
-                        struct message_id *message_id = (struct message_id *)message;
+                        struct message_id *message = (struct message_id *)packet->data;
 
-                        clients[message_id->id].udp_address = packet->address;
+                        clients[message->id].udp_address = packet->address;
 
-                        printf("Saving UDP info of client %d\n", message_id->id);
+                        printf("Saving UDP info of client %d\n", message->id);
                     }
                     break;
                     case MESSAGE_INPUT_REQUEST:
                     {
-                        struct message_input *message_input = (struct message_input *)message;
+                        struct message_input *message = (struct message_input *)packet->data;
 
-                        clients[message_input->id].input.dx = message_input->input.dx;
-                        clients[message_input->id].input.dy = message_input->input.dy;
+                        clients[message->id].input.dx = message->input.dx;
+                        clients[message->id].input.dy = message->input.dy;
                     }
                     break;
                     default:
                     {
-                        printf("Error: Unknown UDP packet type: %d\n", message->type);
+                        printf("Error: Unknown UDP packet type: %d\n", type);
                     }
                     break;
                     }
@@ -277,29 +281,29 @@ int main(int argc, char *argv[])
                 {
                     UDPpacket *packet = SDLNet_AllocPacket(PACKET_SIZE);
 
-                    struct message_game_state *message_game_state = malloc(sizeof(*message_game_state));
-                    message_game_state->type = MESSAGE_GAME_STATE_BROADCAST;
+                    struct message_game_state *message = malloc(sizeof(*message));
+                    message->type = MESSAGE_GAME_STATE_BROADCAST;
                     for (int j = 0; j < MAX_CLIENTS; j++)
                     {
-                        message_game_state->clients[j].id = clients[j].id;
-                        message_game_state->clients[j].player.map_index = clients[j].player.map_index;
-                        message_game_state->clients[j].player.pos_x = clients[j].player.pos_x;
-                        message_game_state->clients[j].player.pos_y = clients[j].player.pos_y;
-                        message_game_state->clients[j].player.vel_x = clients[j].player.vel_x;
-                        message_game_state->clients[j].player.vel_y = clients[j].player.vel_y;
-                        message_game_state->clients[j].player.acc_x = clients[j].player.acc_x;
-                        message_game_state->clients[j].player.acc_y = clients[j].player.acc_y;
+                        message->clients[j].id = clients[j].id;
+                        message->clients[j].player.map_index = clients[j].player.map_index;
+                        message->clients[j].player.pos_x = clients[j].player.pos_x;
+                        message->clients[j].player.pos_y = clients[j].player.pos_y;
+                        message->clients[j].player.vel_x = clients[j].player.vel_x;
+                        message->clients[j].player.vel_y = clients[j].player.vel_y;
+                        message->clients[j].player.acc_x = clients[j].player.acc_x;
+                        message->clients[j].player.acc_y = clients[j].player.acc_y;
                     }
                     for (int j = 0; j < MAX_MOBS; j++)
                     {
-                        message_game_state->mobs[j].alive = world.maps[clients[i].player.map_index].mobs[j].alive;
-                        message_game_state->mobs[j].x = world.maps[clients[i].player.map_index].mobs[j].x;
-                        message_game_state->mobs[j].y = world.maps[clients[i].player.map_index].mobs[j].y;
+                        message->mobs[j].alive = world.maps[clients[i].player.map_index].mobs[j].alive;
+                        message->mobs[j].x = world.maps[clients[i].player.map_index].mobs[j].x;
+                        message->mobs[j].y = world.maps[clients[i].player.map_index].mobs[j].y;
                     }
 
                     packet->address = clients[i].udp_address;
-                    packet->data = (unsigned char *)message_game_state;
-                    packet->len = sizeof(*message_game_state);
+                    packet->data = (unsigned char *)message;
+                    packet->len = sizeof(*message);
 
                     if (!SDLNet_UDP_Send(udp_socket, -1, packet))
                     {
