@@ -67,6 +67,8 @@ int main(int argc, char *argv[])
     SDLNet_TCP_AddSocket(socket_set, tcp_socket);
     SDLNet_UDP_AddSocket(socket_set, udp_socket);
 
+    printf("Listening on port %d\n", SERVER_PORT);
+
     struct client clients[MAX_CLIENTS];
     for (int i = 0; i < MAX_CLIENTS; i++)
     {

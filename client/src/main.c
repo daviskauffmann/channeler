@@ -38,7 +38,7 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    int img_flags = IMG_INIT_JPG | IMG_INIT_PNG;
+    int img_flags = IMG_INIT_PNG;
     if (IMG_Init(img_flags) != img_flags)
     {
         printf("Error: Failed to initialize SDL_image: %s\n", IMG_GetError());
@@ -180,7 +180,11 @@ int main(int argc, char *argv[])
         }
     }
 
-    if (!online)
+    if (online)
+    {
+        printf("Connected to %s:%d\n", SERVER_HOST, SERVER_PORT);
+    }
+    else
     {
         printf("Starting in offline mode\n");
 
