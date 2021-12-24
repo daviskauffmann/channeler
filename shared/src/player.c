@@ -6,7 +6,7 @@
 #include <stdbool.h>
 #include <string.h>
 
-void player_init(struct player *player, int map_index)
+void player_init(struct player *player, size_t map_index)
 {
     player->map_index = map_index;
     player->pos_x = 100;
@@ -88,7 +88,7 @@ void player_accelerate(struct player *player, struct map *map, float delta_time)
 
 void player_attack(struct player *player, struct map *map)
 {
-    for (int i = 0; i < MAX_MOBS; i++)
+    for (size_t i = 0; i < MAX_MOBS; i++)
     {
         struct mob *mob = &map->mobs[i];
         if (mob->alive)

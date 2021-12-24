@@ -26,7 +26,7 @@
 
 struct client
 {
-    int id;
+    size_t id;
     struct player player;
 };
 
@@ -120,13 +120,13 @@ int main(int argc, char *argv[])
     SDLNet_UDP_AddSocket(socket_set, udp_socket);
 
     struct client clients[MAX_CLIENTS];
-    for (int i = 0; i < MAX_CLIENTS; i++)
+    for (size_t i = 0; i < MAX_CLIENTS; i++)
     {
         clients[i].id = -1;
     }
 
-    int client_id = -1;
-    int map_index = -1;
+    size_t client_id = -1;
+    size_t map_index = -1;
     if (online)
     {
         char data[PACKET_SIZE];
@@ -141,7 +141,7 @@ int main(int argc, char *argv[])
 
                 client_id = message_connect->id;
                 map_index = message_connect->map_index;
-                printf("ID %d assigned by server\n", client_id);
+                printf("ID %zd assigned by server\n", client_id);
             }
             break;
             case MESSAGE_CONNECT_FULL:
@@ -167,7 +167,7 @@ int main(int argc, char *argv[])
 
             UDPpacket *packet = SDLNet_AllocPacket(PACKET_SIZE);
             packet->address = server_address;
-            packet->data = (unsigned char *)message_id;
+            packet->data = (uint8_t *)message_id;
             packet->len = sizeof(*message_id);
 
             if (!SDLNet_UDP_Send(udp_socket, -1, packet))
@@ -206,7 +206,7 @@ int main(int argc, char *argv[])
     map_load(map);
 
     SDL_Texture **sprites = malloc(map->num_tilesets * sizeof(sprites[0]));
-    for (int i = 0; i < map->num_tilesets; i++)
+    for (size_t i = 0; i < map->num_tilesets; i++)
     {
         sprites[i] = IMG_LoadTexture(renderer, map->tilesets[i].image);
     }
@@ -214,9 +214,9 @@ int main(int argc, char *argv[])
     bool quit = false;
     while (!quit)
     {
-        static unsigned int current_time = 0;
-        unsigned int frame_start = SDL_GetTicks();
-        unsigned int previous_time = current_time;
+        static uint32_t current_time = 0;
+        uint32_t frame_start = SDL_GetTicks();
+        uint32_t previous_time = current_time;
         current_time = frame_start;
         float delta_time = (current_time - previous_time) / 1000.0f;
 
@@ -236,7 +236,7 @@ int main(int argc, char *argv[])
 
                         clients[message->id].id = message->id;
 
-                        printf("Client with ID %d has joined\n", message->id);
+                        printf("Client with ID %zd has joined\n", message->id);
                     }
                     break;
                     case MESSAGE_DISCONNECT_BROADCAST:
@@ -245,7 +245,7 @@ int main(int argc, char *argv[])
 
                         clients[message->id].id = -1;
 
-                        printf("Client with ID %d has disconnected\n", message->id);
+                        printf("Client with ID %zd has disconnected\n", message->id);
                     }
                     break;
                     default:
@@ -269,7 +269,7 @@ int main(int argc, char *argv[])
                     {
                         struct message_game_state *message = (struct message_game_state *)packet->data;
 
-                        for (int i = 0; i < MAX_CLIENTS; i++)
+                        for (size_t i = 0; i < MAX_CLIENTS; i++)
                         {
                             clients[i].id = message->clients[i].id;
                             clients[i].player.map_index = message->clients[i].player.map_index;
@@ -281,7 +281,7 @@ int main(int argc, char *argv[])
                             clients[i].player.acc_y = message->clients[i].player.acc_y;
                         }
 
-                        for (int i = 0; i < MAX_MOBS; i++)
+                        for (size_t i = 0; i < MAX_MOBS; i++)
                         {
                             world.maps[player->map_index].mobs[i].alive = message->mobs[i].alive;
                             world.maps[player->map_index].mobs[i].x = message->mobs[i].x;
@@ -301,10 +301,10 @@ int main(int argc, char *argv[])
         }
 
         int num_keys;
-        const unsigned char *keys = SDL_GetKeyboardState(&num_keys);
+        const uint8_t *keys = SDL_GetKeyboardState(&num_keys);
 
         int mouse_x, mouse_y;
-        unsigned int mouse = SDL_GetMouseState(&mouse_x, &mouse_y);
+        uint32_t mouse = SDL_GetMouseState(&mouse_x, &mouse_y);
 
         SDL_Event event;
         while (SDL_PollEvent(&event))
@@ -319,7 +319,7 @@ int main(int argc, char *argv[])
                 {
                     if (keys[SDL_SCANCODE_LALT])
                     {
-                        unsigned int flags = SDL_GetWindowFlags(window);
+                        uint32_t flags = SDL_GetWindowFlags(window);
                         if (flags & SDL_WINDOW_FULLSCREEN_DESKTOP)
                         {
                             SDL_SetWindowFullscreen(window, 0);
@@ -396,7 +396,7 @@ int main(int argc, char *argv[])
         {
             map_index = player->map_index;
 
-            for (int i = 0; i < map->num_tilesets; i++)
+            for (size_t i = 0; i < map->num_tilesets; i++)
             {
                 SDL_DestroyTexture(sprites[i]);
             }
@@ -407,7 +407,7 @@ int main(int argc, char *argv[])
             map_load(map);
 
             sprites = malloc(map->num_tilesets * sizeof(sprites[0]));
-            for (int i = 0; i < map->num_tilesets; i++)
+            for (size_t i = 0; i < map->num_tilesets; i++)
             {
                 sprites[i] = IMG_LoadTexture(renderer, map->tilesets[i].image);
             }
@@ -444,7 +444,7 @@ int main(int argc, char *argv[])
 
             UDPpacket *packet = SDLNet_AllocPacket(PACKET_SIZE);
             packet->address = server_address;
-            packet->data = (unsigned char *)message;
+            packet->data = (uint8_t *)message;
             packet->len = sizeof(*message);
 
             if (!SDLNet_UDP_Send(udp_socket, -1, packet))
@@ -458,7 +458,7 @@ int main(int argc, char *argv[])
         player->acc_x = (float)input.dx;
         player->acc_y = (float)input.dy;
 
-        for (int i = 0; i < MAX_CLIENTS; i++)
+        for (size_t i = 0; i < MAX_CLIENTS; i++)
         {
             if (clients[i].id != -1 && clients[i].player.map_index == player->map_index)
             {
@@ -472,10 +472,10 @@ int main(int argc, char *argv[])
             map_update(map, delta_time);
         }
 
-        int view_width = WINDOW_WIDTH / SPRITE_SCALE;
-        int view_height = WINDOW_HEIGHT / SPRITE_SCALE;
-        int view_x = (int)player->pos_x - view_width / 2;
-        int view_y = (int)player->pos_y - view_height / 2;
+        size_t view_width = WINDOW_WIDTH / SPRITE_SCALE;
+        size_t view_height = WINDOW_HEIGHT / SPRITE_SCALE;
+        int64_t view_x = (int64_t)player->pos_x - view_width / 2;
+        int64_t view_y = (int64_t)player->pos_y - view_height / 2;
         if (view_x + view_width > map->width * map->tile_width)
         {
             view_x = (map->width * map->tile_width) - view_width;
@@ -495,9 +495,9 @@ int main(int argc, char *argv[])
 
         SDL_RenderClear(renderer);
 
-        for (int y = view_y / map->tile_height; y <= (view_y + view_height) / map->tile_height; y++)
+        for (int64_t y = view_y / map->tile_height; y <= (int64_t)((view_y + view_height) / map->tile_height); y++)
         {
-            for (int x = view_x / map->tile_width; x <= (view_x + view_width) / map->tile_width; x++)
+            for (int64_t x = view_x / map->tile_width; x <= (int64_t)((view_x + view_width) / map->tile_width); x++)
             {
                 struct tile *tile = map_get_tile(map, x, y);
                 if (tile)
@@ -505,16 +505,16 @@ int main(int argc, char *argv[])
                     struct tileset *tileset = map_get_tileset(map, tile->gid);
 
                     SDL_Rect srcrect = {
-                        ((tile->gid - tileset->first_gid) % tileset->columns) * map->tile_width,
-                        ((tile->gid - tileset->first_gid) / tileset->columns) * map->tile_height,
-                        map->tile_width,
-                        map->tile_height};
+                        (int)(((tile->gid - tileset->first_gid) % tileset->columns) * map->tile_width),
+                        (int)(((tile->gid - tileset->first_gid) / tileset->columns) * map->tile_height),
+                        (int)map->tile_width,
+                        (int)map->tile_height};
 
                     SDL_Rect dstrect = {
-                        ((x * map->tile_width) - view_x) * SPRITE_SCALE,
-                        ((y * map->tile_height) - view_y) * SPRITE_SCALE,
-                        map->tile_width * SPRITE_SCALE,
-                        map->tile_height * SPRITE_SCALE};
+                        (int)(((x * map->tile_width) - view_x) * SPRITE_SCALE),
+                        (int)(((y * map->tile_height) - view_y) * SPRITE_SCALE),
+                        (int)(map->tile_width * SPRITE_SCALE),
+                        (int)(map->tile_height * SPRITE_SCALE)};
 
                     double angle = 0;
                     if (tile->d_flip)
@@ -548,7 +548,7 @@ int main(int argc, char *argv[])
             }
         }
 
-        for (int i = 0; i < MAX_MOBS; i++)
+        for (size_t i = 0; i < MAX_MOBS; i++)
         {
             struct mob *mob = &map->mobs[i];
 
@@ -557,22 +557,22 @@ int main(int argc, char *argv[])
                 struct tileset *tileset = map_get_tileset(map, mob->gid);
 
                 SDL_Rect srcrect = {
-                    ((mob->gid - tileset->first_gid) % tileset->columns) * map->tile_width,
-                    ((mob->gid - tileset->first_gid) / tileset->columns) * map->tile_height,
-                    map->tile_width,
-                    map->tile_height};
+                    (int)(((mob->gid - tileset->first_gid) % tileset->columns) * map->tile_width),
+                    (int)(((mob->gid - tileset->first_gid) / tileset->columns) * map->tile_height),
+                    (int)map->tile_width,
+                    (int)map->tile_height};
 
                 SDL_Rect dstrect = {
-                    ((int)map->mobs[i].x - view_x) * SPRITE_SCALE,
-                    ((int)map->mobs[i].y - view_y) * SPRITE_SCALE,
-                    map->tile_width * SPRITE_SCALE,
-                    map->tile_height * SPRITE_SCALE};
+                    (int)((map->mobs[i].x - view_x) * SPRITE_SCALE),
+                    (int)((map->mobs[i].y - view_y) * SPRITE_SCALE),
+                    (int)(map->tile_width * SPRITE_SCALE),
+                    (int)(map->tile_height * SPRITE_SCALE)};
 
                 SDL_RenderCopy(renderer, sprites[tileset->index], &srcrect, &dstrect);
             }
         }
 
-        for (int i = 0; i < MAX_CLIENTS; i++)
+        for (size_t i = 0; i < MAX_CLIENTS; i++)
         {
             if (clients[i].id != -1 && clients[i].player.map_index == player->map_index)
             {
@@ -580,16 +580,16 @@ int main(int argc, char *argv[])
                 struct tileset *tileset = map_get_tileset(map, player_gid);
 
                 SDL_Rect srcrect = {
-                    ((player_gid - tileset->first_gid) % tileset->columns) * map->tile_width,
-                    ((player_gid - tileset->first_gid) / tileset->columns) * map->tile_height,
-                    map->tile_width,
-                    map->tile_height};
+                    (int)(((player_gid - tileset->first_gid) % tileset->columns) * map->tile_width),
+                    (int)(((player_gid - tileset->first_gid) / tileset->columns) * map->tile_height),
+                    (int)map->tile_width,
+                    (int)map->tile_height};
 
                 SDL_Rect dstrect = {
-                    ((int)clients[i].player.pos_x - view_x) * SPRITE_SCALE,
-                    ((int)clients[i].player.pos_y - view_y) * SPRITE_SCALE,
-                    map->tile_width * SPRITE_SCALE,
-                    map->tile_height * SPRITE_SCALE};
+                    (int)((clients[i].player.pos_x - view_x) * SPRITE_SCALE),
+                    (int)((clients[i].player.pos_y - view_y) * SPRITE_SCALE),
+                    (int)map->tile_width * SPRITE_SCALE,
+                    (int)map->tile_height * SPRITE_SCALE};
 
                 SDL_RenderCopy(renderer, sprites[tileset->index], &srcrect, &dstrect);
             }
@@ -597,8 +597,8 @@ int main(int argc, char *argv[])
 
         SDL_RenderPresent(renderer);
 
-        unsigned int frame_end = SDL_GetTicks();
-        unsigned int frame_time = frame_end - frame_start;
+        uint32_t frame_end = SDL_GetTicks();
+        uint32_t frame_time = frame_end - frame_start;
         if (FRAME_DELAY > frame_time)
         {
             SDL_Delay(FRAME_DELAY - frame_time);
@@ -616,7 +616,7 @@ int main(int argc, char *argv[])
         }
     }
 
-    for (int i = 0; i < map->num_tilesets; i++)
+    for (size_t i = 0; i < map->num_tilesets; i++)
     {
         SDL_DestroyTexture(sprites[i]);
     }

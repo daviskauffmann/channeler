@@ -33,27 +33,27 @@ struct message
 struct message_id
 {
     enum message_type type;
-    int id;
+    size_t id;
 };
 
 struct message_connect
 {
     enum message_type type;
-    int id;
-    int map_index;
+    size_t id;
+    size_t map_index;
 };
 
 struct message_input
 {
     enum message_type type;
-    int id;
+    size_t id;
     struct input input;
 };
 
 struct message_change_map
 {
     enum message_type type;
-    int map_index;
+    size_t map_index;
 };
 
 struct message_game_state
@@ -61,10 +61,10 @@ struct message_game_state
     enum message_type type;
     struct
     {
-        int id;
+        size_t id;
         struct
         {
-            int map_index;
+            size_t map_index;
             float pos_x;
             float pos_y;
             float vel_x;

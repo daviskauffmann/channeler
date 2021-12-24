@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<tileset version="1.5" tiledversion="1.7.2" name="sprites" tilewidth="16" tileheight="16" tilecount="1078" columns="49">
+<tileset version="1.5" tiledversion="1.7.2" name="colored-transparent_packed" tilewidth="16" tileheight="16" tilecount="1078" columns="49">
  <editorsettings>
   <export target="colored-transparent_packed.json" format="json"/>
  </editorsettings>

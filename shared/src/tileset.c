@@ -8,49 +8,43 @@ void tileset_load(struct tileset *tileset, char *filename)
 {
     tileset->filename = filename;
 
-    json_object *root = json_object_from_file(filename);
+    struct json_object *root = json_object_from_file(filename);
 
-    json_object *columns;
-    json_object_object_get_ex(root, "columns", &columns);
-    tileset->columns = json_object_get_int(columns);
+    struct json_object *columns_obj = json_object_object_get(root, "columns");
+    tileset->columns = json_object_get_int64(columns_obj);
 
-    json_object *image;
-    json_object_object_get_ex(root, "image", &image);
-    const char *image_value = json_object_get_string(image);
-    const char *assets = "assets/";
-    tileset->image = malloc(strlen(assets) + strlen(image_value) + 1);
-    strcpy(tileset->image, assets);
-    strcat(tileset->image, image_value);
+    struct json_object *image_obj = json_object_object_get(root, "image");
+    const char *assets_str = "assets/";
+    const char *image_str = json_object_get_string(image_obj);
+    tileset->image = malloc(strlen(assets_str) + strlen(image_str) + 1);
+    strcpy(tileset->image, assets_str);
+    strcat(tileset->image, image_str);
 
-    json_object *tilecount;
-    json_object_object_get_ex(root, "tilecount", &tilecount);
-    tileset->tile_data = malloc(json_object_get_int(tilecount) * sizeof(tileset->tile_data[0]));
+    struct json_object *tile_count_obj = json_object_object_get(root, "tilecount");
+    tileset->tile_data = malloc(json_object_get_int(tile_count_obj) * sizeof(tileset->tile_data[0]));
 
-    json_object *tiles;
-    json_object_object_get_ex(root, "tiles", &tiles);
-    for (int j = 0; j < json_object_array_length(tiles); j++)
+    struct json_object *tiles_obj = json_object_object_get(root, "tiles");
+    for (size_t i = 0; i < json_object_array_length(tiles_obj); i++)
     {
-        json_object *tile = json_object_array_get_idx(tiles, j);
+        struct json_object *tile_obj = json_object_array_get_idx(tiles_obj, i);
 
-        json_object *id;
-        json_object_object_get_ex(tile, "id", &id);
-        int tile_id = json_object_get_int(id);
+        struct json_object *id_obj = json_object_object_get(tile_obj, "id");
+        int64_t id = json_object_get_int64(id_obj);
 
-        json_object *properties;
-        json_object_object_get_ex(tile, "properties", &properties);
-        for (int k = 0; k < json_object_array_length(properties); k++)
+        struct tile_data *tile_data = &tileset->tile_data[id];
+
+        struct json_object *properties_obj = json_object_object_get(tile_obj, "properties");
+        for (size_t j = 0; j < json_object_array_length(properties_obj); j++)
         {
-            json_object *property = json_object_array_get_idx(properties, k);
+            struct json_object *property_obj = json_object_array_get_idx(properties_obj, j);
 
-            json_object *name;
-            json_object_object_get_ex(property, "name", &name);
-            const char *n = json_object_get_string(name);
+            struct json_object *name_obj = json_object_object_get(property_obj, "name");
+            const char *name = json_object_get_string(name_obj);
 
-            if (strcmp(n, "solid") == 0)
+            if (strcmp(name, "solid") == 0)
             {
-                json_object *value;
-                json_object_object_get_ex(property, "value", &value);
-                tileset->tile_data[tile_id].solid = json_object_get_boolean(value);
+                struct json_object *value_obj = json_object_object_get(property_obj, "value");
+                tile_data->solid = json_object_get_boolean(value_obj);
             }
         }
     }
@@ -66,7 +60,7 @@ void tileset_unload(struct tileset *tileset)
     free(tileset->filename);
 }
 
-struct tile_data *tileset_get_tile_data(struct tileset *tileset, int gid)
+struct tile_data *tileset_get_tile_data(struct tileset *tileset, int64_t gid)
 {
     return &tileset->tile_data[gid - tileset->first_gid];
 }

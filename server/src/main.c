@@ -16,7 +16,7 @@
 
 struct client
 {
-    int id;
+    size_t id;
     TCPsocket socket;
     IPaddress udp_address;
     struct player player;
@@ -70,7 +70,7 @@ int main(int argc, char *argv[])
     printf("Listening on port %d\n", SERVER_PORT);
 
     struct client clients[MAX_CLIENTS];
-    for (int i = 0; i < MAX_CLIENTS; i++)
+    for (size_t i = 0; i < MAX_CLIENTS; i++)
     {
         clients[i].id = -1;
     }
@@ -81,9 +81,9 @@ int main(int argc, char *argv[])
     bool quit = false;
     while (!quit)
     {
-        static unsigned int current_time = 0;
-        unsigned int frame_start = SDL_GetTicks();
-        unsigned int previous_time = current_time;
+        static uint32_t current_time = 0;
+        uint32_t frame_start = SDL_GetTicks();
+        uint32_t previous_time = current_time;
         current_time = frame_start;
         float delta_time = (current_time - previous_time) / 1000.0f;
 
@@ -94,8 +94,8 @@ int main(int argc, char *argv[])
                 TCPsocket socket = SDLNet_TCP_Accept(tcp_socket);
                 if (socket)
                 {
-                    int new_client_id = -1;
-                    for (int i = 0; i < MAX_CLIENTS; i++)
+                    size_t new_client_id = -1;
+                    for (size_t i = 0; i < MAX_CLIENTS; i++)
                     {
                         if (clients[i].id == -1)
                         {
@@ -105,7 +105,7 @@ int main(int argc, char *argv[])
                     }
                     if (new_client_id != -1)
                     {
-                        printf("Connected to client, assigning ID %d\n", new_client_id);
+                        printf("Connected to client, assigning ID %zd\n", new_client_id);
 
                         clients[new_client_id].id = new_client_id;
                         clients[new_client_id].socket = socket;
@@ -128,7 +128,7 @@ int main(int argc, char *argv[])
                             struct message_id message;
                             message.type = MESSAGE_CONNECT_BROADCAST;
                             message.id = new_client_id;
-                            for (int i = 0; i < MAX_CLIENTS; i++)
+                            for (size_t i = 0; i < MAX_CLIENTS; i++)
                             {
                                 if (clients[i].id != -1 && clients[i].id != clients[new_client_id].id)
                                 {
@@ -154,7 +154,7 @@ int main(int argc, char *argv[])
                 }
             }
 
-            for (int i = 0; i < MAX_CLIENTS; i++)
+            for (size_t i = 0; i < MAX_CLIENTS; i++)
             {
                 if (clients[i].id != -1)
                 {
@@ -168,12 +168,12 @@ int main(int argc, char *argv[])
                             {
                             case MESSAGE_DISCONNECT_REQUEST:
                             {
-                                printf("Client %d disconnected\n", clients[i].id);
+                                printf("Client %zd disconnected\n", clients[i].id);
 
                                 struct message_id message;
                                 message.type = MESSAGE_DISCONNECT_BROADCAST;
                                 message.id = clients[i].id;
-                                for (int j = 0; j < MAX_CLIENTS; j++)
+                                for (size_t j = 0; j < MAX_CLIENTS; j++)
                                 {
                                     if (clients[j].id != -1 && clients[j].id != clients[i].id)
                                     {
@@ -193,7 +193,7 @@ int main(int argc, char *argv[])
                             break;
                             case MESSAGE_ATTACK_REQUEST:
                             {
-                                printf("Client %d attacking\n", clients[i].id);
+                                printf("Client %zd attacking\n", clients[i].id);
 
                                 player_attack(&clients[i].player, &world.maps[clients[i].player.map_index]);
                             }
@@ -202,7 +202,7 @@ int main(int argc, char *argv[])
                             {
                                 struct message_change_map *message = (struct message_change_map *)data;
 
-                                printf("Client %d changing map to %d\n", clients[i].id, message->map_index);
+                                printf("Client %zd changing map to %zd\n", clients[i].id, message->map_index);
 
                                 clients[i].player.map_index = message->map_index;
                             }
@@ -232,7 +232,7 @@ int main(int argc, char *argv[])
 
                         clients[message->id].udp_address = packet->address;
 
-                        printf("Saving UDP info of client %d\n", message->id);
+                        printf("Saving UDP info of client %zd\n", message->id);
                     }
                     break;
                     case MESSAGE_INPUT_REQUEST:
@@ -254,7 +254,7 @@ int main(int argc, char *argv[])
             }
         }
 
-        for (int i = 0; i < MAX_CLIENTS; i++)
+        for (size_t i = 0; i < MAX_CLIENTS; i++)
         {
             if (clients[i].id != -1)
             {
@@ -266,7 +266,7 @@ int main(int argc, char *argv[])
             }
         }
 
-        for (int i = 0; i < world.num_maps; i++)
+        for (size_t i = 0; i < world.num_maps; i++)
         {
             map_update(&world.maps[i], delta_time);
         }
@@ -277,7 +277,7 @@ int main(int argc, char *argv[])
         {
             update_clients_timer = 0;
 
-            for (int i = 0; i < MAX_CLIENTS; i++)
+            for (size_t i = 0; i < MAX_CLIENTS; i++)
             {
                 if (clients[i].id != -1)
                 {
@@ -285,7 +285,7 @@ int main(int argc, char *argv[])
 
                     struct message_game_state *message = malloc(sizeof(*message));
                     message->type = MESSAGE_GAME_STATE_BROADCAST;
-                    for (int j = 0; j < MAX_CLIENTS; j++)
+                    for (size_t j = 0; j < MAX_CLIENTS; j++)
                     {
                         message->clients[j].id = clients[j].id;
                         message->clients[j].player.map_index = clients[j].player.map_index;
@@ -296,7 +296,7 @@ int main(int argc, char *argv[])
                         message->clients[j].player.acc_x = clients[j].player.acc_x;
                         message->clients[j].player.acc_y = clients[j].player.acc_y;
                     }
-                    for (int j = 0; j < MAX_MOBS; j++)
+                    for (size_t j = 0; j < MAX_MOBS; j++)
                     {
                         message->mobs[j].alive = world.maps[clients[i].player.map_index].mobs[j].alive;
                         message->mobs[j].x = world.maps[clients[i].player.map_index].mobs[j].x;
@@ -304,7 +304,7 @@ int main(int argc, char *argv[])
                     }
 
                     packet->address = clients[i].udp_address;
-                    packet->data = (unsigned char *)message;
+                    packet->data = (uint8_t *)message;
                     packet->len = sizeof(*message);
 
                     if (!SDLNet_UDP_Send(udp_socket, -1, packet))
@@ -317,8 +317,8 @@ int main(int argc, char *argv[])
             }
         }
 
-        unsigned int frame_end = SDL_GetTicks();
-        unsigned int frame_time = frame_end - frame_start;
+        uint32_t frame_end = SDL_GetTicks();
+        uint32_t frame_time = frame_end - frame_start;
         if (FRAME_DELAY > frame_time)
         {
             SDL_Delay(FRAME_DELAY - frame_time);
@@ -326,7 +326,7 @@ int main(int argc, char *argv[])
     }
 
     // TODO: inform clients that server shut down
-    for (int i = 0; i < MAX_CLIENTS; i++)
+    for (size_t i = 0; i < MAX_CLIENTS; i++)
     {
         if (clients[i].id != -1)
         {

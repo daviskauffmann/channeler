@@ -2,6 +2,7 @@
 #define TILESET_H
 
 #include <stdbool.h>
+#include <stdint.h>
 
 struct tile_data
 {
@@ -10,11 +11,12 @@ struct tile_data
 
 struct tileset
 {
-    char *filename;
+    size_t index;
 
-    int index;
-    int columns;
-    int first_gid;
+    char *filename;
+    int64_t first_gid;
+
+    size_t columns;
     char *image;
     struct tile_data *tile_data;
 };
@@ -22,6 +24,6 @@ struct tileset
 void tileset_load(struct tileset *tileset, char *filename);
 void tileset_unload(struct tileset *tileset);
 
-struct tile_data *tileset_get_tile_data(struct tileset *tileset, int gid);
+struct tile_data *tileset_get_tile_data(struct tileset *tileset, int64_t gid);
 
 #endif
