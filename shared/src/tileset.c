@@ -60,7 +60,7 @@ void tileset_unload(struct tileset *tileset)
     free(tileset->filename);
 }
 
-struct tile_data *tileset_get_tile_data(struct tileset *tileset, int64_t gid)
+struct tile_data *tileset_get_tile_data(struct tileset *tileset, size_t gid)
 {
     return &tileset->tile_data[gid - tileset->first_gid];
 }

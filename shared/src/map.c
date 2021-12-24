@@ -73,7 +73,7 @@ void map_load(struct map *map)
                 struct json_object *object_obj = json_object_array_get_idx(objects_obj, i);
 
                 struct json_object *gid_obj = json_object_object_get(object_obj, "gid");
-                mob->gid = json_object_get_int64(gid_obj);
+                mob->gid = json_object_get_int(gid_obj);
 
                 struct json_object *x_obj = json_object_object_get(object_obj, "x");
                 mob->origin_x = mob->x = (float)json_object_get_double(x_obj);
@@ -166,7 +166,7 @@ struct tile *map_get_tile(struct map *map, size_t x, size_t y)
     return NULL;
 }
 
-struct tileset *map_get_tileset(struct map *map, int64_t gid)
+struct tileset *map_get_tileset(struct map *map, size_t gid)
 {
     size_t tileset_index = 0;
     for (size_t i = 0; i < map->num_tilesets; i++)

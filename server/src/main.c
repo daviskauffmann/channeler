@@ -72,7 +72,7 @@ int main(int argc, char *argv[])
     struct client clients[MAX_CLIENTS];
     for (size_t i = 0; i < MAX_CLIENTS; i++)
     {
-        clients[i].id = -1;
+        clients[i].id = CLIENT_ID_UNUSED;
     }
 
     struct world world;
@@ -94,16 +94,16 @@ int main(int argc, char *argv[])
                 TCPsocket socket = SDLNet_TCP_Accept(tcp_socket);
                 if (socket)
                 {
-                    size_t new_client_id = -1;
+                    size_t new_client_id = CLIENT_ID_UNUSED;
                     for (size_t i = 0; i < MAX_CLIENTS; i++)
                     {
-                        if (clients[i].id == -1)
+                        if (clients[i].id == CLIENT_ID_UNUSED)
                         {
                             new_client_id = i;
                             break;
                         }
                     }
-                    if (new_client_id != -1)
+                    if (new_client_id != CLIENT_ID_UNUSED)
                     {
                         printf("Connected to client, assigning ID %zd\n", new_client_id);
 
@@ -118,6 +118,7 @@ int main(int argc, char *argv[])
                             message.type = MESSAGE_CONNECT_OK;
                             message.id = new_client_id;
                             message.map_index = 0;
+
                             if (SDLNet_TCP_Send(socket, &message, sizeof(message)) < (int)sizeof(message))
                             {
                                 printf("Error: Failed to send TCP packet: %s\n", SDLNet_GetError());
@@ -128,9 +129,10 @@ int main(int argc, char *argv[])
                             struct message_id message;
                             message.type = MESSAGE_CONNECT_BROADCAST;
                             message.id = new_client_id;
+
                             for (size_t i = 0; i < MAX_CLIENTS; i++)
                             {
-                                if (clients[i].id != -1 && clients[i].id != clients[new_client_id].id)
+                                if (clients[i].id != CLIENT_ID_UNUSED && clients[i].id != clients[new_client_id].id)
                                 {
                                     if (SDLNet_TCP_Send(clients[i].socket, &message, sizeof(message)) < (int)sizeof(message))
                                     {
@@ -146,6 +148,7 @@ int main(int argc, char *argv[])
 
                         struct message message;
                         message.type = MESSAGE_CONNECT_FULL;
+
                         if (SDLNet_TCP_Send(socket, &message, sizeof(message)) < (int)sizeof(message))
                         {
                             printf("Error: Failed to send TCP packet: %s\n", SDLNet_GetError());
@@ -156,7 +159,7 @@ int main(int argc, char *argv[])
 
             for (size_t i = 0; i < MAX_CLIENTS; i++)
             {
-                if (clients[i].id != -1)
+                if (clients[i].id != CLIENT_ID_UNUSED)
                 {
                     if (SDLNet_SocketReady(clients[i].socket))
                     {
@@ -173,9 +176,10 @@ int main(int argc, char *argv[])
                                 struct message_id message;
                                 message.type = MESSAGE_DISCONNECT_BROADCAST;
                                 message.id = clients[i].id;
+
                                 for (size_t j = 0; j < MAX_CLIENTS; j++)
                                 {
-                                    if (clients[j].id != -1 && clients[j].id != clients[i].id)
+                                    if (clients[j].id != CLIENT_ID_UNUSED && clients[j].id != clients[i].id)
                                     {
                                         if (SDLNet_TCP_Send(clients[j].socket, &message, sizeof(message)) < (int)sizeof(message))
                                         {
@@ -187,7 +191,7 @@ int main(int argc, char *argv[])
                                 SDLNet_TCP_DelSocket(socket_set, clients[i].socket);
                                 SDLNet_TCP_Close(clients[i].socket);
 
-                                clients[i].id = -1;
+                                clients[i].id = CLIENT_ID_UNUSED;
                                 clients[i].socket = NULL;
                             }
                             break;
@@ -256,7 +260,7 @@ int main(int argc, char *argv[])
 
         for (size_t i = 0; i < MAX_CLIENTS; i++)
         {
-            if (clients[i].id != -1)
+            if (clients[i].id != CLIENT_ID_UNUSED)
             {
                 clients[i].player.acc_x = (float)clients[i].input.dx;
                 clients[i].player.acc_y = (float)clients[i].input.dy;
@@ -279,10 +283,8 @@ int main(int argc, char *argv[])
 
             for (size_t i = 0; i < MAX_CLIENTS; i++)
             {
-                if (clients[i].id != -1)
+                if (clients[i].id != CLIENT_ID_UNUSED)
                 {
-                    UDPpacket *packet = SDLNet_AllocPacket(PACKET_SIZE);
-
                     struct message_game_state *message = malloc(sizeof(*message));
                     message->type = MESSAGE_GAME_STATE_BROADCAST;
                     for (size_t j = 0; j < MAX_CLIENTS; j++)
@@ -303,6 +305,7 @@ int main(int argc, char *argv[])
                         message->mobs[j].y = world.maps[clients[i].player.map_index].mobs[j].y;
                     }
 
+                    UDPpacket *packet = SDLNet_AllocPacket(PACKET_SIZE);
                     packet->address = clients[i].udp_address;
                     packet->data = (uint8_t *)message;
                     packet->len = sizeof(*message);
@@ -328,7 +331,7 @@ int main(int argc, char *argv[])
     // TODO: inform clients that server shut down
     for (size_t i = 0; i < MAX_CLIENTS; i++)
     {
-        if (clients[i].id != -1)
+        if (clients[i].id != CLIENT_ID_UNUSED)
         {
             SDLNet_TCP_DelSocket(socket_set, clients[i].socket);
             SDLNet_TCP_Close(clients[i].socket);

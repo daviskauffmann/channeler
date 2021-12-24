@@ -58,26 +58,11 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    SDL_Window *window = SDL_CreateWindow(
-        WINDOW_TITLE,
-        SDL_WINDOWPOS_UNDEFINED,
-        SDL_WINDOWPOS_UNDEFINED,
-        WINDOW_WIDTH,
-        WINDOW_HEIGHT,
-        0);
-    if (!window)
+    SDL_Window *window;
+    SDL_Renderer *renderer;
+    if (SDL_CreateWindowAndRenderer(WINDOW_WIDTH, WINDOW_HEIGHT, 0, &window, &renderer) != 0)
     {
-        printf("Error: Failed to create window: %s\n", SDL_GetError());
-        return 1;
-    }
-
-    SDL_Renderer *renderer = SDL_CreateRenderer(
-        window,
-        -1,
-        SDL_RENDERER_ACCELERATED);
-    if (!renderer)
-    {
-        printf("Error: Failed to create renderer: %s\n", SDL_GetError());
+        printf("Error: Failed to create window and renderer: %s\n", SDL_GetError());
         return 1;
     }
 
@@ -122,11 +107,11 @@ int main(int argc, char *argv[])
     struct client clients[MAX_CLIENTS];
     for (size_t i = 0; i < MAX_CLIENTS; i++)
     {
-        clients[i].id = -1;
+        clients[i].id = CLIENT_ID_UNUSED;
     }
 
-    size_t client_id = -1;
-    size_t map_index = -1;
+    size_t client_id = 0;
+    size_t map_index = 0;
     if (online)
     {
         char data[PACKET_SIZE];
@@ -187,9 +172,6 @@ int main(int argc, char *argv[])
     else
     {
         printf("Starting in offline mode\n");
-
-        client_id = 0;
-        map_index = 0;
     }
 
     // TODO: file to load should be sent from the server
@@ -243,7 +225,7 @@ int main(int argc, char *argv[])
                     {
                         struct message_id *message = (struct message_id *)data;
 
-                        clients[message->id].id = -1;
+                        clients[message->id].id = CLIENT_ID_UNUSED;
 
                         printf("Client with ID %zd has disconnected\n", message->id);
                     }
@@ -460,7 +442,7 @@ int main(int argc, char *argv[])
 
         for (size_t i = 0; i < MAX_CLIENTS; i++)
         {
-            if (clients[i].id != -1 && clients[i].player.map_index == player->map_index)
+            if (clients[i].id != CLIENT_ID_UNUSED && clients[i].player.map_index == player->map_index)
             {
                 struct player *player = &clients[i].player;
                 player_accelerate(player, map, delta_time);
@@ -574,9 +556,9 @@ int main(int argc, char *argv[])
 
         for (size_t i = 0; i < MAX_CLIENTS; i++)
         {
-            if (clients[i].id != -1 && clients[i].player.map_index == player->map_index)
+            if (clients[i].id != CLIENT_ID_UNUSED && clients[i].player.map_index == player->map_index)
             {
-                int player_gid = 32;
+                int64_t player_gid = 32;
                 struct tileset *tileset = map_get_tileset(map, player_gid);
 
                 SDL_Rect srcrect = {
@@ -588,8 +570,8 @@ int main(int argc, char *argv[])
                 SDL_Rect dstrect = {
                     (int)((clients[i].player.pos_x - view_x) * SPRITE_SCALE),
                     (int)((clients[i].player.pos_y - view_y) * SPRITE_SCALE),
-                    (int)map->tile_width * SPRITE_SCALE,
-                    (int)map->tile_height * SPRITE_SCALE};
+                    (int)(map->tile_width * SPRITE_SCALE),
+                    (int)(map->tile_height * SPRITE_SCALE)};
 
                 SDL_RenderCopy(renderer, sprites[tileset->index], &srcrect, &dstrect);
             }

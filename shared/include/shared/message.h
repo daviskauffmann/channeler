@@ -10,6 +10,7 @@
 #define PACKET_SIZE 1024
 #define MAX_STRLEN 256
 #define MAX_CLIENTS 8
+#define CLIENT_ID_UNUSED MAX_CLIENTS
 
 enum message_type
 {

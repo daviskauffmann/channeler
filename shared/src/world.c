@@ -64,5 +64,5 @@ size_t world_get_map_index(struct world *world, const char *filename)
             return i;
         }
     }
-    return -1;
+    return world->num_maps;
 }
