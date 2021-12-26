@@ -2,6 +2,7 @@
 #include <SDL2/SDL_image.h>
 #include <SDL2/SDL_mixer.h>
 #include <SDL2/SDL_net.h>
+#include <SDL2/SDL_ttf.h>
 #include <shared/input.h>
 #include <shared/map.h>
 #include <shared/message.h>
@@ -30,6 +31,31 @@ struct client
     struct player player;
 };
 
+void draw_text(SDL_Renderer *renderer, TTF_Font *font, size_t px, size_t x, size_t y, size_t w, SDL_Color fg, const char *const fmt, ...)
+{
+    va_list args;
+    va_start(args, fmt);
+    size_t size = snprintf(NULL, 0, fmt, args);
+    char *text = malloc(size + 1);
+    vsprintf(text, fmt, args);
+    va_end(args);
+
+    SDL_Surface *surface = TTF_RenderText_Blended_Wrapped(font, text, fg, (uint32_t)w);
+    SDL_Texture *texture = SDL_CreateTextureFromSurface(renderer, surface);
+
+    SDL_Rect dstrect = {
+        (int)x,
+        (int)y,
+        surface->w,
+        surface->h};
+
+    SDL_RenderCopy(renderer, texture, NULL, &dstrect);
+
+    SDL_FreeSurface(surface);
+    SDL_DestroyTexture(texture);
+    free(text);
+}
+
 int main(int argc, char *argv[])
 {
     if (SDL_Init(SDL_INIT_AUDIO | SDL_INIT_VIDEO) != 0)
@@ -55,6 +81,12 @@ int main(int argc, char *argv[])
     if (SDLNet_Init() != 0)
     {
         printf("Error: Failed to initialize SDL_net: %s\n", SDLNet_GetError());
+        return 1;
+    }
+
+    if (TTF_Init() != 0)
+    {
+        printf("Error: Failed to initialize SDL_ttf: %s\n", TTF_GetError());
         return 1;
     }
 
@@ -192,6 +224,8 @@ int main(int argc, char *argv[])
     {
         sprites[i] = IMG_LoadTexture(renderer, map->tilesets[i].image);
     }
+
+    TTF_Font *font = TTF_OpenFont("assets/VeraMono.ttf", 24);
 
     bool quit = false;
     while (!quit)
@@ -574,8 +608,19 @@ int main(int argc, char *argv[])
                     (int)(map->tile_height * SPRITE_SCALE)};
 
                 SDL_RenderCopy(renderer, sprites[tileset->index], &srcrect, &dstrect);
+
+                draw_text(renderer, font, 12, dstrect.x + 12, dstrect.y - 24, WINDOW_WIDTH, (SDL_Color){255, 255, 255}, "%zd", clients[i].id);
             }
         }
+
+        SDL_Rect rect = {12, WINDOW_HEIGHT - 100 - 12, WINDOW_WIDTH - 24, 100};
+        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 100);
+        SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+        SDL_RenderFillRect(renderer, &rect);
+        SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
+        SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
+
+        draw_text(renderer, font, 12, 24, WINDOW_HEIGHT - 100, WINDOW_WIDTH, (SDL_Color){255, 255, 255}, "Lorem ipsum dolor sit amet, consectetur adipiscing elit. In tempus orci eget luctus facilisis.");
 
         SDL_RenderPresent(renderer);
 
@@ -597,6 +642,8 @@ int main(int argc, char *argv[])
             printf("Error: Failed to send TCP packet: %s\n", SDLNet_GetError());
         }
     }
+
+    TTF_CloseFont(font);
 
     for (size_t i = 0; i < map->num_tilesets; i++)
     {
@@ -624,6 +671,7 @@ int main(int argc, char *argv[])
     IMG_Quit();
     Mix_Quit();
     SDLNet_Quit();
+    TTF_Quit();
 
     SDL_Quit();
 
