@@ -1,0 +1,26 @@
+{
+    "quests": [
+        {
+            "name": "Quest 1",
+            "stages": [
+                {
+                    "description": "Quest 1: Stage 1"
+                },
+                {
+                    "description": "Quest 1: Stage 2"
+                }
+            ]
+        },
+        {
+            "name": "Quest 2",
+            "stages": [
+                {
+                    "description": "Quest 2: Stage 1"
+                },
+                {
+                    "description": "Quest 2: Stage 2"
+                }
+            ]
+        }
+    ]
+}

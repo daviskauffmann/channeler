@@ -13,7 +13,7 @@ void world_load(struct world *world, const char *filename, bool load_maps)
 
     struct json_object *maps_obj = json_object_object_get(root, "maps");
     world->num_maps = json_object_array_length(maps_obj);
-    world->maps = malloc(world->num_maps * sizeof(world->maps[0]));
+    world->maps = malloc(world->num_maps * sizeof(*world->maps));
     for (size_t i = 0; i < world->num_maps; i++)
     {
         struct map *map = &world->maps[i];

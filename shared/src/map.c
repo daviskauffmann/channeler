@@ -29,7 +29,7 @@ void map_load(struct map *map)
         struct json_object *height_obj = json_object_object_get(root, "height");
         map->height = json_object_get_int64(height_obj);
 
-        map->tiles = malloc(map->width * map->height * sizeof(map->tiles[0]));
+        map->tiles = malloc(map->width * map->height * sizeof(*map->tiles));
     }
 
     {
@@ -98,7 +98,7 @@ void map_load(struct map *map)
     {
         struct json_object *tilesets_obj = json_object_object_get(root, "tilesets");
         map->num_tilesets = json_object_array_length(tilesets_obj);
-        map->tilesets = malloc(map->num_tilesets * sizeof(map->tilesets[0]));
+        map->tilesets = malloc(map->num_tilesets * sizeof(*map->tilesets));
         for (size_t i = 0; i < map->num_tilesets; i++)
         {
             struct tileset *tileset = &map->tilesets[i];

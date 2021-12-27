@@ -7,6 +7,7 @@
 #include <shared/map.h>
 #include <shared/message.h>
 #include <shared/player.h>
+#include <shared/quests.h>
 #include <shared/tileset.h>
 #include <shared/world.h>
 #include <stdbool.h>
@@ -207,11 +208,14 @@ int main(int argc, char *argv[])
         printf("Starting in offline mode\n");
     }
 
-    // TODO: file to load should be sent from the server
+    // TODO: files to load should be sent from the server
     // first pass will be just giving a filename that the client is expected to have locally and erroring if not
     // second pass might be implementing file transfer from the server if the client does not have the world data
     struct world world;
     world_load(&world, "assets/world.json", false);
+
+    struct quests quests;
+    quests_load(&quests, "assets/quests.json");
 
     clients[client_id].id = client_id;
     struct player *player = &clients[client_id].player;
@@ -227,6 +231,8 @@ int main(int argc, char *argv[])
     }
 
     TTF_Font *font = TTF_OpenFont("assets/VeraMono.ttf", 24);
+
+    bool quest_log_open = false;
 
     const char *dialog[] = {
         "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
@@ -429,6 +435,11 @@ int main(int argc, char *argv[])
                     dialog_index = 0;
                 }
                 break;
+                case SDLK_j:
+                {
+                    quest_log_open = !quest_log_open;
+                }
+                break;
                 }
             }
             break;
@@ -454,7 +465,7 @@ int main(int argc, char *argv[])
             map = &world.maps[map_index];
             map_load(map);
 
-            sprites = malloc(map->num_tilesets * sizeof(sprites[0]));
+            sprites = malloc(map->num_tilesets * sizeof(*sprites));
             for (size_t i = 0; i < map->num_tilesets; i++)
             {
                 sprites[i] = IMG_LoadTexture(renderer, map->tilesets[i].image);
@@ -645,6 +656,23 @@ int main(int argc, char *argv[])
             }
         }
 
+        if (quest_log_open)
+        {
+            SDL_Rect rect = {12, 12, WINDOW_WIDTH - 24, WINDOW_HEIGHT - 24};
+            SDL_SetRenderDrawColor(renderer, 0, 0, 0, 100);
+            SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+            SDL_RenderFillRect(renderer, &rect);
+            SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
+            SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
+
+            for (size_t i = 0; i < quests.num_quests; i++)
+            {
+                struct quest *quest = &quests.quests[i];
+
+                draw_text(renderer, font, 12, 24, 24 * (i + 1), WINDOW_WIDTH - 24, (SDL_Color){255, 255, 255}, quest->name);
+            }
+        }
+
         if (in_dialog)
         {
             SDL_Rect rect = {12, WINDOW_HEIGHT - 100 - 12, WINDOW_WIDTH - 24, 100};
@@ -687,6 +715,7 @@ int main(int argc, char *argv[])
     free(sprites);
 
     map_unload(map);
+    quests_unload(&quests);
     world_unload(&world, false);
 
     SDLNet_UDP_DelSocket(socket_set, udp_socket);

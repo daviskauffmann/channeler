@@ -11,6 +11,7 @@ find_package(SDL2-net CONFIG REQUIRED)
 add_library(${PROJECT_NAME}
     src/map.c
     src/player.c
+    src/quests.c
     src/tileset.c
     src/world.c
 )

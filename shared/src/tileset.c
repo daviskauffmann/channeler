@@ -21,7 +21,7 @@ void tileset_load(struct tileset *tileset, char *filename)
     strcat(tileset->image, image_str);
 
     struct json_object *tile_count_obj = json_object_object_get(root, "tilecount");
-    tileset->tile_data = malloc(json_object_get_int(tile_count_obj) * sizeof(tileset->tile_data[0]));
+    tileset->tile_data = malloc(json_object_get_int(tile_count_obj) * sizeof(*tileset->tile_data));
 
     struct json_object *tiles_obj = json_object_object_get(root, "tiles");
     for (size_t i = 0; i < json_object_array_length(tiles_obj); i++)
