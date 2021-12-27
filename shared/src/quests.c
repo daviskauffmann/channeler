@@ -21,13 +21,14 @@ void quests_load(struct quests *quests, const char *filename)
         quest->name = json_object_get_string(name_obj);
 
         struct json_object *stages_obj = json_object_object_get(quest_obj, "stages");
-        quest->num_stages = json_object_array_length(stages_obj);
+        quest->num_stages = json_object_array_length(stages_obj) + 1;
         quest->stages = malloc(quest->num_stages * sizeof(*quest->stages));
-        for (size_t j = 0; j < quest->num_stages; j++)
+        quest->stages[0].description = "Not started";
+        for (size_t j = 1; j < quest->num_stages; j++)
         {
             struct quest_stage *stage = &quest->stages[j];
 
-            struct json_object *stage_obj = json_object_array_get_idx(stages_obj, j);
+            struct json_object *stage_obj = json_object_array_get_idx(stages_obj, j - 1);
 
             struct json_object *description_obj = json_object_object_get(stage_obj, "description");
             stage->description = json_object_get_string(description_obj);

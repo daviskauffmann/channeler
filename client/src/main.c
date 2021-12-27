@@ -3,6 +3,7 @@
 #include <SDL2/SDL_mixer.h>
 #include <SDL2/SDL_net.h>
 #include <SDL2/SDL_ttf.h>
+#include <shared/dialogs.h>
 #include <shared/input.h>
 #include <shared/map.h>
 #include <shared/message.h>
@@ -10,13 +11,14 @@
 #include <shared/quests.h>
 #include <shared/tileset.h>
 #include <shared/world.h>
+#include <stdarg.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdint.h>
 
 #define WINDOW_TITLE "Project Hypernova"
-#define WINDOW_WIDTH 640
-#define WINDOW_HEIGHT 480
+#define WINDOW_WIDTH 1280
+#define WINDOW_HEIGHT 720
 
 #define SERVER_HOST "127.0.0.1"
 #define SERVER_PORT 8492
@@ -37,7 +39,7 @@ void draw_text(SDL_Renderer *renderer, TTF_Font *font, size_t px, size_t x, size
 {
     va_list args;
     va_start(args, fmt);
-    size_t size = snprintf(NULL, 0, fmt, args);
+    size_t size = vsnprintf(NULL, 0, fmt, args);
     char *text = malloc(size + 1);
     vsprintf(text, fmt, args);
     va_end(args);
@@ -199,6 +201,10 @@ int main(int argc, char *argv[])
         }
     }
 
+    clients[client_id].id = client_id;
+    struct player *player = &clients[client_id].player;
+    player_init(player, map_index);
+
     if (online)
     {
         printf("Connected to %s:%d\n", SERVER_HOST, SERVER_PORT);
@@ -217,9 +223,8 @@ int main(int argc, char *argv[])
     struct quests quests;
     quests_load(&quests, "assets/quests.json");
 
-    clients[client_id].id = client_id;
-    struct player *player = &clients[client_id].player;
-    player_init(player, map_index);
+    struct dialogs dialogs;
+    dialogs_load(&dialogs, "assets/dialogs.json");
 
     struct map *map = &world.maps[map_index];
     map_load(map);
@@ -234,14 +239,9 @@ int main(int argc, char *argv[])
 
     bool quest_log_open = false;
 
-    const char *dialog[] = {
-        "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
-        "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.",
-        "Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.",
-        "Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum."};
-    size_t num_dialog = sizeof(dialog) / sizeof(*dialog);
-    bool in_dialog = false;
+    bool dialog_open = false;
     size_t dialog_index = 0;
+    size_t dialog_message_index = 0;
 
     bool quit = false;
     while (!quit)
@@ -365,17 +365,18 @@ int main(int argc, char *argv[])
                 break;
                 case SDLK_ESCAPE:
                 {
-                    in_dialog = false;
+                    quest_log_open = false;
+                    dialog_open = false;
                 }
                 break;
                 case SDLK_SPACE:
                 {
-                    if (in_dialog)
+                    if (dialog_open)
                     {
-                        dialog_index++;
-                        if (dialog_index >= num_dialog)
+                        dialog_message_index++;
+                        if (dialog_message_index >= dialogs.dialogs[dialog_index].num_messages)
                         {
-                            in_dialog = false;
+                            dialog_open = false;
                         }
                     }
                     else
@@ -397,6 +398,60 @@ int main(int argc, char *argv[])
                 break;
                 case SDLK_1:
                 {
+                    if (dialog_open)
+                    {
+                        size_t choice_index = 0;
+                        struct dialog_message *message = &dialogs.dialogs[dialog_index].messages[dialog_message_index];
+                        if (message->num_choices > choice_index)
+                        {
+                            struct dialog_choice *choice = &message->choices[choice_index];
+                            if (choice->outcomes.set_dialog_index != (size_t)-1)
+                            {
+                                dialog_index = choice->outcomes.set_dialog_index;
+                                dialog_message_index = 0;
+                            }
+                            if (choice->outcomes.set_quest_stage.quest_index != (size_t)-1 && choice->outcomes.set_quest_stage.stage_index != (size_t)-1)
+                            {
+                            }
+                        }
+                    }
+                }
+                break;
+                case SDLK_2:
+                {
+                    if (dialog_open)
+                    {
+                        size_t choice_index = 1;
+                        struct dialog_message *message = &dialogs.dialogs[dialog_index].messages[dialog_message_index];
+                        if (message->num_choices > choice_index)
+                        {
+                            struct dialog_choice *choice = &message->choices[choice_index];
+                            if (choice->outcomes.set_dialog_index != (size_t)-1)
+                            {
+                                dialog_index = choice->outcomes.set_dialog_index;
+                                dialog_message_index = 0;
+                            }
+                            if (choice->outcomes.set_quest_stage.quest_index != (size_t)-1 && choice->outcomes.set_quest_stage.stage_index != (size_t)-1)
+                            {
+                            }
+                        }
+                    }
+                }
+                break;
+                case SDLK_e:
+                {
+                    dialog_open = true;
+                    dialog_index = 0;
+                    dialog_message_index = 0;
+                }
+                break;
+                case SDLK_j:
+                {
+                    quest_log_open = !quest_log_open;
+                }
+                break;
+                case SDLK_F1:
+                {
                     player->map_index = 0;
 
                     if (online)
@@ -412,7 +467,7 @@ int main(int argc, char *argv[])
                     }
                 }
                 break;
-                case SDLK_2:
+                case SDLK_F2:
                 {
                     player->map_index = 1;
 
@@ -427,17 +482,6 @@ int main(int argc, char *argv[])
                             printf("Error: Failed to send TCP packet: %s\n", SDLNet_GetError());
                         }
                     }
-                }
-                break;
-                case SDLK_3:
-                {
-                    in_dialog = true;
-                    dialog_index = 0;
-                }
-                break;
-                case SDLK_j:
-                {
-                    quest_log_open = !quest_log_open;
                 }
                 break;
                 }
@@ -673,7 +717,7 @@ int main(int argc, char *argv[])
             }
         }
 
-        if (in_dialog)
+        if (dialog_open)
         {
             SDL_Rect rect = {12, WINDOW_HEIGHT - 100 - 12, WINDOW_WIDTH - 24, 100};
             SDL_SetRenderDrawColor(renderer, 0, 0, 0, 100);
@@ -682,7 +726,15 @@ int main(int argc, char *argv[])
             SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
             SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
 
-            draw_text(renderer, font, 12, 24, WINDOW_HEIGHT - 100, WINDOW_WIDTH, (SDL_Color){255, 255, 255}, dialog[dialog_index]);
+            struct dialog_message *message = &dialogs.dialogs[dialog_index].messages[dialog_message_index];
+            draw_text(renderer, font, 12, 24, WINDOW_HEIGHT - 100, WINDOW_WIDTH, (SDL_Color){255, 255, 255}, message->text);
+
+            for (size_t i = 0; i < message->num_choices; i++)
+            {
+                struct dialog_choice *choice = &message->choices[i];
+
+                draw_text(renderer, font, 12, 24, (WINDOW_HEIGHT - 100) + 24 * (i + 1), WINDOW_WIDTH, (SDL_Color){255, 255, 255}, "%zd) %s", i + 1, choice->text);
+            }
         }
 
         SDL_RenderPresent(renderer);
@@ -714,9 +766,11 @@ int main(int argc, char *argv[])
     }
     free(sprites);
 
-    map_unload(map);
-    quests_unload(&quests);
     world_unload(&world, false);
+    quests_unload(&quests);
+    dialogs_unload(&dialogs);
+
+    map_unload(map);
 
     SDLNet_UDP_DelSocket(socket_set, udp_socket);
     SDLNet_TCP_DelSocket(socket_set, tcp_socket);
@@ -729,7 +783,6 @@ int main(int argc, char *argv[])
     Mix_CloseAudio();
 
     SDL_DestroyRenderer(renderer);
-
     SDL_DestroyWindow(window);
 
     IMG_Quit();

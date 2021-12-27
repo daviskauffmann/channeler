@@ -1,13 +1,13 @@
 {
     "quests": [
         {
-            "name": "Quest 1",
+            "name": "Kill the Goblins!",
             "stages": [
                 {
-                    "description": "Quest 1: Stage 1"
+                    "description": "Quest accepted"
                 },
                 {
-                    "description": "Quest 1: Stage 2"
+                    "description": "Goblins killed"
                 }
             ]
         },

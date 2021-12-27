@@ -1,0 +1,49 @@
+{
+    "dialogs": [
+        {
+            "messages": [
+                {
+                    "text": "Help! Goblins are attacking the village!"
+                },
+                {
+                    "text": "We need to organize a response, but first the immediate threat must be dealt with."
+                },
+                {
+                    "text": "Will you help us kill the goblins?",
+                    "choices": [
+                        {
+                            "text": "Yes",
+                            "outcomes": {
+                                "set_dialog_index": 1,
+                                "set_quest_stage": {
+                                    "quest_index": 1,
+                                    "stage_index": 1
+                                }
+                            }
+                        },
+                        {
+                            "text": "No",
+                            "outcomes": {
+                                "set_dialog_index": 2
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "messages": [
+                {
+                    "text": "Thank you! Please hurry!"
+                }
+            ]
+        },
+        {
+            "messages": [
+                {
+                    "text": "Well, screw you then!"
+                }
+            ]
+        }
+    ]
+}
