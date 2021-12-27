@@ -11,6 +11,7 @@
 #include <shared/world.h>
 #include <stdbool.h>
 #include <stdio.h>
+#include <stdint.h>
 
 #define WINDOW_TITLE "Project Hypernova"
 #define WINDOW_WIDTH 640
@@ -219,13 +220,22 @@ int main(int argc, char *argv[])
     struct map *map = &world.maps[map_index];
     map_load(map);
 
-    SDL_Texture **sprites = malloc(map->num_tilesets * sizeof(sprites[0]));
+    SDL_Texture **sprites = malloc(map->num_tilesets * sizeof(*sprites));
     for (size_t i = 0; i < map->num_tilesets; i++)
     {
         sprites[i] = IMG_LoadTexture(renderer, map->tilesets[i].image);
     }
 
     TTF_Font *font = TTF_OpenFont("assets/VeraMono.ttf", 24);
+
+    const char *dialog[] = {
+        "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
+        "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.",
+        "Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.",
+        "Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum."};
+    size_t num_dialog = sizeof(dialog) / sizeof(*dialog);
+    bool in_dialog = false;
+    size_t dialog_index = 0;
 
     bool quit = false;
     while (!quit)
@@ -347,18 +357,34 @@ int main(int argc, char *argv[])
                     }
                 }
                 break;
+                case SDLK_ESCAPE:
+                {
+                    in_dialog = false;
+                }
+                break;
                 case SDLK_SPACE:
                 {
-                    player_attack(player, map);
-
-                    if (online)
+                    if (in_dialog)
                     {
-                        struct message message;
-                        message.type = MESSAGE_ATTACK_REQUEST;
-
-                        if (SDLNet_TCP_Send(tcp_socket, &message, sizeof(message)) < (int)sizeof(message))
+                        dialog_index++;
+                        if (dialog_index >= num_dialog)
                         {
-                            printf("Error: Failed to send TCP packet: %s\n", SDLNet_GetError());
+                            in_dialog = false;
+                        }
+                    }
+                    else
+                    {
+                        player_attack(player, map);
+
+                        if (online)
+                        {
+                            struct message message;
+                            message.type = MESSAGE_ATTACK_REQUEST;
+
+                            if (SDLNet_TCP_Send(tcp_socket, &message, sizeof(message)) < (int)sizeof(message))
+                            {
+                                printf("Error: Failed to send TCP packet: %s\n", SDLNet_GetError());
+                            }
                         }
                     }
                 }
@@ -395,6 +421,12 @@ int main(int argc, char *argv[])
                             printf("Error: Failed to send TCP packet: %s\n", SDLNet_GetError());
                         }
                     }
+                }
+                break;
+                case SDLK_3:
+                {
+                    in_dialog = true;
+                    dialog_index = 0;
                 }
                 break;
                 }
@@ -613,14 +645,17 @@ int main(int argc, char *argv[])
             }
         }
 
-        SDL_Rect rect = {12, WINDOW_HEIGHT - 100 - 12, WINDOW_WIDTH - 24, 100};
-        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 100);
-        SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
-        SDL_RenderFillRect(renderer, &rect);
-        SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
-        SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
+        if (in_dialog)
+        {
+            SDL_Rect rect = {12, WINDOW_HEIGHT - 100 - 12, WINDOW_WIDTH - 24, 100};
+            SDL_SetRenderDrawColor(renderer, 0, 0, 0, 100);
+            SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+            SDL_RenderFillRect(renderer, &rect);
+            SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
+            SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
 
-        draw_text(renderer, font, 12, 24, WINDOW_HEIGHT - 100, WINDOW_WIDTH, (SDL_Color){255, 255, 255}, "Lorem ipsum dolor sit amet, consectetur adipiscing elit. In tempus orci eget luctus facilisis.");
+            draw_text(renderer, font, 12, 24, WINDOW_HEIGHT - 100, WINDOW_WIDTH, (SDL_Color){255, 255, 255}, dialog[dialog_index]);
+        }
 
         SDL_RenderPresent(renderer);
 
