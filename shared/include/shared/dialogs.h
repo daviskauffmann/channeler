@@ -1,14 +1,13 @@
 #ifndef DIALOGS_H
 #define DIALOGS_H
 
+#include "player.h"
+
 struct dialog_outcomes
 {
     size_t set_dialog_index;
-    struct
-    {
-        size_t quest_index;
-        size_t stage_index;
-    } set_quest_stage;
+    size_t set_dialog_message_index;
+    struct quest_status set_quest_status;
 };
 
 struct dialog_choice
@@ -34,6 +33,8 @@ struct dialog
 
 struct dialogs
 {
+    const char *filename;
+
     size_t num_dialogs;
     struct dialog *dialogs;
 };

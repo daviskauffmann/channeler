@@ -1,6 +1,8 @@
 #include <shared/player.h>
 
+#include <malloc.h>
 #include <math.h>
+#include <shared/dialogs.h>
 #include <shared/map.h>
 #include <shared/tileset.h>
 #include <stdbool.h>
@@ -15,6 +17,20 @@ void player_init(struct player *player, size_t map_index)
     player->vel_y = 0;
     player->acc_x = 0;
     player->acc_y = 0;
+
+    player->dialog_index = 0;
+    player->dialog_message_index = 0;
+
+    player->num_quest_statuses = 0;
+    player->quest_statuses = NULL;
+}
+
+void player_uninit(struct player *player)
+{
+    if (player->quest_statuses)
+    {
+        free(player->quest_statuses);
+    }
 }
 
 void player_accelerate(struct player *player, struct map *map, float delta_time)
@@ -101,4 +117,51 @@ void player_attack(struct player *player, struct map *map)
             }
         }
     }
+}
+
+void player_advance_dialog(struct player *player, struct dialogs *dialogs)
+{
+    struct dialog *dialog = &dialogs->dialogs[player->dialog_index];
+    struct dialog_message *message = &dialog->messages[player->dialog_message_index];
+    if (!message->num_choices)
+    {
+        player->dialog_message_index++;
+    }
+}
+
+void player_choose_dialog(struct player *player, struct dialogs *dialogs, size_t choice_index)
+{
+    struct dialog *dialog = &dialogs->dialogs[player->dialog_index];
+    struct dialog_message *message = &dialog->messages[player->dialog_message_index];
+    if (message->num_choices > choice_index)
+    {
+        struct dialog_choice *choice = &message->choices[choice_index];
+        if (choice->outcomes.set_dialog_index != (size_t)-1)
+        {
+            player->dialog_index = choice->outcomes.set_dialog_index;
+            player->dialog_message_index = 0;
+        }
+        if (choice->outcomes.set_quest_status.quest_index != (size_t)-1 && choice->outcomes.set_quest_status.stage_index != (size_t)-1)
+        {
+            player_set_quest_status(player, choice->outcomes.set_quest_status.quest_index, choice->outcomes.set_quest_status.stage_index);
+        }
+    }
+}
+
+void player_set_quest_status(struct player *player, size_t quest_index, size_t stage_index)
+{
+    for (size_t i = 0; i < player->num_quest_statuses; i++)
+    {
+        struct quest_status *status = &player->quest_statuses[i];
+        if (status->quest_index == quest_index)
+        {
+            status->stage_index = stage_index;
+            return;
+        }
+    }
+
+    size_t quest_status_index = player->num_quest_statuses++;
+    player->quest_statuses = realloc(player->quest_statuses, player->num_quest_statuses * sizeof(*player->quest_statuses));
+    player->quest_statuses[quest_status_index].quest_index = quest_index;
+    player->quest_statuses[quest_status_index].stage_index = stage_index;
 }

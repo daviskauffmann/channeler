@@ -6,7 +6,7 @@
                     "text": "Help! Goblins are attacking the village!"
                 },
                 {
-                    "text": "We need to organize a response, but first the immediate threat must be dealt with."
+                    "text": "We need time to organize a defense, but first the immediate threat must be dealt with."
                 },
                 {
                     "text": "Will you help us kill the goblins?",
@@ -15,16 +15,17 @@
                             "text": "Yes",
                             "outcomes": {
                                 "set_dialog_index": 1,
-                                "set_quest_stage": {
-                                    "quest_index": 1,
-                                    "stage_index": 1
+                                "set_quest_status": {
+                                    "quest_index": 0,
+                                    "stage_index": 0
                                 }
                             }
                         },
                         {
                             "text": "No",
                             "outcomes": {
-                                "set_dialog_index": 2
+                                "set_dialog_index": 2,
+                                "set_dialog_message_index": 0
                             }
                         }
                     ]
@@ -41,7 +42,7 @@
         {
             "messages": [
                 {
-                    "text": "Well, screw you then!"
+                    "text": "A curse upon your family!"
                 }
             ]
         }

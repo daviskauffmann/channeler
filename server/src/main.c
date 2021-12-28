@@ -341,6 +341,8 @@ int main(int argc, char *argv[])
     {
         if (clients[i].id != CLIENT_ID_UNUSED)
         {
+            player_uninit(&clients[i].player);
+
             SDLNet_TCP_DelSocket(socket_set, clients[i].socket);
             SDLNet_TCP_Close(clients[i].socket);
         }

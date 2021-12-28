@@ -6,6 +6,10 @@
 
 void dialogs_load(struct dialogs *dialogs, const char *filename)
 {
+    printf("Loading dialogs: %s\n", filename);
+
+    dialogs->filename = filename;
+
     struct json_object *root = json_object_from_file(filename);
 
     struct json_object *dialogs_obj = json_object_object_get(root, "dialogs");
@@ -54,6 +58,21 @@ void dialogs_load(struct dialogs *dialogs, const char *filename)
                         {
                             choice->outcomes.set_dialog_index = -1;
                         }
+
+                        struct json_object *set_quest_status_obj = json_object_object_get(outcomes_obj, "set_quest_status");
+                        if (set_quest_status_obj)
+                        {
+                            struct json_object *quest_index_obj = json_object_object_get(set_quest_status_obj, "quest_index");
+                            choice->outcomes.set_quest_status.quest_index = json_object_get_int(quest_index_obj);
+
+                            struct json_object *stage_index_obj = json_object_object_get(set_quest_status_obj, "stage_index");
+                            choice->outcomes.set_quest_status.stage_index = json_object_get_int(stage_index_obj);
+                        }
+                        else
+                        {
+                            choice->outcomes.set_quest_status.quest_index = -1;
+                            choice->outcomes.set_quest_status.stage_index = -1;
+                        }
                     }
                 }
             }
@@ -64,12 +83,12 @@ void dialogs_load(struct dialogs *dialogs, const char *filename)
             }
         }
     }
-
-    printf("Dialogs loaded: %s\n", filename);
 }
 
 void dialogs_unload(struct dialogs *dialogs)
 {
+    printf("Unloading dialogs: %s\n", dialogs->filename);
+
     for (size_t i = 0; i < dialogs->num_dialogs; i++)
     {
         struct dialog *dialog = &dialogs->dialogs[i];

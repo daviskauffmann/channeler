@@ -6,6 +6,8 @@
 
 void tileset_load(struct tileset *tileset, char *filename)
 {
+    printf("Loading tileset: %s\n", filename);
+
     tileset->filename = filename;
 
     struct json_object *root = json_object_from_file(filename);
@@ -48,16 +50,17 @@ void tileset_load(struct tileset *tileset, char *filename)
             }
         }
     }
-
-    printf("Tileset loaded: %s\n", tileset->filename);
 }
 
 void tileset_unload(struct tileset *tileset)
 {
-    free(tileset->tile_data);
+    printf("Unloading tileset: %s\n", tileset->filename);
 
-    printf("Tileset unloaded: %s\n", tileset->filename);
     free(tileset->filename);
+
+    free(tileset->image);
+
+    free(tileset->tile_data);
 }
 
 struct tile_data *tileset_get_tile_data(struct tileset *tileset, size_t gid)

@@ -4,10 +4,10 @@
             "name": "Kill the Goblins!",
             "stages": [
                 {
-                    "description": "Quest accepted"
+                    "description": "I must kill the goblins attacking the town."
                 },
                 {
-                    "description": "Goblins killed"
+                    "description": "The goblins are dead!"
                 }
             ]
         },

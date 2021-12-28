@@ -201,10 +201,6 @@ int main(int argc, char *argv[])
         }
     }
 
-    clients[client_id].id = client_id;
-    struct player *player = &clients[client_id].player;
-    player_init(player, map_index);
-
     if (online)
     {
         printf("Connected to %s:%d\n", SERVER_HOST, SERVER_PORT);
@@ -235,13 +231,14 @@ int main(int argc, char *argv[])
         sprites[i] = IMG_LoadTexture(renderer, map->tilesets[i].image);
     }
 
+    clients[client_id].id = client_id;
+    struct player *player = &clients[client_id].player;
+    player_init(player, map_index);
+
     TTF_Font *font = TTF_OpenFont("assets/VeraMono.ttf", 24);
 
     bool quest_log_open = false;
-
     bool dialog_open = false;
-    size_t dialog_index = 0;
-    size_t dialog_message_index = 0;
 
     bool quit = false;
     while (!quit)
@@ -373,10 +370,16 @@ int main(int argc, char *argv[])
                 {
                     if (dialog_open)
                     {
-                        dialog_message_index++;
-                        if (dialog_message_index >= dialogs.dialogs[dialog_index].num_messages)
+                        player_advance_dialog(player, &dialogs);
+
+                        if (player->dialog_message_index >= dialogs.dialogs[player->dialog_index].num_messages)
                         {
                             dialog_open = false;
+                        }
+
+                        if (online)
+                        {
+                            // TODO: send msg
                         }
                     }
                     else
@@ -397,43 +400,22 @@ int main(int argc, char *argv[])
                 }
                 break;
                 case SDLK_1:
-                {
-                    if (dialog_open)
-                    {
-                        size_t choice_index = 0;
-                        struct dialog_message *message = &dialogs.dialogs[dialog_index].messages[dialog_message_index];
-                        if (message->num_choices > choice_index)
-                        {
-                            struct dialog_choice *choice = &message->choices[choice_index];
-                            if (choice->outcomes.set_dialog_index != (size_t)-1)
-                            {
-                                dialog_index = choice->outcomes.set_dialog_index;
-                                dialog_message_index = 0;
-                            }
-                            if (choice->outcomes.set_quest_stage.quest_index != (size_t)-1 && choice->outcomes.set_quest_stage.stage_index != (size_t)-1)
-                            {
-                            }
-                        }
-                    }
-                }
-                break;
                 case SDLK_2:
+                case SDLK_3:
+                case SDLK_4:
+                case SDLK_5:
+                case SDLK_6:
+                case SDLK_7:
+                case SDLK_8:
+                case SDLK_9:
                 {
                     if (dialog_open)
                     {
-                        size_t choice_index = 1;
-                        struct dialog_message *message = &dialogs.dialogs[dialog_index].messages[dialog_message_index];
-                        if (message->num_choices > choice_index)
+                        player_choose_dialog(player, &dialogs, event.key.keysym.sym - 49);
+
+                        if (online)
                         {
-                            struct dialog_choice *choice = &message->choices[choice_index];
-                            if (choice->outcomes.set_dialog_index != (size_t)-1)
-                            {
-                                dialog_index = choice->outcomes.set_dialog_index;
-                                dialog_message_index = 0;
-                            }
-                            if (choice->outcomes.set_quest_stage.quest_index != (size_t)-1 && choice->outcomes.set_quest_stage.stage_index != (size_t)-1)
-                            {
-                            }
+                            // TODO: send msg
                         }
                     }
                 }
@@ -441,8 +423,13 @@ int main(int argc, char *argv[])
                 case SDLK_e:
                 {
                     dialog_open = true;
-                    dialog_index = 0;
-                    dialog_message_index = 0;
+                    player->dialog_index = 0;
+                    player->dialog_message_index = 0;
+
+                    if (online)
+                    {
+                        // TODO: send msg
+                    }
                 }
                 break;
                 case SDLK_j:
@@ -703,36 +690,37 @@ int main(int argc, char *argv[])
         if (quest_log_open)
         {
             SDL_Rect rect = {12, 12, WINDOW_WIDTH - 24, WINDOW_HEIGHT - 24};
-            SDL_SetRenderDrawColor(renderer, 0, 0, 0, 100);
+            SDL_SetRenderDrawColor(renderer, 0, 0, 0, 200);
             SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
             SDL_RenderFillRect(renderer, &rect);
             SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
             SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
 
-            for (size_t i = 0; i < quests.num_quests; i++)
+            for (size_t i = 0; i < player->num_quest_statuses; i++)
             {
-                struct quest *quest = &quests.quests[i];
-
-                draw_text(renderer, font, 12, 24, 24 * (i + 1), WINDOW_WIDTH - 24, (SDL_Color){255, 255, 255}, quest->name);
+                struct quest_status *status = &player->quest_statuses[i];
+                struct quest *quest = &quests.quests[status->quest_index];
+                struct quest_stage *stage = &quest->stages[status->stage_index];
+                draw_text(renderer, font, 12, 24, 24 * (i + 1), WINDOW_WIDTH - 24, (SDL_Color){255, 255, 255}, "%s: %s", quest->name, stage->description);
             }
         }
 
         if (dialog_open)
         {
             SDL_Rect rect = {12, WINDOW_HEIGHT - 100 - 12, WINDOW_WIDTH - 24, 100};
-            SDL_SetRenderDrawColor(renderer, 0, 0, 0, 100);
+            SDL_SetRenderDrawColor(renderer, 0, 0, 0, 200);
             SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
             SDL_RenderFillRect(renderer, &rect);
             SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
             SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
 
-            struct dialog_message *message = &dialogs.dialogs[dialog_index].messages[dialog_message_index];
-            draw_text(renderer, font, 12, 24, WINDOW_HEIGHT - 100, WINDOW_WIDTH, (SDL_Color){255, 255, 255}, message->text);
+            struct dialog *dialog = &dialogs.dialogs[player->dialog_index];
+            struct dialog_message *message = &dialog->messages[player->dialog_message_index];
+            draw_text(renderer, font, 12, 24, WINDOW_HEIGHT - 100, WINDOW_WIDTH, (SDL_Color){255, 255, 255}, "%s", message->text);
 
             for (size_t i = 0; i < message->num_choices; i++)
             {
                 struct dialog_choice *choice = &message->choices[i];
-
                 draw_text(renderer, font, 12, 24, (WINDOW_HEIGHT - 100) + 24 * (i + 1), WINDOW_WIDTH, (SDL_Color){255, 255, 255}, "%zd) %s", i + 1, choice->text);
             }
         }
@@ -769,8 +757,8 @@ int main(int argc, char *argv[])
     world_unload(&world, false);
     quests_unload(&quests);
     dialogs_unload(&dialogs);
-
     map_unload(map);
+    player_uninit(player);
 
     SDLNet_UDP_DelSocket(socket_set, udp_socket);
     SDLNet_TCP_DelSocket(socket_set, tcp_socket);

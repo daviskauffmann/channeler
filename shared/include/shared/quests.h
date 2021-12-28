@@ -16,6 +16,8 @@ struct quest
 
 struct quests
 {
+    const char *filename;
+
     size_t num_quests;
     struct quest *quests;
 };

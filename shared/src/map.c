@@ -7,19 +7,22 @@
 
 void map_init(struct map *map, char *filename)
 {
-    map->filename = filename;
+    printf("Initializing map: %s\n", filename);
 
-    printf("Map initialized: %s\n", map->filename);
+    map->filename = filename;
 }
 
 void map_uninit(struct map *map)
 {
-    printf("Map uninitialized: %s\n", map->filename);
+    printf("Uninitializing: %s\n", map->filename);
+
     free(map->filename);
 }
 
 void map_load(struct map *map)
 {
+    printf("Loading map: %s\n", map->filename);
+
     struct json_object *root = json_object_from_file(map->filename);
 
     {
@@ -42,9 +45,9 @@ void map_load(struct map *map)
             {
                 struct tile *tile = &map->tiles[i];
 
-                const unsigned H_FLIP_FLAG = 0x80000000;
-                const unsigned V_FLIP_FLAG = 0x40000000;
-                const unsigned D_FLIP_FLAG = 0x20000000;
+                const uint32_t H_FLIP_FLAG = 0x80000000;
+                const uint32_t V_FLIP_FLAG = 0x40000000;
+                const uint32_t D_FLIP_FLAG = 0x20000000;
 
                 struct json_object *tile_obj = json_object_array_get_idx(data_obj, i);
                 int64_t gid = json_object_get_int64(tile_obj);
@@ -120,12 +123,12 @@ void map_load(struct map *map)
             tileset_load(tileset, tileset_filename);
         }
     }
-
-    printf("Map loaded: %s\n", map->filename);
 }
 
 void map_unload(struct map *map)
 {
+    printf("Unloading map: %s\n", map->filename);
+
     for (size_t i = 0; i < map->num_tilesets; i++)
     {
         tileset_unload(&map->tilesets[i]);
@@ -135,8 +138,6 @@ void map_unload(struct map *map)
 
     free(map->tiles);
     map->tiles = NULL;
-
-    printf("Map unloaded: %s\n", map->filename);
 }
 
 void map_update(struct map *map, float delta_time)
