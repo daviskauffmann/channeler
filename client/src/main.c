@@ -3,7 +3,7 @@
 #include <SDL2/SDL_mixer.h>
 #include <SDL2/SDL_net.h>
 #include <SDL2/SDL_ttf.h>
-#include <shared/dialogs.h>
+#include <shared/conversations.h>
 #include <shared/input.h>
 #include <shared/map.h>
 #include <shared/message.h>
@@ -219,8 +219,8 @@ int main(int argc, char *argv[])
     struct quests quests;
     quests_load(&quests, "assets/quests.json");
 
-    struct dialogs dialogs;
-    dialogs_load(&dialogs, "assets/dialogs.json");
+    struct conversations conversations;
+    conversations_load(&conversations, "assets/conversations.json");
 
     struct map *map = &world.maps[map_index];
     map_load(map);
@@ -238,7 +238,6 @@ int main(int argc, char *argv[])
     TTF_Font *font = TTF_OpenFont("assets/VeraMono.ttf", 24);
 
     bool quest_log_open = false;
-    bool dialog_open = false;
 
     bool quit = false;
     while (!quit)
@@ -362,19 +361,34 @@ int main(int argc, char *argv[])
                 break;
                 case SDLK_ESCAPE:
                 {
+                    player->conversation_node = NULL;
                     quest_log_open = false;
-                    dialog_open = false;
                 }
                 break;
                 case SDLK_SPACE:
                 {
-                    if (dialog_open)
+                    if (player->conversation_node)
                     {
-                        player_advance_dialog(player, &dialogs);
-
-                        if (player->dialog_message_index >= dialogs.dialogs[player->dialog_index].num_messages)
+                        if (player->conversation_node->num_children == 0)
                         {
-                            dialog_open = false;
+                            player->conversation_node = NULL;
+                        }
+                        else
+                        {
+                            bool has_response_nodes = false;
+                            for (size_t i = 0; i < player->conversation_node->num_children; i++)
+                            {
+                                struct conversation_node *child = &player->conversation_node->children[i];
+                                if (child->type == CONVERSATION_NODE_RESPONSE)
+                                {
+                                    has_response_nodes = true;
+                                    break;
+                                }
+                            }
+                            if (!has_response_nodes)
+                            {
+                                player_advance_conversation(player);
+                            }
                         }
 
                         if (online)
@@ -409,9 +423,27 @@ int main(int argc, char *argv[])
                 case SDLK_8:
                 case SDLK_9:
                 {
-                    if (dialog_open)
+                    if (player->conversation_node)
                     {
-                        player_choose_dialog(player, &dialogs, event.key.keysym.sym - 49);
+                        bool has_response_nodes = false;
+                        for (size_t i = 0; i < player->conversation_node->num_children; i++)
+                        {
+                            struct conversation_node *child = &player->conversation_node->children[i];
+                            if (child->type == CONVERSATION_NODE_RESPONSE)
+                            {
+                                has_response_nodes = true;
+                                break;
+                            }
+                        }
+                        if (has_response_nodes)
+                        {
+                            size_t choice_index = event.key.keysym.sym - 49;
+                            if (choice_index < player->conversation_node->num_children)
+                            {
+                                player->conversation_node = &player->conversation_node->children[choice_index];
+                                player_advance_conversation(player);
+                            }
+                        }
 
                         if (online)
                         {
@@ -422,9 +454,9 @@ int main(int argc, char *argv[])
                 break;
                 case SDLK_e:
                 {
-                    dialog_open = true;
-                    player->dialog_index = 0;
-                    player->dialog_message_index = 0;
+                    size_t conversation_index = 0;
+                    player->conversation_node = &conversations.conversations[conversation_index];
+                    player_advance_conversation(player);
 
                     if (online)
                     {
@@ -705,7 +737,7 @@ int main(int argc, char *argv[])
             }
         }
 
-        if (dialog_open)
+        if (player->conversation_node)
         {
             SDL_Rect rect = {12, WINDOW_HEIGHT - 100 - 12, WINDOW_WIDTH - 24, 100};
             SDL_SetRenderDrawColor(renderer, 0, 0, 0, 200);
@@ -714,14 +746,15 @@ int main(int argc, char *argv[])
             SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
             SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
 
-            struct dialog *dialog = &dialogs.dialogs[player->dialog_index];
-            struct dialog_message *message = &dialog->messages[player->dialog_message_index];
-            draw_text(renderer, font, 12, 24, WINDOW_HEIGHT - 100, WINDOW_WIDTH, (SDL_Color){255, 255, 255}, "%s", message->text);
+            draw_text(renderer, font, 12, 24, WINDOW_HEIGHT - 100, WINDOW_WIDTH, (SDL_Color){255, 255, 255}, "%s", player->conversation_node->text);
 
-            for (size_t i = 0; i < message->num_choices; i++)
+            for (size_t i = 0; i < player->conversation_node->num_children; i++)
             {
-                struct dialog_choice *choice = &message->choices[i];
-                draw_text(renderer, font, 12, 24, (WINDOW_HEIGHT - 100) + 24 * (i + 1), WINDOW_WIDTH, (SDL_Color){255, 255, 255}, "%zd) %s", i + 1, choice->text);
+                struct conversation_node *child = &player->conversation_node->children[i];
+                if (child->type == CONVERSATION_NODE_RESPONSE)
+                {
+                    draw_text(renderer, font, 12, 24, (WINDOW_HEIGHT - 100) + 24 * (i + 1), WINDOW_WIDTH, (SDL_Color){255, 255, 255}, "%zd) %s", i + 1, child->text);
+                }
             }
         }
 
@@ -754,11 +787,12 @@ int main(int argc, char *argv[])
     }
     free(sprites);
 
-    world_unload(&world, false);
-    quests_unload(&quests);
-    dialogs_unload(&dialogs);
     map_unload(map);
     player_uninit(player);
+
+    world_unload(&world, false);
+    quests_unload(&quests);
+    conversations_unload(&conversations);
 
     SDLNet_UDP_DelSocket(socket_set, udp_socket);
     SDLNet_TCP_DelSocket(socket_set, tcp_socket);

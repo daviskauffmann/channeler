@@ -1,6 +1,5 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_net.h>
-#include <shared/dialogs.h>
 #include <shared/map.h>
 #include <shared/message.h>
 #include <shared/player.h>
@@ -82,9 +81,6 @@ int main(int argc, char *argv[])
 
     struct quests quests;
     quests_load(&quests, "assets/quests.json");
-
-    struct dialogs dialogs;
-    dialogs_load(&dialogs, "assets/dialogs.json");
 
     bool quit = false;
     while (!quit)
@@ -350,7 +346,6 @@ int main(int argc, char *argv[])
 
     world_unload(&world, true);
     quests_unload(&quests);
-    dialogs_unload(&dialogs);
 
     SDLNet_UDP_DelSocket(socket_set, udp_socket);
     SDLNet_TCP_DelSocket(socket_set, tcp_socket);

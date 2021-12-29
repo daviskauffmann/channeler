@@ -1,0 +1,53 @@
+{
+    "conversations": [
+        {
+            "type": "root",
+            "children": [
+                {
+                    "type": "dialog",
+                    "text": "Help! Goblins are attacking the village!",
+                    "children": [
+                        {
+                            "type": "dialog",
+                            "text": "We need time to organize a defense, but first the immediate threat must be dealt with.",
+                            "children": [
+                                {
+                                    "type": "dialog",
+                                    "text": "Will you help us kill the goblins?",
+                                    "children": [
+                                        {
+                                            "type": "response",
+                                            "text": "Yes",
+                                            "children": [
+                                                {
+                                                    "type": "dialog",
+                                                    "text": "Thank you! Please hurry!",
+                                                    "effect": {
+                                                        "set_quest_status": {
+                                                            "quest_index": 0,
+                                                            "stage_index": 0
+                                                        }
+                                                    }
+                                                }
+                                            ]
+                                        },
+                                        {
+                                            "type": "response",
+                                            "text": "No",
+                                            "children": [
+                                                {
+                                                    "type": "dialog",
+                                                    "text": "A curse upon your family!"
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}
