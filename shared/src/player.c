@@ -120,17 +120,24 @@ void player_attack(struct player *player, struct map *map)
 
 void player_advance_conversation(struct player *player)
 {
-    for (size_t i = 0; i < player->conversation_node->num_children; i++)
+    if (player->conversation_node->num_children)
     {
-        if (true) // TODO: check conditions, just return the first one that evaluates to true
+        for (size_t i = 0; i < player->conversation_node->num_children; i++)
         {
-            player->conversation_node = &player->conversation_node->children[i];
-            if (player->conversation_node->effect.set_quest_status)
+            if (true) // TODO: check conditions
             {
-                player_set_quest_status(player, *player->conversation_node->effect.set_quest_status);
+                player->conversation_node = &player->conversation_node->children[i];
+                if (player->conversation_node->effect.quest_status)
+                {
+                    player_set_quest_status(player, *player->conversation_node->effect.quest_status);
+                }
+                break;
             }
-            break;
         }
+    }
+    else
+    {
+        player->conversation_node = NULL;
     }
 }
 

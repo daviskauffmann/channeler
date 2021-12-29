@@ -369,11 +369,7 @@ int main(int argc, char *argv[])
                 {
                     if (player->conversation_node)
                     {
-                        if (player->conversation_node->num_children == 0)
-                        {
-                            player->conversation_node = NULL;
-                        }
-                        else
+                        if (player->conversation_node->num_children)
                         {
                             bool has_response_nodes = false;
                             for (size_t i = 0; i < player->conversation_node->num_children; i++)
@@ -389,6 +385,10 @@ int main(int argc, char *argv[])
                             {
                                 player_advance_conversation(player);
                             }
+                        }
+                        else
+                        {
+                            player->conversation_node = NULL;
                         }
 
                         if (online)
@@ -753,7 +753,10 @@ int main(int argc, char *argv[])
                 struct conversation_node *child = &player->conversation_node->children[i];
                 if (child->type == CONVERSATION_NODE_RESPONSE)
                 {
-                    draw_text(renderer, font, 12, 24, (WINDOW_HEIGHT - 100) + 24 * (i + 1), WINDOW_WIDTH, (SDL_Color){255, 255, 255}, "%zd) %s", i + 1, child->text);
+                    if (true) // TODO: check conditions
+                    {
+                        draw_text(renderer, font, 12, 24, (WINDOW_HEIGHT - 100) + 24 * (i + 1), WINDOW_WIDTH, (SDL_Color){255, 255, 255}, "%zd) %s", i + 1, child->text);
+                    }
                 }
             }
         }

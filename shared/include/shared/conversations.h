@@ -17,7 +17,7 @@ struct conversation_node_condition
 
 struct conversation_node_effect
 {
-    struct quest_status *set_quest_status;
+    struct quest_status *quest_status;
 };
 
 struct conversation_node

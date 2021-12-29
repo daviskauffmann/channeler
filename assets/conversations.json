@@ -40,6 +40,10 @@
                                                     "text": "A curse upon your family!"
                                                 }
                                             ]
+                                        },
+                                        {
+                                            "type": "response",
+                                            "text": "*Walk away*"
                                         }
                                     ]
                                 }

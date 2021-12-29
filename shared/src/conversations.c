@@ -32,22 +32,22 @@ void load_conversation_node(struct conversation_node *node, struct json_object *
         struct json_object *set_quest_status_obj = json_object_object_get(effect_obj, "set_quest_status");
         if (set_quest_status_obj)
         {
-            node->effect.set_quest_status = malloc(sizeof(*node->effect.set_quest_status));
+            node->effect.quest_status = malloc(sizeof(*node->effect.quest_status));
 
             struct json_object *quest_index_obj = json_object_object_get(set_quest_status_obj, "quest_index");
-            node->effect.set_quest_status->quest_index = json_object_get_int(quest_index_obj);
+            node->effect.quest_status->quest_index = json_object_get_int(quest_index_obj);
 
             struct json_object *stage_index_obj = json_object_object_get(set_quest_status_obj, "stage_index");
-            node->effect.set_quest_status->stage_index = json_object_get_int(stage_index_obj);
+            node->effect.quest_status->stage_index = json_object_get_int(stage_index_obj);
         }
         else
         {
-            node->effect.set_quest_status = NULL;
+            node->effect.quest_status = NULL;
         }
     }
     else
     {
-        node->effect.set_quest_status = NULL;
+        node->effect.quest_status = NULL;
     }
 
     struct json_object *children_obj = json_object_object_get(node_obj, "children");
