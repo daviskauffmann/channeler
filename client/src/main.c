@@ -361,7 +361,7 @@ int main(int argc, char *argv[])
                 break;
                 case SDLK_ESCAPE:
                 {
-                    player->conversation_node = NULL;
+                    player->conversation_root = player->conversation_node = NULL;
                     quest_log_open = false;
                 }
                 break;
@@ -369,27 +369,7 @@ int main(int argc, char *argv[])
                 {
                     if (player->conversation_node)
                     {
-                        if (player->conversation_node->num_children)
-                        {
-                            bool has_response_nodes = false;
-                            for (size_t i = 0; i < player->conversation_node->num_children; i++)
-                            {
-                                struct conversation_node *child = &player->conversation_node->children[i];
-                                if (child->type == CONVERSATION_NODE_RESPONSE)
-                                {
-                                    has_response_nodes = true;
-                                    break;
-                                }
-                            }
-                            if (!has_response_nodes)
-                            {
-                                player_advance_conversation(player);
-                            }
-                        }
-                        else
-                        {
-                            player->conversation_node = NULL;
-                        }
+                        player_advance_conversation(player);
 
                         if (online)
                         {
@@ -425,42 +405,12 @@ int main(int argc, char *argv[])
                 {
                     if (player->conversation_node)
                     {
-                        bool has_response_nodes = false;
-                        for (size_t i = 0; i < player->conversation_node->num_children; i++)
-                        {
-                            struct conversation_node *child = &player->conversation_node->children[i];
-                            if (child->type == CONVERSATION_NODE_RESPONSE)
-                            {
-                                has_response_nodes = true;
-                                break;
-                            }
-                        }
-                        if (has_response_nodes)
-                        {
-                            size_t choice_index = event.key.keysym.sym - 49;
-                            if (choice_index < player->conversation_node->num_children)
-                            {
-                                player->conversation_node = &player->conversation_node->children[choice_index];
-                                player_advance_conversation(player);
-                            }
-                        }
+                        player_choose_conversation_response(player, event.key.keysym.sym - 49);
 
                         if (online)
                         {
                             // TODO: send msg
                         }
-                    }
-                }
-                break;
-                case SDLK_e:
-                {
-                    size_t conversation_index = 0;
-                    player->conversation_node = &conversations.conversations[conversation_index];
-                    player_advance_conversation(player);
-
-                    if (online)
-                    {
-                        // TODO: send msg
                     }
                 }
                 break;
@@ -500,6 +450,28 @@ int main(int argc, char *argv[])
                         {
                             printf("Error: Failed to send TCP packet: %s\n", SDLNet_GetError());
                         }
+                    }
+                }
+                break;
+                case SDLK_F3:
+                {
+                    player->conversation_root = player->conversation_node = &conversations.conversations[0];
+                    player_advance_conversation(player);
+
+                    if (online)
+                    {
+                        // TODO: send msg
+                    }
+                }
+                break;
+                case SDLK_F4:
+                {
+                    player->conversation_root = player->conversation_node = &conversations.conversations[1];
+                    player_advance_conversation(player);
+
+                    if (online)
+                    {
+                        // TODO: send msg
                     }
                 }
                 break;

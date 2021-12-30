@@ -17,6 +17,7 @@ struct player
     float acc_x;
     float acc_y;
 
+    struct conversation_node *conversation_root;
     struct conversation_node *conversation_node;
 
     size_t num_quest_statuses;
@@ -28,6 +29,7 @@ void player_uninit(struct player *player);
 void player_accelerate(struct player *player, struct map *map, float delta_time);
 void player_attack(struct player *player, struct map *map);
 void player_advance_conversation(struct player *player);
+void player_choose_conversation_response(struct player *player, size_t choice_index);
 void player_set_quest_status(struct player *player, struct quest_status quest_status);
 
 #endif

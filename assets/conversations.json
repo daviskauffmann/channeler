@@ -52,6 +52,68 @@
                     ]
                 }
             ]
+        },
+        {
+            "type": "root",
+            "children": [
+                {
+                    "type": "dialog",
+                    "id": "greeting",
+                    "text": "Greetings, traveler. How may I help you?",
+                    "children": [
+                        {
+                            "type": "response",
+                            "text": "I have some questions.",
+                            "children": [
+                                {
+                                    "type": "dialog",
+                                    "text": "Ask away.",
+                                    "id": "questions",
+                                    "children": [
+                                        {
+                                            "type": "response",
+                                            "text": "Where can I get a drink?",
+                                            "children": [
+                                                {
+                                                    "type": "dialog",
+                                                    "text": "Ah, you'll want to head over to The Four Winds Bar. It's right by the town gate, can't miss it.",
+                                                    "jump_id": "questions"
+                                                }
+                                            ]
+                                        },
+                                        {
+                                            "type": "response",
+                                            "text": "I'm looking for work.",
+                                            "children": [
+                                                {
+                                                    "type": "dialog",
+                                                    "text": "Talk to the guard captain, she'll probably be in the barracks at this time of day.",
+                                                    "jump_id": "questions"
+                                                }
+                                            ]
+                                        },
+                                        {
+                                            "type": "response",
+                                            "text": "Nevermind.",
+                                            "jump_id": "greeting"
+                                        }
+                                    ]
+                                }
+                            ]
+                        },
+                        {
+                            "type": "response",
+                            "text": "I don't need anything.",
+                            "children": [
+                                {
+                                    "type": "dialog",
+                                    "text": "Safe travels."
+                                }
+                            ]
+                        }
+                    ]
+                }
+            ]
         }
     ]
 }

@@ -23,6 +23,9 @@ void load_conversation_node(struct conversation_node *node, struct json_object *
         node->type = CONVERSATION_NODE_RESPONSE;
     }
 
+    struct json_object *id_obj = json_object_object_get(node_obj, "id");
+    node->id = json_object_get_string(id_obj);
+
     struct json_object *text_obj = json_object_object_get(node_obj, "text");
     node->text = json_object_get_string(text_obj);
 
@@ -49,6 +52,9 @@ void load_conversation_node(struct conversation_node *node, struct json_object *
     {
         node->effect.quest_status = NULL;
     }
+
+    struct json_object *jump_id_obj = json_object_object_get(node_obj, "jump_id");
+    node->jump_id = json_object_get_string(jump_id_obj);
 
     struct json_object *children_obj = json_object_object_get(node_obj, "children");
     if (children_obj)
@@ -91,4 +97,25 @@ void conversations_load(struct conversations *conversations, const char *filenam
 void conversations_unload(struct conversations *conversations)
 {
     printf("Unloading conversations: %s\n", conversations->filename);
+}
+
+struct conversation_node *conversation_find_by_id(struct conversation_node *node, const char *id)
+{
+    if (node->id && strcmp(node->id, id) == 0)
+    {
+        return node;
+    }
+
+    for (size_t i = 0; i < node->num_children; i++)
+    {
+        struct conversation_node *child = &node->children[i];
+
+        struct conversation_node *result = conversation_find_by_id(child, id);
+        if (result)
+        {
+            return result;
+        }
+    }
+
+    return NULL;
 }

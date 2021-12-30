@@ -23,10 +23,13 @@ struct conversation_node_effect
 struct conversation_node
 {
     enum conversation_node_type type;
+    const char *id;
     struct conversation_node_condition condition;
     struct conversation_node_effect effect;
 
     const char *text;
+
+    const char *jump_id;
 
     size_t num_children;
     struct conversation_node *children;
@@ -42,5 +45,7 @@ struct conversations
 
 void conversations_load(struct conversations *conversations, const char *filename);
 void conversations_unload(struct conversations *conversations);
+
+struct conversation_node *conversation_find_by_id(struct conversation_node *conversation_node, const char *id);
 
 #endif

@@ -18,6 +18,7 @@ void player_init(struct player *player, size_t map_index)
     player->acc_x = 0;
     player->acc_y = 0;
 
+    player->conversation_root = NULL;
     player->conversation_node = NULL;
 
     player->num_quest_statuses = 0;
@@ -120,24 +121,67 @@ void player_attack(struct player *player, struct map *map)
 
 void player_advance_conversation(struct player *player)
 {
-    if (player->conversation_node->num_children)
+    if (player->conversation_node->jump_id)
     {
-        for (size_t i = 0; i < player->conversation_node->num_children; i++)
-        {
-            if (true) // TODO: check conditions
-            {
-                player->conversation_node = &player->conversation_node->children[i];
-                if (player->conversation_node->effect.quest_status)
-                {
-                    player_set_quest_status(player, *player->conversation_node->effect.quest_status);
-                }
-                break;
-            }
-        }
+        player->conversation_node = conversation_find_by_id(player->conversation_root, player->conversation_node->jump_id);
     }
     else
     {
-        player->conversation_node = NULL;
+        if (player->conversation_node->num_children)
+        {
+            bool has_response_nodes = false;
+            for (size_t i = 0; i < player->conversation_node->num_children; i++)
+            {
+                struct conversation_node *child = &player->conversation_node->children[i];
+                if (child->type == CONVERSATION_NODE_RESPONSE)
+                {
+                    has_response_nodes = true;
+                    break;
+                }
+            }
+            if (!has_response_nodes)
+            {
+                for (size_t i = 0; i < player->conversation_node->num_children; i++)
+                {
+                    struct conversation_node *child = &player->conversation_node->children[i];
+                    if (true) // TODO: check conditions
+                    {
+                        player->conversation_node = &player->conversation_node->children[i];
+                        if (player->conversation_node->effect.quest_status)
+                        {
+                            player_set_quest_status(player, *player->conversation_node->effect.quest_status);
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+        else
+        {
+            player->conversation_root = player->conversation_node = NULL;
+        }
+    }
+}
+
+void player_choose_conversation_response(struct player *player, size_t choice_index)
+{
+    bool has_response_nodes = false;
+    for (size_t i = 0; i < player->conversation_node->num_children; i++)
+    {
+        struct conversation_node *child = &player->conversation_node->children[i];
+        if (child->type == CONVERSATION_NODE_RESPONSE)
+        {
+            has_response_nodes = true;
+            break;
+        }
+    }
+    if (has_response_nodes)
+    {
+        if (choice_index < player->conversation_node->num_children)
+        {
+            player->conversation_node = &player->conversation_node->children[choice_index];
+            player_advance_conversation(player);
+        }
     }
 }
 
