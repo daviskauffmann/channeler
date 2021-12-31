@@ -1,6 +1,7 @@
 #ifndef CONVERSATIONS_H
 #define CONVERSATIONS_H
 
+#include <stdbool.h>
 #include <stdlib.h>
 
 enum conversation_node_type
@@ -12,7 +13,7 @@ enum conversation_node_type
 
 struct conversation_node_condition
 {
-    char _;
+    struct quest_status *quest_status;
 };
 
 struct conversation_node_effect
@@ -46,6 +47,7 @@ struct conversations
 void conversations_load(struct conversations *conversations, const char *filename);
 void conversations_unload(struct conversations *conversations);
 
-struct conversation_node *conversation_find_by_id(struct conversation_node *conversation_node, const char *id);
+struct conversation_node *conversation_find_by_id(struct conversation_node *node, const char *id);
+bool conversation_check_conditions(struct conversation_node *node);
 
 #endif

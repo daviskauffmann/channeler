@@ -144,13 +144,15 @@ void player_advance_conversation(struct player *player)
                 for (size_t i = 0; i < player->conversation_node->num_children; i++)
                 {
                     struct conversation_node *child = &player->conversation_node->children[i];
-                    if (true) // TODO: check conditions
+                    if (conversation_check_conditions(child))
                     {
-                        player->conversation_node = &player->conversation_node->children[i];
+                        player->conversation_node = child;
+
                         if (player->conversation_node->effect.quest_status)
                         {
                             player_set_quest_status(player, *player->conversation_node->effect.quest_status);
                         }
+
                         break;
                     }
                 }
@@ -177,10 +179,20 @@ void player_choose_conversation_response(struct player *player, size_t choice_in
     }
     if (has_response_nodes)
     {
-        if (choice_index < player->conversation_node->num_children)
+        size_t valid_choice_index = 0;
+        for (size_t i = 0; i < player->conversation_node->num_children; i++)
         {
-            player->conversation_node = &player->conversation_node->children[choice_index];
-            player_advance_conversation(player);
+            struct conversation_node *child = &player->conversation_node->children[i];
+            if (conversation_check_conditions(child))
+            {
+                valid_choice_index++;
+                if (valid_choice_index == choice_index)
+                {
+                    player->conversation_node = child;
+                    player_advance_conversation(player);
+                    break;
+                }
+            }
         }
     }
 }

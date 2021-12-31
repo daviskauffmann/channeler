@@ -23,7 +23,7 @@
                                                     "type": "dialog",
                                                     "text": "Thank you! Please hurry!",
                                                     "effect": {
-                                                        "set_quest_status": {
+                                                        "quest_status": {
                                                             "quest_index": 0,
                                                             "stage_index": 0
                                                         }

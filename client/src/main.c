@@ -405,7 +405,7 @@ int main(int argc, char *argv[])
                 {
                     if (player->conversation_node)
                     {
-                        player_choose_conversation_response(player, event.key.keysym.sym - 49);
+                        player_choose_conversation_response(player, event.key.keysym.sym - 48);
 
                         if (online)
                         {
@@ -723,12 +723,9 @@ int main(int argc, char *argv[])
             for (size_t i = 0; i < player->conversation_node->num_children; i++)
             {
                 struct conversation_node *child = &player->conversation_node->children[i];
-                if (child->type == CONVERSATION_NODE_RESPONSE)
+                if (child->type == CONVERSATION_NODE_RESPONSE && conversation_check_conditions(child))
                 {
-                    if (true) // TODO: check conditions
-                    {
-                        draw_text(renderer, font, 12, 24, (WINDOW_HEIGHT - 100) + 24 * (i + 1), WINDOW_WIDTH, (SDL_Color){255, 255, 255}, "%zd) %s", i + 1, child->text);
-                    }
+                    draw_text(renderer, font, 12, 24, (WINDOW_HEIGHT - 100) + 24 * (i + 1), WINDOW_WIDTH, (SDL_Color){255, 255, 255}, "%zd) %s", i + 1, child->text);
                 }
             }
         }
