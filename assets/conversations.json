@@ -5,6 +5,26 @@
             "children": [
                 {
                     "type": "dialog",
+                    "condition": {
+                        "quest_status": {
+                            "quest_index": 0,
+                            "stage_index": 0
+                        }
+                    },
+                    "text": "Have you killed the goblins yet?"
+                },
+                {
+                    "type": "dialog",
+                    "condition": {
+                        "quest_status": {
+                            "quest_index": 0,
+                            "stage_index": 1
+                        }
+                    },
+                    "text": "The goblins are all dead! Rejoice!"
+                },
+                {
+                    "type": "dialog",
                     "text": "Help! Goblins are attacking the village!",
                     "children": [
                         {

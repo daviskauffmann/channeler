@@ -48,6 +48,6 @@ void conversations_load(struct conversations *conversations, const char *filenam
 void conversations_unload(struct conversations *conversations);
 
 struct conversation_node *conversation_find_by_id(struct conversation_node *node, const char *id);
-bool conversation_check_conditions(struct conversation_node *node);
+bool conversation_check_conditions(struct conversation_node *node, struct player *player);
 
 #endif

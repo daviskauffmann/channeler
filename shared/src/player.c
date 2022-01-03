@@ -144,7 +144,7 @@ void player_advance_conversation(struct player *player)
                 for (size_t i = 0; i < player->conversation_node->num_children; i++)
                 {
                     struct conversation_node *child = &player->conversation_node->children[i];
-                    if (conversation_check_conditions(child))
+                    if (conversation_check_conditions(child, player))
                     {
                         player->conversation_node = child;
 
@@ -183,7 +183,7 @@ void player_choose_conversation_response(struct player *player, size_t choice_in
         for (size_t i = 0; i < player->conversation_node->num_children; i++)
         {
             struct conversation_node *child = &player->conversation_node->children[i];
-            if (conversation_check_conditions(child))
+            if (conversation_check_conditions(child, player))
             {
                 valid_choice_index++;
                 if (valid_choice_index == choice_index)
@@ -213,4 +213,17 @@ void player_set_quest_status(struct player *player, struct quest_status quest_st
     player->quest_statuses = realloc(player->quest_statuses, player->num_quest_statuses * sizeof(*player->quest_statuses));
     player->quest_statuses[quest_status_index].quest_index = quest_status.quest_index;
     player->quest_statuses[quest_status_index].stage_index = quest_status.stage_index;
+}
+
+bool player_check_quest_status(struct player *player, struct quest_status quest_status)
+{
+    for (size_t i = 0; i < player->num_quest_statuses; i++)
+    {
+        struct quest_status *existing_quest_status = &player->quest_statuses[i];
+        if (existing_quest_status->quest_index == quest_status.quest_index && existing_quest_status->stage_index == quest_status.stage_index)
+        {
+            return true;
+        }
+    }
+    return false;
 }

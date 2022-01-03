@@ -475,6 +475,11 @@ int main(int argc, char *argv[])
                     }
                 }
                 break;
+                case SDLK_F5:
+                {
+                    player_set_quest_status(player, (struct quest_status){0, 1});
+                }
+                break;
                 }
             }
             break;
@@ -723,7 +728,7 @@ int main(int argc, char *argv[])
             for (size_t i = 0; i < player->conversation_node->num_children; i++)
             {
                 struct conversation_node *child = &player->conversation_node->children[i];
-                if (child->type == CONVERSATION_NODE_RESPONSE && conversation_check_conditions(child))
+                if (child->type == CONVERSATION_NODE_RESPONSE && conversation_check_conditions(child, player))
                 {
                     draw_text(renderer, font, 12, 24, (WINDOW_HEIGHT - 100) + 24 * (i + 1), WINDOW_WIDTH, (SDL_Color){255, 255, 255}, "%zd) %s", i + 1, child->text);
                 }

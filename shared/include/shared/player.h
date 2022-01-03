@@ -1,6 +1,8 @@
 #ifndef PLAYER_H
 #define PLAYER_H
 
+#include <stdbool.h>
+
 struct quest_status
 {
     size_t quest_index;
@@ -31,5 +33,6 @@ void player_attack(struct player *player, struct map *map);
 void player_advance_conversation(struct player *player);
 void player_choose_conversation_response(struct player *player, size_t choice_index);
 void player_set_quest_status(struct player *player, struct quest_status quest_status);
+bool player_check_quest_status(struct player *player, struct quest_status quest_status);
 
 #endif

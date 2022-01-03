@@ -144,10 +144,14 @@ struct conversation_node *conversation_find_by_id(struct conversation_node *node
     return NULL;
 }
 
-bool conversation_check_conditions(struct conversation_node *node)
+bool conversation_check_conditions(struct conversation_node *node, struct player *player)
 {
     if (node->condition.quest_status)
     {
+        if (!player_check_quest_status(player, *node->condition.quest_status))
+        {
+            return false;
+        }
     }
 
     return true;
