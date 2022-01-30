@@ -4,8 +4,8 @@
 #include <stdint.h>
 
 #include "input.h"
-#include "player.h"
 #include "map.h"
+#include "quest_status.h"
 
 #define PACKET_SIZE 1024
 #define MAX_STRLEN 256
@@ -14,16 +14,20 @@
 
 enum message_type
 {
-    MESSAGE_CONNECT_OK,
-    MESSAGE_CONNECT_FULL,
-    MESSAGE_CONNECT_BROADCAST,
-    MESSAGE_UDP_CONNECT_REQUEST,
-    MESSAGE_DISCONNECT_REQUEST,
-    MESSAGE_DISCONNECT_BROADCAST,
-    MESSAGE_INPUT_REQUEST,
-    MESSAGE_ATTACK_REQUEST,
-    MESSAGE_CHANGE_MAP_REQUEST,
-    MESSAGE_GAME_STATE_BROADCAST
+    MESSAGE_SERVER_CONNECT_OK,
+    MESSAGE_SERVER_FULL,
+    MESSAGE_CLIENT_CONNECT,
+    MESSAGE_CLIENT_DISCONNECT,
+    MESSAGE_UDP_CONNECT,
+    MESSAGE_DISCONNECT,
+    MESSAGE_INPUT,
+    MESSAGE_ATTACK,
+    MESSAGE_CHANGE_MAP,
+    MESSAGE_START_CONVERSATION,
+    MESSAGE_ADVANCE_CONVERSATION,
+    MESSAGE_CHOOSE_CONVERSATION_RESPONSE,
+    MESSAGE_QUEST_STATUS,
+    MESSAGE_GAME_STATE
 };
 
 struct message
@@ -55,6 +59,24 @@ struct message_change_map
 {
     enum message_type type;
     size_t map_index;
+};
+
+struct message_start_conversation
+{
+    enum message_type type;
+    size_t conversation_index;
+};
+
+struct message_choose_conversation_response
+{
+    enum message_type type;
+    size_t choice_index;
+};
+
+struct message_quest_status
+{
+    enum message_type type;
+    struct quest_status quest_status;
 };
 
 struct message_game_state

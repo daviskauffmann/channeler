@@ -119,6 +119,12 @@ void player_attack(struct player *player, struct map *map)
     }
 }
 
+void player_start_conversation(struct player *player, struct conversations *conversations, size_t conversation_index)
+{
+    player->conversation_root = player->conversation_node = &conversations->conversations[conversation_index];
+    player_advance_conversation(player);
+}
+
 void player_advance_conversation(struct player *player)
 {
     if (player->conversation_node->jump_id)

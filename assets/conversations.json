@@ -21,7 +21,29 @@
                             "stage_index": 1
                         }
                     },
-                    "text": "The goblins are all dead! Rejoice!"
+                    "text": "The goblins are all dead! Rejoice!",
+                    "children": [
+                        {
+                            "type": "dialog",
+                            "text": "It is time to strike back against the goblins. Please slay the goblin leader in the cave to the southeast. Stock up on any supplies you need before you leave.",
+                            "effect": {
+                                "quest_status": {
+                                    "quest_index": 0,
+                                    "stage_index": 2
+                                }
+                            }
+                        }
+                    ]
+                },
+                {
+                    "type": "dialog",
+                    "condition": {
+                        "quest_status": {
+                            "quest_index": 0,
+                            "stage_index": 2
+                        }
+                    },
+                    "text": "Have you killed the goblin leader yet?"
                 },
                 {
                     "type": "dialog",

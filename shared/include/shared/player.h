@@ -3,11 +3,8 @@
 
 #include <stdbool.h>
 
-struct quest_status
-{
-    size_t quest_index;
-    size_t stage_index;
-};
+#include "input.h"
+#include "quest_status.h"
 
 struct player
 {
@@ -30,6 +27,7 @@ void player_init(struct player *player, size_t map_index);
 void player_uninit(struct player *player);
 void player_accelerate(struct player *player, struct map *map, float delta_time);
 void player_attack(struct player *player, struct map *map);
+void player_start_conversation(struct player *player, struct conversations *conversations, size_t conversation_index);
 void player_advance_conversation(struct player *player);
 void player_choose_conversation_response(struct player *player, size_t choice_index);
 void player_set_quest_status(struct player *player, struct quest_status quest_status);

@@ -156,7 +156,7 @@ int main(int argc, char *argv[])
             enum message_type type = ((struct message *)data)->type;
             switch (type)
             {
-            case MESSAGE_CONNECT_OK:
+            case MESSAGE_SERVER_CONNECT_OK:
             {
                 struct message_connect *message_connect = (struct message_connect *)data;
 
@@ -165,7 +165,7 @@ int main(int argc, char *argv[])
                 printf("ID %zd assigned by server\n", client_id);
             }
             break;
-            case MESSAGE_CONNECT_FULL:
+            case MESSAGE_SERVER_FULL:
             {
                 printf("Error: Server is full\n");
                 online = false;
@@ -183,7 +183,7 @@ int main(int argc, char *argv[])
         if (online)
         {
             struct message_id *message_id = (struct message_id *)malloc(sizeof(*message_id));
-            message_id->type = MESSAGE_UDP_CONNECT_REQUEST;
+            message_id->type = MESSAGE_UDP_CONNECT;
             message_id->id = client_id;
 
             UDPpacket *packet = SDLNet_AllocPacket(PACKET_SIZE);
@@ -258,7 +258,7 @@ int main(int argc, char *argv[])
                     enum message_type type = ((struct message *)data)->type;
                     switch (type)
                     {
-                    case MESSAGE_CONNECT_BROADCAST:
+                    case MESSAGE_CLIENT_CONNECT:
                     {
                         struct message_id *message = (struct message_id *)data;
 
@@ -267,7 +267,7 @@ int main(int argc, char *argv[])
                         printf("Client with ID %zd has joined\n", message->id);
                     }
                     break;
-                    case MESSAGE_DISCONNECT_BROADCAST:
+                    case MESSAGE_CLIENT_DISCONNECT:
                     {
                         struct message_id *message = (struct message_id *)data;
 
@@ -293,7 +293,7 @@ int main(int argc, char *argv[])
                     enum message_type type = ((struct message *)packet->data)->type;
                     switch (type)
                     {
-                    case MESSAGE_GAME_STATE_BROADCAST:
+                    case MESSAGE_GAME_STATE:
                     {
                         struct message_game_state *message = (struct message_game_state *)packet->data;
 
@@ -373,7 +373,13 @@ int main(int argc, char *argv[])
 
                         if (online)
                         {
-                            // TODO: send msg
+                            struct message message;
+                            message.type = MESSAGE_ADVANCE_CONVERSATION;
+
+                            if (SDLNet_TCP_Send(tcp_socket, &message, sizeof(message)) < (int)sizeof(message))
+                            {
+                                printf("Error: Failed to send TCP packet: %s\n", SDLNet_GetError());
+                            }
                         }
                     }
                     else
@@ -383,7 +389,7 @@ int main(int argc, char *argv[])
                         if (online)
                         {
                             struct message message;
-                            message.type = MESSAGE_ATTACK_REQUEST;
+                            message.type = MESSAGE_ATTACK;
 
                             if (SDLNet_TCP_Send(tcp_socket, &message, sizeof(message)) < (int)sizeof(message))
                             {
@@ -405,11 +411,20 @@ int main(int argc, char *argv[])
                 {
                     if (player->conversation_node)
                     {
-                        player_choose_conversation_response(player, event.key.keysym.sym - 48);
+                        size_t choice_index = event.key.keysym.sym - 48;
+
+                        player_choose_conversation_response(player, choice_index);
 
                         if (online)
                         {
-                            // TODO: send msg
+                            struct message_choose_conversation_response message;
+                            message.type = MESSAGE_CHOOSE_CONVERSATION_RESPONSE;
+                            message.choice_index = choice_index;
+
+                            if (SDLNet_TCP_Send(tcp_socket, &message, sizeof(message)) < (int)sizeof(message))
+                            {
+                                printf("Error: Failed to send TCP packet: %s\n", SDLNet_GetError());
+                            }
                         }
                     }
                 }
@@ -421,13 +436,15 @@ int main(int argc, char *argv[])
                 break;
                 case SDLK_F1:
                 {
-                    player->map_index = 0;
+                    size_t map_index = 0;
+
+                    player->map_index = map_index;
 
                     if (online)
                     {
                         struct message_change_map message;
-                        message.type = MESSAGE_CHANGE_MAP_REQUEST;
-                        message.map_index = 0;
+                        message.type = MESSAGE_CHANGE_MAP;
+                        message.map_index = map_index;
 
                         if (SDLNet_TCP_Send(tcp_socket, &message, sizeof(message)) < (int)sizeof(message))
                         {
@@ -438,13 +455,15 @@ int main(int argc, char *argv[])
                 break;
                 case SDLK_F2:
                 {
-                    player->map_index = 1;
+                    size_t map_index = 1;
+
+                    player->map_index = map_index;
 
                     if (online)
                     {
                         struct message_change_map message;
-                        message.type = MESSAGE_CHANGE_MAP_REQUEST;
-                        message.map_index = 1;
+                        message.type = MESSAGE_CHANGE_MAP;
+                        message.map_index = map_index;
 
                         if (SDLNet_TCP_Send(tcp_socket, &message, sizeof(message)) < (int)sizeof(message))
                         {
@@ -455,29 +474,61 @@ int main(int argc, char *argv[])
                 break;
                 case SDLK_F3:
                 {
-                    player->conversation_root = player->conversation_node = &conversations.conversations[0];
-                    player_advance_conversation(player);
+                    size_t conversation_index = 0;
+
+                    player_start_conversation(player, &conversations, 0);
 
                     if (online)
                     {
-                        // TODO: send msg
+                        struct message_start_conversation message;
+                        message.type = MESSAGE_START_CONVERSATION;
+                        message.conversation_index = conversation_index;
+
+                        if (SDLNet_TCP_Send(tcp_socket, &message, sizeof(message)) < (int)sizeof(message))
+                        {
+                            printf("Error: Failed to send TCP packet: %s\n", SDLNet_GetError());
+                        }
                     }
                 }
                 break;
                 case SDLK_F4:
                 {
-                    player->conversation_root = player->conversation_node = &conversations.conversations[1];
-                    player_advance_conversation(player);
+                    size_t conversation_index = 1;
+
+                    player_start_conversation(player, &conversations, 1);
 
                     if (online)
                     {
-                        // TODO: send msg
+                        struct message_start_conversation message;
+                        message.type = MESSAGE_START_CONVERSATION;
+                        message.conversation_index = conversation_index;
+
+                        if (SDLNet_TCP_Send(tcp_socket, &message, sizeof(message)) < (int)sizeof(message))
+                        {
+                            printf("Error: Failed to send TCP packet: %s\n", SDLNet_GetError());
+                        }
                     }
                 }
                 break;
                 case SDLK_F5:
                 {
-                    player_set_quest_status(player, (struct quest_status){0, 1});
+                    struct quest_status quest_status;
+                    quest_status.quest_index = 0;
+                    quest_status.stage_index = 1;
+
+                    player_set_quest_status(player, quest_status);
+
+                    if (online)
+                    {
+                        struct message_quest_status message;
+                        message.type = MESSAGE_QUEST_STATUS;
+                        message.quest_status = quest_status;
+
+                        if (SDLNet_TCP_Send(tcp_socket, &message, sizeof(message)) < (int)sizeof(message))
+                        {
+                            printf("Error: Failed to send TCP packet: %s\n", SDLNet_GetError());
+                        }
+                    }
                 }
                 break;
                 }
@@ -536,7 +587,7 @@ int main(int argc, char *argv[])
         if (online)
         {
             struct message_input *message = malloc(sizeof(*message));
-            message->type = MESSAGE_INPUT_REQUEST;
+            message->type = MESSAGE_INPUT;
             message->id = client_id;
             message->input.dx = input.dx;
             message->input.dy = input.dy;
@@ -748,7 +799,7 @@ int main(int argc, char *argv[])
     if (online)
     {
         struct message message;
-        message.type = MESSAGE_DISCONNECT_REQUEST;
+        message.type = MESSAGE_DISCONNECT;
 
         if (SDLNet_TCP_Send(tcp_socket, &message, sizeof(message)) < (int)sizeof(message))
         {

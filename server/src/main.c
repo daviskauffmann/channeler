@@ -1,5 +1,6 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_net.h>
+#include <shared/conversations.h>
 #include <shared/map.h>
 #include <shared/message.h>
 #include <shared/player.h>
@@ -82,6 +83,9 @@ int main(int argc, char *argv[])
     struct quests quests;
     quests_load(&quests, "assets/quests.json");
 
+    struct conversations conversations;
+    conversations_load(&conversations, "assets/conversations.json");
+
     bool quit = false;
     while (!quit)
     {
@@ -119,7 +123,7 @@ int main(int argc, char *argv[])
 
                         {
                             struct message_connect message;
-                            message.type = MESSAGE_CONNECT_OK;
+                            message.type = MESSAGE_SERVER_CONNECT_OK;
                             message.id = new_client_id;
                             message.map_index = 0;
 
@@ -131,7 +135,7 @@ int main(int argc, char *argv[])
 
                         {
                             struct message_id message;
-                            message.type = MESSAGE_CONNECT_BROADCAST;
+                            message.type = MESSAGE_CLIENT_CONNECT;
                             message.id = new_client_id;
 
                             for (size_t i = 0; i < MAX_CLIENTS; i++)
@@ -151,7 +155,7 @@ int main(int argc, char *argv[])
                         printf("A client tried to connect, but the server is full\n");
 
                         struct message message;
-                        message.type = MESSAGE_CONNECT_FULL;
+                        message.type = MESSAGE_SERVER_FULL;
 
                         if (SDLNet_TCP_Send(socket, &message, sizeof(message)) < (int)sizeof(message))
                         {
@@ -173,12 +177,12 @@ int main(int argc, char *argv[])
                             enum message_type type = ((struct message *)data)->type;
                             switch (type)
                             {
-                            case MESSAGE_DISCONNECT_REQUEST:
+                            case MESSAGE_DISCONNECT:
                             {
                                 printf("Client %zd disconnected\n", clients[i].id);
 
                                 struct message_id message;
-                                message.type = MESSAGE_DISCONNECT_BROADCAST;
+                                message.type = MESSAGE_CLIENT_DISCONNECT;
                                 message.id = clients[i].id;
 
                                 for (size_t j = 0; j < MAX_CLIENTS; j++)
@@ -199,20 +203,56 @@ int main(int argc, char *argv[])
                                 clients[i].socket = NULL;
                             }
                             break;
-                            case MESSAGE_ATTACK_REQUEST:
+                            case MESSAGE_ATTACK:
                             {
                                 printf("Client %zd attacking\n", clients[i].id);
 
                                 player_attack(&clients[i].player, &world.maps[clients[i].player.map_index]);
                             }
                             break;
-                            case MESSAGE_CHANGE_MAP_REQUEST:
+                            case MESSAGE_CHANGE_MAP:
                             {
                                 struct message_change_map *message = (struct message_change_map *)data;
 
                                 printf("Client %zd changing map to %zd\n", clients[i].id, message->map_index);
 
                                 clients[i].player.map_index = message->map_index;
+                            }
+                            break;
+                            case MESSAGE_START_CONVERSATION:
+                            {
+                                struct message_start_conversation *message = (struct message_start_conversation *)data;
+
+                                printf("Client %zd starting conversation %zd\n", clients[i].id, message->conversation_index);
+
+                                player_start_conversation(&clients[i].player, &conversations, message->conversation_index);
+                            }
+                            break;
+                            case MESSAGE_ADVANCE_CONVERSATION:
+                            {
+                                struct message *message = (struct message *)data;
+
+                                printf("Client %zd advancing conversation\n", clients[i].id);
+
+                                player_advance_conversation(&clients[i].player);
+                            }
+                            break;
+                            case MESSAGE_CHOOSE_CONVERSATION_RESPONSE:
+                            {
+                                struct message_choose_conversation_response *message = (struct message_choose_conversation_response *)data;
+
+                                printf("Client %zd choosing conversation response %zd\n", clients[i].id, message->choice_index);
+
+                                player_choose_conversation_response(&clients[i].player, message->choice_index);
+                            }
+                            break;
+                            case MESSAGE_QUEST_STATUS:
+                            {
+                                struct message_quest_status *message = (struct message_quest_status *)data;
+
+                                printf("Client %zd setting quest %zd to stage %zd\n", clients[i].id, message->quest_status.quest_index, message->quest_status.stage_index);
+
+                                player_set_quest_status(&clients[i].player, message->quest_status);
                             }
                             break;
                             default:
@@ -234,7 +274,7 @@ int main(int argc, char *argv[])
                     enum message_type type = ((struct message *)packet->data)->type;
                     switch (type)
                     {
-                    case MESSAGE_UDP_CONNECT_REQUEST:
+                    case MESSAGE_UDP_CONNECT:
                     {
                         struct message_id *message = (struct message_id *)packet->data;
 
@@ -243,7 +283,7 @@ int main(int argc, char *argv[])
                         printf("Saving UDP info of client %zd\n", message->id);
                     }
                     break;
-                    case MESSAGE_INPUT_REQUEST:
+                    case MESSAGE_INPUT:
                     {
                         struct message_input *message = (struct message_input *)packet->data;
 
@@ -290,7 +330,7 @@ int main(int argc, char *argv[])
                 if (clients[i].id != CLIENT_ID_UNUSED)
                 {
                     struct message_game_state *message = malloc(sizeof(*message));
-                    message->type = MESSAGE_GAME_STATE_BROADCAST;
+                    message->type = MESSAGE_GAME_STATE;
                     for (size_t j = 0; j < MAX_CLIENTS; j++)
                     {
                         message->clients[j].id = clients[j].id;
