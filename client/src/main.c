@@ -101,6 +101,7 @@ int main(int argc, char *argv[])
         printf("Error: Failed to create window and renderer: %s\n", SDL_GetError());
         return 1;
     }
+    SDL_SetWindowTitle(window, WINDOW_TITLE);
 
     if (Mix_OpenAudio(MIX_DEFAULT_FREQUENCY, MIX_DEFAULT_FORMAT, MIX_DEFAULT_CHANNELS, 1024) != 0)
     {
