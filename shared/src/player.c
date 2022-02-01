@@ -5,6 +5,7 @@
 #include <shared/conversations.h>
 #include <shared/map.h>
 #include <shared/tileset.h>
+#include <shared/quest_status.h>
 #include <stdbool.h>
 #include <string.h>
 
@@ -201,6 +202,11 @@ void player_choose_conversation_response(struct player *player, size_t choice_in
             }
         }
     }
+}
+
+void player_end_conversation(struct player *player)
+{
+    player->conversation_root = player->conversation_node = NULL;
 }
 
 void player_set_quest_status(struct player *player, struct quest_status quest_status)

@@ -3,11 +3,15 @@
 #include <json-c/json.h>
 #include <shared/map.h>
 #include <shared/player.h>
+#include <shared/quest_status.h>
 #include <stdio.h>
 #include <string.h>
 
-void load_conversation_node(struct conversation_node *node, struct json_object *node_obj)
+void load_conversation_node(struct conversation_node *node, struct json_object *node_obj, size_t index, size_t *local_index)
 {
+    node->index = index;
+    node->local_index = *local_index;
+
     {
         struct json_object *type_obj = json_object_object_get(node_obj, "type");
         const char *type = json_object_get_string(type_obj);
@@ -93,7 +97,8 @@ void load_conversation_node(struct conversation_node *node, struct json_object *
             {
                 struct conversation_node *child = &node->children[i];
                 struct json_object *child_obj = json_object_array_get_idx(children_obj, i);
-                load_conversation_node(child, child_obj);
+                (*local_index)++;
+                load_conversation_node(child, child_obj, index, local_index);
             }
         }
     }
@@ -112,15 +117,37 @@ void conversations_load(struct conversations *conversations, const char *filenam
     conversations->conversations = malloc(conversations->num_conversations * sizeof(*conversations->conversations));
     for (size_t i = 0; i < conversations->num_conversations; i++)
     {
-        struct conversation_node *conversation = &conversations->conversations[i];
+        struct conversation_node *conversation_root = &conversations->conversations[i];
         struct json_object *conversation_obj = json_object_array_get_idx(conversations_obj, i);
-        load_conversation_node(conversation, conversation_obj);
+        size_t local_index = 0;
+        load_conversation_node(conversation_root, conversation_obj, i, &local_index);
     }
 }
 
 void conversations_unload(struct conversations *conversations)
 {
     printf("Unloading conversations: %s\n", conversations->filename);
+}
+
+struct conversation_node *conversation_find_by_local_index(struct conversation_node *node, size_t local_index)
+{
+    if (node->local_index == local_index)
+    {
+        return node;
+    }
+
+    for (size_t i = 0; i < node->num_children; i++)
+    {
+        struct conversation_node *child = &node->children[i];
+
+        struct conversation_node *result = conversation_find_by_local_index(child, local_index);
+        if (result)
+        {
+            return result;
+        }
+    }
+
+    return NULL;
 }
 
 struct conversation_node *conversation_find_by_id(struct conversation_node *node, const char *id)

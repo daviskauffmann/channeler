@@ -14,7 +14,8 @@
 #define TICK_RATE 60
 #define FRAME_DELAY (1000 / TICK_RATE)
 
-#define UPDATE_CLIENTS_RATE 20
+#define UPDATE_CLIENTS_TCP_RATE 2.f
+#define UPDATE_POSITIONS_RATE 20.f
 
 struct client
 {
@@ -246,6 +247,15 @@ int main(int argc, char *argv[])
                                 player_choose_conversation_response(&clients[i].player, message->choice_index);
                             }
                             break;
+                            case MESSAGE_END_CONVERSATION:
+                            {
+                                struct message *message = (struct message *)data;
+
+                                printf("Client %zd ending conversation\n", clients[i].id);
+
+                                player_end_conversation(&clients[i].player);
+                            }
+                            break;
                             case MESSAGE_QUEST_STATUS:
                             {
                                 struct message_quest_status *message = (struct message_quest_status *)data;
@@ -319,22 +329,60 @@ int main(int argc, char *argv[])
             map_update(&world.maps[i], delta_time);
         }
 
-        static float update_clients_timer = 0;
-        update_clients_timer += delta_time;
-        if (update_clients_timer >= 1.0f / UPDATE_CLIENTS_RATE)
+        static float update_clients_tcp_timer = 0;
+        update_clients_tcp_timer += delta_time;
+        if (update_clients_tcp_timer >= 1 / UPDATE_CLIENTS_TCP_RATE)
         {
-            update_clients_timer = 0;
+            update_clients_tcp_timer = 0;
+
+            struct message_update_stuff *message = malloc(sizeof(*message));
+            message->type = MESSAGE_UPDATE_STUFF;
+
+            for (size_t i = 0; i < MAX_CLIENTS; i++)
+            {
+                message->clients[i].id = clients[i].id;
+
+                if (clients[i].id != CLIENT_ID_UNUSED)
+                {
+                    message->clients[i].player.map_index = clients[i].player.map_index;
+
+                    message->clients[i].player.in_conversation = clients[i].player.conversation_root != NULL;
+                    if (message->clients[i].player.in_conversation)
+                    {
+                        message->clients[i].player.conversation_index = clients[i].player.conversation_root->index;
+                        message->clients[i].player.conversation_local_index = clients[i].player.conversation_node->local_index;
+                    }
+                }
+            }
 
             for (size_t i = 0; i < MAX_CLIENTS; i++)
             {
                 if (clients[i].id != CLIENT_ID_UNUSED)
                 {
-                    struct message_game_state *message = malloc(sizeof(*message));
-                    message->type = MESSAGE_GAME_STATE;
+                    if (SDLNet_TCP_Send(clients[i].socket, message, (int)sizeof(*message)) < (int)sizeof(*message))
+                    {
+                        printf("Error: Failed to send TCP packet: %s\n", SDLNet_GetError());
+                    }
+                }
+            }
+
+            free(message);
+        }
+
+        static float update_positions_timer = 0;
+        update_positions_timer += delta_time;
+        if (update_positions_timer >= 1 / UPDATE_POSITIONS_RATE)
+        {
+            update_positions_timer = 0;
+
+            for (size_t i = 0; i < MAX_CLIENTS; i++)
+            {
+                if (clients[i].id != CLIENT_ID_UNUSED)
+                {
+                    struct message_update_positions *message = malloc(sizeof(*message));
+                    message->type = MESSAGE_UPDATE_POSITIONS;
                     for (size_t j = 0; j < MAX_CLIENTS; j++)
                     {
-                        message->clients[j].id = clients[j].id;
-                        message->clients[j].player.map_index = clients[j].player.map_index;
                         message->clients[j].player.pos_x = clients[j].player.pos_x;
                         message->clients[j].player.pos_y = clients[j].player.pos_y;
                         message->clients[j].player.vel_x = clients[j].player.vel_x;

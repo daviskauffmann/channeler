@@ -23,6 +23,9 @@ struct conversation_node_effect
 
 struct conversation_node
 {
+    size_t index;
+    size_t local_index;
+
     enum conversation_node_type type;
     const char *id;
     struct conversation_node_condition condition;
@@ -47,6 +50,7 @@ struct conversations
 void conversations_load(struct conversations *conversations, const char *filename);
 void conversations_unload(struct conversations *conversations);
 
+struct conversation_node *conversation_find_by_local_index(struct conversation_node *node, size_t local_index);
 struct conversation_node *conversation_find_by_id(struct conversation_node *node, const char *id);
 bool conversation_check_conditions(struct conversation_node *node, struct player *player);
 
