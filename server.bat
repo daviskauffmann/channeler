@@ -1,1 +1,1 @@
-"build/server/debug/server"
+"build/server/debug/hypernova_server"

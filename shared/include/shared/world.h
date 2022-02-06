@@ -11,8 +11,8 @@ struct world
     struct map *maps;
 };
 
-void world_load(struct world *world, const char *filename, bool load_maps);
-void world_unload(struct world *world, bool unload_maps);
+void world_load(struct world *world, const char *filename);
+void world_unload(struct world *world);
 
 size_t world_get_map_index(struct world *world, const char *filename);
 

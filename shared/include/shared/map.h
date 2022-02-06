@@ -43,10 +43,7 @@ struct map
     struct tileset *tilesets;
 };
 
-void map_init(struct map *map, char *filename);
-void map_uninit(struct map *map);
-
-void map_load(struct map *map);
+void map_load(struct map *map, char *filename);
 void map_unload(struct map *map);
 
 void map_update(struct map *map, float delta_time);

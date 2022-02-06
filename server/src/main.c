@@ -2,6 +2,7 @@
 #include <SDL2/SDL_net.h>
 #include <shared/conversations.h>
 #include <shared/map.h>
+#include <shared/net.h>
 #include <shared/message.h>
 #include <shared/player.h>
 #include <shared/quests.h>
@@ -14,8 +15,7 @@
 #define TICK_RATE 60
 #define FRAME_DELAY (1000 / TICK_RATE)
 
-#define UPDATE_CLIENTS_TCP_RATE 2.f
-#define UPDATE_POSITIONS_RATE 20.f
+#define UPDATE_CLIENTS_RATE 20.f
 
 struct client
 {
@@ -79,7 +79,7 @@ int main(int argc, char *argv[])
     }
 
     struct world world;
-    world_load(&world, "assets/world.json", true);
+    world_load(&world, "assets/world.json");
 
     struct quests quests;
     quests_load(&quests, "assets/quests.json");
@@ -127,11 +127,7 @@ int main(int argc, char *argv[])
                             message.type = MESSAGE_SERVER_CONNECT_OK;
                             message.id = new_client_id;
                             message.map_index = 0;
-
-                            if (SDLNet_TCP_Send(socket, &message, sizeof(message)) < (int)sizeof(message))
-                            {
-                                printf("Error: Failed to send TCP packet: %s\n", SDLNet_GetError());
-                            }
+                            tcp_send(socket, &message, sizeof(message));
                         }
 
                         {
@@ -143,10 +139,7 @@ int main(int argc, char *argv[])
                             {
                                 if (clients[i].id != CLIENT_ID_UNUSED && clients[i].id != clients[new_client_id].id)
                                 {
-                                    if (SDLNet_TCP_Send(clients[i].socket, &message, sizeof(message)) < (int)sizeof(message))
-                                    {
-                                        printf("Error: Failed to send TCP packet: %s\n", SDLNet_GetError());
-                                    }
+                                    tcp_send(clients[i].socket, &message, sizeof(message));
                                 }
                             }
                         }
@@ -157,11 +150,7 @@ int main(int argc, char *argv[])
 
                         struct message message;
                         message.type = MESSAGE_SERVER_FULL;
-
-                        if (SDLNet_TCP_Send(socket, &message, sizeof(message)) < (int)sizeof(message))
-                        {
-                            printf("Error: Failed to send TCP packet: %s\n", SDLNet_GetError());
-                        }
+                        tcp_send(socket, &message, sizeof(message));
                     }
                 }
             }
@@ -185,15 +174,11 @@ int main(int argc, char *argv[])
                                 struct message_id message;
                                 message.type = MESSAGE_CLIENT_DISCONNECT;
                                 message.id = clients[i].id;
-
                                 for (size_t j = 0; j < MAX_CLIENTS; j++)
                                 {
                                     if (clients[j].id != CLIENT_ID_UNUSED && clients[j].id != clients[i].id)
                                     {
-                                        if (SDLNet_TCP_Send(clients[j].socket, &message, sizeof(message)) < (int)sizeof(message))
-                                        {
-                                            printf("Error: Failed to send TCP packet: %s\n", SDLNet_GetError());
-                                        }
+                                        tcp_send(clients[j].socket, &message, sizeof(message));
                                     }
                                 }
 
@@ -329,67 +314,43 @@ int main(int argc, char *argv[])
             map_update(&world.maps[i], delta_time);
         }
 
-        static float update_clients_tcp_timer = 0;
-        update_clients_tcp_timer += delta_time;
-        if (update_clients_tcp_timer >= 1 / UPDATE_CLIENTS_TCP_RATE)
+        static float update_clients_timer = 0;
+        update_clients_timer += delta_time;
+        if (update_clients_timer >= 1 / UPDATE_CLIENTS_RATE)
         {
-            update_clients_tcp_timer = 0;
-
-            struct message_update_stuff *message = malloc(sizeof(*message));
-            message->type = MESSAGE_UPDATE_STUFF;
-
-            for (size_t i = 0; i < MAX_CLIENTS; i++)
-            {
-                message->clients[i].id = clients[i].id;
-
-                if (clients[i].id != CLIENT_ID_UNUSED)
-                {
-                    message->clients[i].player.map_index = clients[i].player.map_index;
-
-                    message->clients[i].player.in_conversation = clients[i].player.conversation_root != NULL;
-                    if (message->clients[i].player.in_conversation)
-                    {
-                        message->clients[i].player.conversation_index = clients[i].player.conversation_root->index;
-                        message->clients[i].player.conversation_local_index = clients[i].player.conversation_node->local_index;
-                    }
-                }
-            }
+            update_clients_timer = 0;
 
             for (size_t i = 0; i < MAX_CLIENTS; i++)
             {
                 if (clients[i].id != CLIENT_ID_UNUSED)
                 {
-                    if (SDLNet_TCP_Send(clients[i].socket, message, (int)sizeof(*message)) < (int)sizeof(*message))
-                    {
-                        printf("Error: Failed to send TCP packet: %s\n", SDLNet_GetError());
-                    }
-                }
-            }
+                    struct message_game_state *message = malloc(sizeof(*message));
+                    message->type = MESSAGE_GAME_STATE;
 
-            free(message);
-        }
-
-        static float update_positions_timer = 0;
-        update_positions_timer += delta_time;
-        if (update_positions_timer >= 1 / UPDATE_POSITIONS_RATE)
-        {
-            update_positions_timer = 0;
-
-            for (size_t i = 0; i < MAX_CLIENTS; i++)
-            {
-                if (clients[i].id != CLIENT_ID_UNUSED)
-                {
-                    struct message_update_positions *message = malloc(sizeof(*message));
-                    message->type = MESSAGE_UPDATE_POSITIONS;
                     for (size_t j = 0; j < MAX_CLIENTS; j++)
                     {
-                        message->clients[j].player.pos_x = clients[j].player.pos_x;
-                        message->clients[j].player.pos_y = clients[j].player.pos_y;
-                        message->clients[j].player.vel_x = clients[j].player.vel_x;
-                        message->clients[j].player.vel_y = clients[j].player.vel_y;
-                        message->clients[j].player.acc_x = clients[j].player.acc_x;
-                        message->clients[j].player.acc_y = clients[j].player.acc_y;
+                        message->clients[j].id = clients[j].id;
+
+                        if (clients[j].id != CLIENT_ID_UNUSED)
+                        {
+                            message->clients[j].player.map_index = clients[j].player.map_index;
+
+                            message->clients[j].player.pos_x = clients[j].player.pos_x;
+                            message->clients[j].player.pos_y = clients[j].player.pos_y;
+                            message->clients[j].player.vel_x = clients[j].player.vel_x;
+                            message->clients[j].player.vel_y = clients[j].player.vel_y;
+                            message->clients[j].player.acc_x = clients[j].player.acc_x;
+                            message->clients[j].player.acc_y = clients[j].player.acc_y;
+
+                            message->clients[j].player.in_conversation = clients[j].player.conversation_root != NULL;
+                            if (message->clients[j].player.in_conversation)
+                            {
+                                message->clients[j].player.conversation_index = clients[j].player.conversation_root->index;
+                                message->clients[j].player.conversation_local_index = clients[j].player.conversation_node->local_index;
+                            }
+                        }
                     }
+
                     for (size_t j = 0; j < MAX_MOBS; j++)
                     {
                         message->mobs[j].alive = world.maps[clients[i].player.map_index].mobs[j].alive;
@@ -397,17 +358,7 @@ int main(int argc, char *argv[])
                         message->mobs[j].y = world.maps[clients[i].player.map_index].mobs[j].y;
                     }
 
-                    UDPpacket *packet = SDLNet_AllocPacket(PACKET_SIZE);
-                    packet->address = clients[i].udp_address;
-                    packet->data = (uint8_t *)message;
-                    packet->len = sizeof(*message);
-
-                    if (!SDLNet_UDP_Send(udp_socket, -1, packet))
-                    {
-                        printf("Error: Failed to send UDP packet\n");
-                    }
-
-                    SDLNet_FreePacket(packet);
+                    udp_send(udp_socket, clients[i].udp_address, message, sizeof(*message));
                 }
             }
         }
@@ -420,11 +371,14 @@ int main(int argc, char *argv[])
         }
     }
 
-    // TODO: inform clients that server shut down
     for (size_t i = 0; i < MAX_CLIENTS; i++)
     {
         if (clients[i].id != CLIENT_ID_UNUSED)
         {
+            struct message message;
+            message.type = MESSAGE_SERVER_SHUTDOWN;
+            tcp_send(clients[i].socket, &message, sizeof(message));
+
             player_uninit(&clients[i].player);
 
             SDLNet_TCP_DelSocket(socket_set, clients[i].socket);
@@ -432,7 +386,7 @@ int main(int argc, char *argv[])
         }
     }
 
-    world_unload(&world, true);
+    world_unload(&world);
     quests_unload(&quests);
 
     SDLNet_UDP_DelSocket(socket_set, udp_socket);

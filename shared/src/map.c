@@ -5,25 +5,13 @@
 #include <stdio.h>
 #include <string.h>
 
-void map_init(struct map *map, char *filename)
+void map_load(struct map *map, char *filename)
 {
-    printf("Initializing map: %s\n", filename);
+    printf("Loading map: %s\n", filename);
 
     map->filename = filename;
-}
 
-void map_uninit(struct map *map)
-{
-    printf("Uninitializing: %s\n", map->filename);
-
-    free(map->filename);
-}
-
-void map_load(struct map *map)
-{
-    printf("Loading map: %s\n", map->filename);
-
-    struct json_object *root = json_object_from_file(map->filename);
+    struct json_object *root = json_object_from_file(filename);
 
     {
         struct json_object *width_obj = json_object_object_get(root, "width");
@@ -129,15 +117,17 @@ void map_unload(struct map *map)
 {
     printf("Unloading map: %s\n", map->filename);
 
+    free(map->filename);
+
+    free(map->tiles);
+    map->tiles = NULL;
+
     for (size_t i = 0; i < map->num_tilesets; i++)
     {
         tileset_unload(&map->tilesets[i]);
     }
     free(map->tilesets);
     map->tilesets = NULL;
-
-    free(map->tiles);
-    map->tiles = NULL;
 }
 
 void map_update(struct map *map, float delta_time)

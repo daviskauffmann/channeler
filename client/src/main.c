@@ -6,6 +6,7 @@
 #include <shared/conversations.h>
 #include <shared/input.h>
 #include <shared/map.h>
+#include <shared/net.h>
 #include <shared/message.h>
 #include <shared/player.h>
 #include <shared/quests.h>
@@ -34,6 +35,41 @@ struct client
     size_t id;
     struct player player;
 };
+
+struct active_map
+{
+    struct map *map;
+    SDL_Texture **sprites;
+};
+
+void deactivate_map(struct active_map *active_map)
+{
+    for (size_t i = 0; i < active_map->map->num_tilesets; i++)
+    {
+        printf("Destroying texture: %s\n", active_map->map->tilesets[i].image);
+
+        SDL_DestroyTexture(active_map->sprites[i]);
+    }
+    free(active_map->sprites);
+}
+
+void switch_map(struct active_map *active_map, struct world *world, size_t map_index, SDL_Renderer *renderer)
+{
+    if (active_map->map)
+    {
+        deactivate_map(active_map);
+    }
+
+    active_map->map = &world->maps[map_index];
+
+    active_map->sprites = malloc(active_map->map->num_tilesets * sizeof(*active_map->sprites));
+    for (size_t i = 0; i < active_map->map->num_tilesets; i++)
+    {
+        printf("Loading texture: %s\n", active_map->map->tilesets[i].image);
+
+        active_map->sprites[i] = IMG_LoadTexture(renderer, active_map->map->tilesets[i].image);
+    }
+}
 
 void draw_text(SDL_Renderer *renderer, TTF_Font *font, size_t px, size_t x, size_t y, size_t w, SDL_Color fg, const char *const fmt, ...)
 {
@@ -109,6 +145,12 @@ int main(int argc, char *argv[])
         return 1;
     }
 
+    TTF_Font *font = TTF_OpenFont("assets/VeraMono.ttf", 24);
+
+    SDL_RenderClear(renderer);
+    draw_text(renderer, font, 12, 0, 0, WINDOW_WIDTH, (SDL_Color){255, 255, 255}, "Connecting to server...");
+    SDL_RenderPresent(renderer);
+
     bool online = true;
 
     IPaddress server_address;
@@ -180,25 +222,17 @@ int main(int argc, char *argv[])
             break;
             }
         }
+    }
 
-        if (online)
+    if (online)
+    {
+        struct message_id *message = (struct message_id *)malloc(sizeof(*message));
+        message->type = MESSAGE_UDP_CONNECT;
+        message->id = client_id;
+        if (!udp_send(udp_socket, server_address, message, sizeof(*message)))
         {
-            struct message_id *message_id = (struct message_id *)malloc(sizeof(*message_id));
-            message_id->type = MESSAGE_UDP_CONNECT;
-            message_id->id = client_id;
-
-            UDPpacket *packet = SDLNet_AllocPacket(PACKET_SIZE);
-            packet->address = server_address;
-            packet->data = (uint8_t *)message_id;
-            packet->len = sizeof(*message_id);
-
-            if (!SDLNet_UDP_Send(udp_socket, -1, packet))
-            {
-                printf("Error: Failed to make UDP connection\n");
-                online = false;
-            }
-
-            SDLNet_FreePacket(packet);
+            printf("Error: Failed to make UDP connection\n");
+            online = false;
         }
     }
 
@@ -211,11 +245,15 @@ int main(int argc, char *argv[])
         printf("Starting in offline mode\n");
     }
 
+    clients[client_id].id = client_id;
+    struct player *player = &clients[client_id].player;
+    player_init(player, map_index);
+
     // TODO: files to load should be sent from the server
     // first pass will be just giving a filename that the client is expected to have locally and erroring if not
     // second pass might be implementing file transfer from the server if the client does not have the world data
     struct world world;
-    world_load(&world, "assets/world.json", false);
+    world_load(&world, "assets/world.json");
 
     struct quests quests;
     quests_load(&quests, "assets/quests.json");
@@ -223,20 +261,10 @@ int main(int argc, char *argv[])
     struct conversations conversations;
     conversations_load(&conversations, "assets/conversations.json");
 
-    struct map *map = &world.maps[map_index];
-    map_load(map);
-
-    SDL_Texture **sprites = malloc(map->num_tilesets * sizeof(*sprites));
-    for (size_t i = 0; i < map->num_tilesets; i++)
-    {
-        sprites[i] = IMG_LoadTexture(renderer, map->tilesets[i].image);
-    }
-
-    clients[client_id].id = client_id;
-    struct player *player = &clients[client_id].player;
-    player_init(player, map_index);
-
-    TTF_Font *font = TTF_OpenFont("assets/VeraMono.ttf", 24);
+    struct active_map active_map;
+    active_map.map = NULL;
+    active_map.sprites = NULL;
+    switch_map(&active_map, &world, map_index, renderer);
 
     bool quest_log_open = false;
 
@@ -259,32 +287,6 @@ int main(int argc, char *argv[])
                     enum message_type type = ((struct message *)data)->type;
                     switch (type)
                     {
-                    case MESSAGE_UPDATE_STUFF:
-                    {
-                        struct message_update_stuff *message = (struct message_update_stuff *)data;
-
-                        for (size_t i = 0; i < MAX_CLIENTS; i++)
-                        {
-                            clients[i].id = message->clients[i].id;
-
-                            if (clients[i].id != CLIENT_ID_UNUSED)
-                            {
-                                clients[i].player.map_index = message->clients[i].player.map_index;
-
-                                if (message->clients[i].player.in_conversation)
-                                {
-                                    clients[i].player.conversation_root = &conversations.conversations[message->clients[i].player.conversation_index];
-                                    clients[i].player.conversation_node = conversation_find_by_local_index(clients[i].player.conversation_root, message->clients[i].player.conversation_local_index);
-                                }
-                                else
-                                {
-                                    clients[i].player.conversation_root = NULL;
-                                    clients[i].player.conversation_node = NULL;
-                                }
-                            }
-                        }
-                    }
-                    break;
                     case MESSAGE_CLIENT_CONNECT:
                     {
                         struct message_id *message = (struct message_id *)data;
@@ -320,18 +322,42 @@ int main(int argc, char *argv[])
                     enum message_type type = ((struct message *)packet->data)->type;
                     switch (type)
                     {
-                    case MESSAGE_UPDATE_POSITIONS:
+                    case MESSAGE_SERVER_SHUTDOWN:
                     {
-                        struct message_update_positions *message = (struct message_update_positions *)packet->data;
+                        online = false;
+                        quit = true;
+                    }
+                    break;
+                    case MESSAGE_GAME_STATE:
+                    {
+                        struct message_game_state *message = (struct message_game_state *)packet->data;
 
                         for (size_t i = 0; i < MAX_CLIENTS; i++)
                         {
-                            clients[i].player.pos_x = message->clients[i].player.pos_x;
-                            clients[i].player.pos_y = message->clients[i].player.pos_y;
-                            clients[i].player.vel_x = message->clients[i].player.vel_x;
-                            clients[i].player.vel_y = message->clients[i].player.vel_y;
-                            clients[i].player.acc_x = message->clients[i].player.acc_x;
-                            clients[i].player.acc_y = message->clients[i].player.acc_y;
+                            clients[i].id = message->clients[i].id;
+
+                            if (clients[i].id != CLIENT_ID_UNUSED)
+                            {
+                                clients[i].player.map_index = message->clients[i].player.map_index;
+
+                                clients[i].player.pos_x = message->clients[i].player.pos_x;
+                                clients[i].player.pos_y = message->clients[i].player.pos_y;
+                                clients[i].player.vel_x = message->clients[i].player.vel_x;
+                                clients[i].player.vel_y = message->clients[i].player.vel_y;
+                                clients[i].player.acc_x = message->clients[i].player.acc_x;
+                                clients[i].player.acc_y = message->clients[i].player.acc_y;
+
+                                if (message->clients[i].player.in_conversation)
+                                {
+                                    clients[i].player.conversation_root = &conversations.conversations[message->clients[i].player.conversation_index];
+                                    clients[i].player.conversation_node = conversation_find_by_local_index(clients[i].player.conversation_root, message->clients[i].player.conversation_local_index);
+                                }
+                                else
+                                {
+                                    clients[i].player.conversation_root = NULL;
+                                    clients[i].player.conversation_node = NULL;
+                                }
+                            }
                         }
 
                         for (size_t i = 0; i < MAX_MOBS; i++)
@@ -392,11 +418,7 @@ int main(int argc, char *argv[])
                     {
                         struct message message;
                         message.type = MESSAGE_END_CONVERSATION;
-
-                        if (SDLNet_TCP_Send(tcp_socket, &message, sizeof(message)) < (int)sizeof(message))
-                        {
-                            printf("Error: Failed to send TCP packet: %s\n", SDLNet_GetError());
-                        }
+                        tcp_send(tcp_socket, &message, sizeof(message));
                     }
                     else
                     {
@@ -412,11 +434,7 @@ int main(int argc, char *argv[])
                         {
                             struct message message;
                             message.type = MESSAGE_ADVANCE_CONVERSATION;
-
-                            if (SDLNet_TCP_Send(tcp_socket, &message, sizeof(message)) < (int)sizeof(message))
-                            {
-                                printf("Error: Failed to send TCP packet: %s\n", SDLNet_GetError());
-                            }
+                            tcp_send(tcp_socket, &message, sizeof(message));
                         }
                         else
                         {
@@ -429,15 +447,11 @@ int main(int argc, char *argv[])
                         {
                             struct message message;
                             message.type = MESSAGE_ATTACK;
-
-                            if (SDLNet_TCP_Send(tcp_socket, &message, sizeof(message)) < (int)sizeof(message))
-                            {
-                                printf("Error: Failed to send TCP packet: %s\n", SDLNet_GetError());
-                            }
+                            tcp_send(tcp_socket, &message, sizeof(message));
                         }
                         else
                         {
-                            player_attack(player, map);
+                            player_attack(player, active_map.map);
                         }
                     }
                 }
@@ -461,11 +475,7 @@ int main(int argc, char *argv[])
                             struct message_choose_conversation_response message;
                             message.type = MESSAGE_CHOOSE_CONVERSATION_RESPONSE;
                             message.choice_index = choice_index;
-
-                            if (SDLNet_TCP_Send(tcp_socket, &message, sizeof(message)) < (int)sizeof(message))
-                            {
-                                printf("Error: Failed to send TCP packet: %s\n", SDLNet_GetError());
-                            }
+                            tcp_send(tcp_socket, &message, sizeof(message));
                         }
                         else
                         {
@@ -488,11 +498,7 @@ int main(int argc, char *argv[])
                         struct message_change_map message;
                         message.type = MESSAGE_CHANGE_MAP;
                         message.map_index = map_index;
-
-                        if (SDLNet_TCP_Send(tcp_socket, &message, sizeof(message)) < (int)sizeof(message))
-                        {
-                            printf("Error: Failed to send TCP packet: %s\n", SDLNet_GetError());
-                        }
+                        tcp_send(tcp_socket, &message, sizeof(message));
                     }
                     else
                     {
@@ -509,11 +515,7 @@ int main(int argc, char *argv[])
                         struct message_change_map message;
                         message.type = MESSAGE_CHANGE_MAP;
                         message.map_index = map_index;
-
-                        if (SDLNet_TCP_Send(tcp_socket, &message, sizeof(message)) < (int)sizeof(message))
-                        {
-                            printf("Error: Failed to send TCP packet: %s\n", SDLNet_GetError());
-                        }
+                        tcp_send(tcp_socket, &message, sizeof(message));
                     }
                     else
                     {
@@ -530,11 +532,7 @@ int main(int argc, char *argv[])
                         struct message_start_conversation message;
                         message.type = MESSAGE_START_CONVERSATION;
                         message.conversation_index = conversation_index;
-
-                        if (SDLNet_TCP_Send(tcp_socket, &message, sizeof(message)) < (int)sizeof(message))
-                        {
-                            printf("Error: Failed to send TCP packet: %s\n", SDLNet_GetError());
-                        }
+                        tcp_send(tcp_socket, &message, sizeof(message));
                     }
                     else
                     {
@@ -551,11 +549,7 @@ int main(int argc, char *argv[])
                         struct message_start_conversation message;
                         message.type = MESSAGE_START_CONVERSATION;
                         message.conversation_index = conversation_index;
-
-                        if (SDLNet_TCP_Send(tcp_socket, &message, sizeof(message)) < (int)sizeof(message))
-                        {
-                            printf("Error: Failed to send TCP packet: %s\n", SDLNet_GetError());
-                        }
+                        tcp_send(tcp_socket, &message, sizeof(message));
                     }
                     else
                     {
@@ -574,11 +568,7 @@ int main(int argc, char *argv[])
                         struct message_quest_status message;
                         message.type = MESSAGE_QUEST_STATUS;
                         message.quest_status = quest_status;
-
-                        if (SDLNet_TCP_Send(tcp_socket, &message, sizeof(message)) < (int)sizeof(message))
-                        {
-                            printf("Error: Failed to send TCP packet: %s\n", SDLNet_GetError());
-                        }
+                        tcp_send(tcp_socket, &message, sizeof(message));
                     }
                     else
                     {
@@ -600,22 +590,7 @@ int main(int argc, char *argv[])
         if (map_index != player->map_index)
         {
             map_index = player->map_index;
-
-            for (size_t i = 0; i < map->num_tilesets; i++)
-            {
-                SDL_DestroyTexture(sprites[i]);
-            }
-            free(sprites);
-
-            map_unload(map);
-            map = &world.maps[map_index];
-            map_load(map);
-
-            sprites = malloc(map->num_tilesets * sizeof(*sprites));
-            for (size_t i = 0; i < map->num_tilesets; i++)
-            {
-                sprites[i] = IMG_LoadTexture(renderer, map->tilesets[i].image);
-            }
+            switch_map(&active_map, &world, map_index, renderer);
         }
 
         struct input input;
@@ -646,18 +621,7 @@ int main(int argc, char *argv[])
             message->id = client_id;
             message->input.dx = input.dx;
             message->input.dy = input.dy;
-
-            UDPpacket *packet = SDLNet_AllocPacket(PACKET_SIZE);
-            packet->address = server_address;
-            packet->data = (uint8_t *)message;
-            packet->len = sizeof(*message);
-
-            if (!SDLNet_UDP_Send(udp_socket, -1, packet))
-            {
-                printf("Error: Failed to send UDP packet\n");
-            }
-
-            SDLNet_FreePacket(packet);
+            udp_send(udp_socket, server_address, message, sizeof(*message));
         }
 
         player->acc_x = (float)input.dx;
@@ -668,30 +632,38 @@ int main(int argc, char *argv[])
             if (clients[i].id != CLIENT_ID_UNUSED && clients[i].player.map_index == player->map_index)
             {
                 struct player *player = &clients[i].player;
-                player_accelerate(player, map, delta_time);
+                player_accelerate(player, active_map.map, delta_time);
             }
         }
 
-        if (!online)
+        if (online)
         {
-            map_update(map, delta_time);
+            // update current map only for prediction purposes?
+            // map_update(active_map.map, delta_time);
+        }
+        else
+        {
+            for (size_t i = 0; i < world.num_maps; i++)
+            {
+                map_update(&world.maps[i], delta_time);
+            }
         }
 
         size_t view_width = WINDOW_WIDTH / SPRITE_SCALE;
         size_t view_height = WINDOW_HEIGHT / SPRITE_SCALE;
         int64_t view_x = (int64_t)player->pos_x - view_width / 2;
         int64_t view_y = (int64_t)player->pos_y - view_height / 2;
-        if (view_x + view_width > map->width * map->tile_width)
+        if (view_x + view_width > active_map.map->width * active_map.map->tile_width)
         {
-            view_x = (map->width * map->tile_width) - view_width;
+            view_x = (active_map.map->width * active_map.map->tile_width) - view_width;
         }
         if (view_x < 0)
         {
             view_x = 0;
         }
-        if (view_y + view_height > map->height * map->tile_height)
+        if (view_y + view_height > active_map.map->height * active_map.map->tile_height)
         {
-            view_y = (map->height * map->tile_height) - view_height;
+            view_y = (active_map.map->height * active_map.map->tile_height) - view_height;
         }
         if (view_y < 0)
         {
@@ -700,26 +672,26 @@ int main(int argc, char *argv[])
 
         SDL_RenderClear(renderer);
 
-        for (int64_t y = view_y / map->tile_height; y <= (int64_t)((view_y + view_height) / map->tile_height); y++)
+        for (int64_t y = view_y / active_map.map->tile_height; y <= (int64_t)((view_y + view_height) / active_map.map->tile_height); y++)
         {
-            for (int64_t x = view_x / map->tile_width; x <= (int64_t)((view_x + view_width) / map->tile_width); x++)
+            for (int64_t x = view_x / active_map.map->tile_width; x <= (int64_t)((view_x + view_width) / active_map.map->tile_width); x++)
             {
-                struct tile *tile = map_get_tile(map, x, y);
+                struct tile *tile = map_get_tile(active_map.map, x, y);
                 if (tile)
                 {
-                    struct tileset *tileset = map_get_tileset(map, tile->gid);
+                    struct tileset *tileset = map_get_tileset(active_map.map, tile->gid);
 
                     SDL_Rect srcrect = {
-                        (int)(((tile->gid - tileset->first_gid) % tileset->columns) * map->tile_width),
-                        (int)(((tile->gid - tileset->first_gid) / tileset->columns) * map->tile_height),
-                        (int)map->tile_width,
-                        (int)map->tile_height};
+                        (int)(((tile->gid - tileset->first_gid) % tileset->columns) * active_map.map->tile_width),
+                        (int)(((tile->gid - tileset->first_gid) / tileset->columns) * active_map.map->tile_height),
+                        (int)active_map.map->tile_width,
+                        (int)active_map.map->tile_height};
 
                     SDL_Rect dstrect = {
-                        (int)(((x * map->tile_width) - view_x) * SPRITE_SCALE),
-                        (int)(((y * map->tile_height) - view_y) * SPRITE_SCALE),
-                        (int)(map->tile_width * SPRITE_SCALE),
-                        (int)(map->tile_height * SPRITE_SCALE)};
+                        (int)(((x * active_map.map->tile_width) - view_x) * SPRITE_SCALE),
+                        (int)(((y * active_map.map->tile_height) - view_y) * SPRITE_SCALE),
+                        (int)(active_map.map->tile_width * SPRITE_SCALE),
+                        (int)(active_map.map->tile_height * SPRITE_SCALE)};
 
                     double angle = 0;
                     if (tile->d_flip)
@@ -743,7 +715,7 @@ int main(int argc, char *argv[])
 
                     SDL_RenderCopyEx(
                         renderer,
-                        sprites[tileset->index],
+                        active_map.sprites[tileset->index],
                         &srcrect,
                         &dstrect,
                         angle,
@@ -755,25 +727,25 @@ int main(int argc, char *argv[])
 
         for (size_t i = 0; i < MAX_MOBS; i++)
         {
-            struct mob *mob = &map->mobs[i];
+            struct mob *mob = &active_map.map->mobs[i];
 
-            if (map->mobs[i].alive)
+            if (mob->alive)
             {
-                struct tileset *tileset = map_get_tileset(map, mob->gid);
+                struct tileset *tileset = map_get_tileset(active_map.map, mob->gid);
 
                 SDL_Rect srcrect = {
-                    (int)(((mob->gid - tileset->first_gid) % tileset->columns) * map->tile_width),
-                    (int)(((mob->gid - tileset->first_gid) / tileset->columns) * map->tile_height),
-                    (int)map->tile_width,
-                    (int)map->tile_height};
+                    (int)(((mob->gid - tileset->first_gid) % tileset->columns) * active_map.map->tile_width),
+                    (int)(((mob->gid - tileset->first_gid) / tileset->columns) * active_map.map->tile_height),
+                    (int)active_map.map->tile_width,
+                    (int)active_map.map->tile_height};
 
                 SDL_Rect dstrect = {
-                    (int)((map->mobs[i].x - view_x) * SPRITE_SCALE),
-                    (int)((map->mobs[i].y - view_y) * SPRITE_SCALE),
-                    (int)(map->tile_width * SPRITE_SCALE),
-                    (int)(map->tile_height * SPRITE_SCALE)};
+                    (int)((mob->x - view_x) * SPRITE_SCALE),
+                    (int)((mob->y - view_y) * SPRITE_SCALE),
+                    (int)(active_map.map->tile_width * SPRITE_SCALE),
+                    (int)(active_map.map->tile_height * SPRITE_SCALE)};
 
-                SDL_RenderCopy(renderer, sprites[tileset->index], &srcrect, &dstrect);
+                SDL_RenderCopy(renderer, active_map.sprites[tileset->index], &srcrect, &dstrect);
             }
         }
 
@@ -781,22 +753,26 @@ int main(int argc, char *argv[])
         {
             if (clients[i].id != CLIENT_ID_UNUSED && clients[i].player.map_index == player->map_index)
             {
+                struct player *player = &clients[i].player;
+
+                // TODO: should be on player struct and come from server
+                // should also come from a separate sprite file, makes no sense to use the active map's tilesets
                 int64_t player_gid = 32;
-                struct tileset *tileset = map_get_tileset(map, player_gid);
+                struct tileset *tileset = map_get_tileset(active_map.map, player_gid);
 
                 SDL_Rect srcrect = {
-                    (int)(((player_gid - tileset->first_gid) % tileset->columns) * map->tile_width),
-                    (int)(((player_gid - tileset->first_gid) / tileset->columns) * map->tile_height),
-                    (int)map->tile_width,
-                    (int)map->tile_height};
+                    (int)(((player_gid - tileset->first_gid) % tileset->columns) * active_map.map->tile_width),
+                    (int)(((player_gid - tileset->first_gid) / tileset->columns) * active_map.map->tile_height),
+                    (int)active_map.map->tile_width,
+                    (int)active_map.map->tile_height};
 
                 SDL_Rect dstrect = {
-                    (int)((clients[i].player.pos_x - view_x) * SPRITE_SCALE),
-                    (int)((clients[i].player.pos_y - view_y) * SPRITE_SCALE),
-                    (int)(map->tile_width * SPRITE_SCALE),
-                    (int)(map->tile_height * SPRITE_SCALE)};
+                    (int)((player->pos_x - view_x) * SPRITE_SCALE),
+                    (int)((player->pos_y - view_y) * SPRITE_SCALE),
+                    (int)(active_map.map->tile_width * SPRITE_SCALE),
+                    (int)(active_map.map->tile_height * SPRITE_SCALE)};
 
-                SDL_RenderCopy(renderer, sprites[tileset->index], &srcrect, &dstrect);
+                SDL_RenderCopy(renderer, active_map.sprites[tileset->index], &srcrect, &dstrect);
 
                 draw_text(renderer, font, 12, dstrect.x + 12, dstrect.y - 24, WINDOW_WIDTH, (SDL_Color){255, 255, 255}, "%zd", clients[i].id);
             }
@@ -855,27 +831,18 @@ int main(int argc, char *argv[])
     {
         struct message message;
         message.type = MESSAGE_DISCONNECT;
-
-        if (SDLNet_TCP_Send(tcp_socket, &message, sizeof(message)) < (int)sizeof(message))
-        {
-            printf("Error: Failed to send TCP packet: %s\n", SDLNet_GetError());
-        }
+        tcp_send(tcp_socket, &message, sizeof(message));
     }
 
     TTF_CloseFont(font);
 
-    for (size_t i = 0; i < map->num_tilesets; i++)
-    {
-        SDL_DestroyTexture(sprites[i]);
-    }
-    free(sprites);
+    deactivate_map(&active_map);
 
-    map_unload(map);
-    player_uninit(player);
-
-    world_unload(&world, false);
+    world_unload(&world);
     quests_unload(&quests);
     conversations_unload(&conversations);
+
+    player_uninit(player);
 
     SDLNet_UDP_DelSocket(socket_set, udp_socket);
     SDLNet_TCP_DelSocket(socket_set, tcp_socket);

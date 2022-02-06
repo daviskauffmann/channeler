@@ -1,9 +1,8 @@
 cmake_minimum_required(VERSION 3.0.0)
-project(server)
+project(hypernova_server)
 
 set(CMAKE_C_STANDARD 99)
 
-find_package(json-c CONFIG REQUIRED)
 find_package(SDL2 CONFIG REQUIRED)
 find_package(SDL2-net CONFIG REQUIRED)
 
@@ -13,8 +12,7 @@ add_executable(${PROJECT_NAME}
 
 target_link_libraries(${PROJECT_NAME}
     PRIVATE
-        shared
-        json-c::json-c
+        hypernova_shared
         SDL2::SDL2 SDL2::SDL2main
         SDL2::SDL2_net
 )

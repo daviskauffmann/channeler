@@ -16,6 +16,7 @@ enum message_type
 {
     MESSAGE_SERVER_CONNECT_OK,
     MESSAGE_SERVER_FULL,
+    MESSAGE_SERVER_SHUTDOWN,
     MESSAGE_CLIENT_CONNECT,
     MESSAGE_CLIENT_DISCONNECT,
     MESSAGE_UDP_CONNECT,
@@ -28,8 +29,7 @@ enum message_type
     MESSAGE_CHOOSE_CONVERSATION_RESPONSE,
     MESSAGE_END_CONVERSATION,
     MESSAGE_QUEST_STATUS,
-    MESSAGE_UPDATE_STUFF,
-    MESSAGE_UPDATE_POSITIONS
+    MESSAGE_GAME_STATE
 };
 
 struct message
@@ -81,7 +81,7 @@ struct message_quest_status
     struct quest_status quest_status;
 };
 
-struct message_update_stuff
+struct message_game_state
 {
     enum message_type type;
     struct
@@ -91,26 +91,16 @@ struct message_update_stuff
         {
             size_t map_index;
 
-            bool in_conversation;
-            size_t conversation_index;
-            size_t conversation_local_index;
-        } player;
-    } clients[MAX_CLIENTS];
-};
-
-struct message_update_positions
-{
-    enum message_type type;
-    struct
-    {
-        struct
-        {
             float pos_x;
             float pos_y;
             float vel_x;
             float vel_y;
             float acc_x;
             float acc_y;
+
+            bool in_conversation;
+            size_t conversation_index;
+            size_t conversation_local_index;
         } player;
     } clients[MAX_CLIENTS];
     struct

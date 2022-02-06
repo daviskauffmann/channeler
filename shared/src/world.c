@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <string.h>
 
-void world_load(struct world *world, const char *filename, bool load_maps)
+void world_load(struct world *world, const char *filename)
 {
     printf("Loading world: %s\n", filename);
 
@@ -30,27 +30,17 @@ void world_load(struct world *world, const char *filename, bool load_maps)
         strcpy(map_filename, assets_str);
         strncat(map_filename, filename_str, strlen(filename_str) - strlen(".tmx"));
         strcat(map_filename, ext_str);
-        map_init(map, map_filename);
-
-        if (load_maps)
-        {
-            map_load(map);
-        }
+        map_load(map, map_filename);
     }
 }
 
-void world_unload(struct world *world, bool unload_maps)
+void world_unload(struct world *world)
 {
     printf("Unloading world: %s\n", world->filename);
 
     for (size_t i = 0; i < world->num_maps; i++)
     {
-        if (unload_maps)
-        {
-            map_unload(&world->maps[i]);
-        }
-
-        map_uninit(&world->maps[i]);
+        map_unload(&world->maps[i]);
     }
     free(world->maps);
 }
