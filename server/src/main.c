@@ -1,5 +1,6 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_net.h>
+#include <shared/clients.h>
 #include <shared/conversations.h>
 #include <shared/map.h>
 #include <shared/net.h>
@@ -16,15 +17,6 @@
 #define FRAME_DELAY (1000 / TICK_RATE)
 
 #define UPDATE_CLIENTS_RATE 20.f
-
-struct client
-{
-    size_t id;
-    TCPsocket socket;
-    IPaddress udp_address;
-    struct player player;
-    struct input input;
-};
 
 int main(int argc, char *argv[])
 {
@@ -72,11 +64,7 @@ int main(int argc, char *argv[])
 
     printf("Listening on port %d\n", SERVER_PORT);
 
-    struct client clients[MAX_CLIENTS];
-    for (size_t i = 0; i < MAX_CLIENTS; i++)
-    {
-        clients[i].id = CLIENT_ID_UNUSED;
-    }
+    clients_init();
 
     struct world world;
     world_load(&world, "assets/world.json");
@@ -118,7 +106,7 @@ int main(int argc, char *argv[])
 
                         clients[new_client_id].id = new_client_id;
                         clients[new_client_id].socket = socket;
-                        player_init(&clients[new_client_id].player, 0);
+                        player_init(&clients[new_client_id].player, new_client_id, socket, 0);
 
                         SDLNet_TCP_AddSocket(socket_set, clients[new_client_id].socket);
 

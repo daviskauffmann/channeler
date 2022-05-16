@@ -18,6 +18,7 @@ Install the following using the package manager of your choice:
 - SDL2-image
 - SDL2-mixer
 - SDL2-net
+- SDL2-ttf
 
 ### Build
 

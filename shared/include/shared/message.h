@@ -81,6 +81,13 @@ struct message_quest_status
     struct quest_status quest_status;
 };
 
+struct message_quest_status_broadcast
+{
+    enum message_type type;
+    size_t id;
+    struct quest_status quest_status;
+};
+
 struct message_game_state
 {
     enum message_type type;

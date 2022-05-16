@@ -3,6 +3,7 @@
 #include <SDL2/SDL_mixer.h>
 #include <SDL2/SDL_net.h>
 #include <SDL2/SDL_ttf.h>
+#include <shared/clients.h>
 #include <shared/conversations.h>
 #include <shared/input.h>
 #include <shared/map.h>
@@ -29,12 +30,6 @@
 
 #define SPRITE_SIZE 16
 #define SPRITE_SCALE 2
-
-struct client
-{
-    size_t id;
-    struct player player;
-};
 
 struct active_map
 {
@@ -183,11 +178,9 @@ int main(int argc, char *argv[])
     SDLNet_TCP_AddSocket(socket_set, tcp_socket);
     SDLNet_UDP_AddSocket(socket_set, udp_socket);
 
-    struct client clients[MAX_CLIENTS];
-    for (size_t i = 0; i < MAX_CLIENTS; i++)
-    {
-        clients[i].id = CLIENT_ID_UNUSED;
-    }
+    printf("Connected to %s:%d\n", SERVER_HOST, SERVER_PORT);
+
+    clients_init();
 
     size_t client_id = 0;
     size_t map_index = 0;
@@ -247,7 +240,7 @@ int main(int argc, char *argv[])
 
     clients[client_id].id = client_id;
     struct player *player = &clients[client_id].player;
-    player_init(player, map_index);
+    player_init(player, client_id, NULL, map_index);
 
     // TODO: files to load should be sent from the server
     // first pass will be just giving a filename that the client is expected to have locally and erroring if not
@@ -303,6 +296,15 @@ int main(int argc, char *argv[])
                         clients[message->id].id = CLIENT_ID_UNUSED;
 
                         printf("Client with ID %zd has disconnected\n", message->id);
+                    }
+                    break;
+                    case MESSAGE_QUEST_STATUS:
+                    {
+                        struct message_quest_status_broadcast *message = (struct message_quest_status_broadcast *)data;
+
+                        player_set_quest_status(&clients[message->id].player, message->quest_status);
+
+                        printf("Setting quest %zd to state %zd for client %zd\n", message->quest_status.quest_index, message->quest_status.stage_index, message->id);
                     }
                     break;
                     default:
@@ -562,6 +564,25 @@ int main(int argc, char *argv[])
                     struct quest_status quest_status;
                     quest_status.quest_index = 0;
                     quest_status.stage_index = 1;
+
+                    if (online)
+                    {
+                        struct message_quest_status message;
+                        message.type = MESSAGE_QUEST_STATUS;
+                        message.quest_status = quest_status;
+                        tcp_send(tcp_socket, &message, sizeof(message));
+                    }
+                    else
+                    {
+                        player_set_quest_status(player, quest_status);
+                    }
+                }
+                break;
+                case SDLK_F6:
+                {
+                    struct quest_status quest_status;
+                    quest_status.quest_index = 0;
+                    quest_status.stage_index = 3;
 
                     if (online)
                     {

@@ -10,6 +10,7 @@ find_package(SDL2-mixer CONFIG REQUIRED)
 find_package(SDL2-net CONFIG REQUIRED)
 
 add_library(${PROJECT_NAME}
+    src/clients.c
     src/conversations.c
     src/map.c
     src/net.c

@@ -11,6 +11,12 @@
                 },
                 {
                     "description": "Kill the goblin leader."
+                },
+                {
+                    "description": "The goblin leader is dead. I should inform the villagers."
+                },
+                {
+                    "description": "The goblin threat to the village is no more."
                 }
             ]
         },

@@ -2,15 +2,21 @@
 
 #include <malloc.h>
 #include <math.h>
+#include <shared/clients.h>
 #include <shared/conversations.h>
 #include <shared/map.h>
+#include <shared/message.h>
+#include <shared/net.h>
 #include <shared/tileset.h>
 #include <shared/quest_status.h>
 #include <stdbool.h>
 #include <string.h>
 
-void player_init(struct player *player, size_t map_index)
+void player_init(struct player *player, size_t client_id, TCPsocket socket, size_t map_index)
 {
+    player->client_id = client_id;
+    player->socket = socket;
+
     player->map_index = map_index;
     player->pos_x = 100;
     player->pos_y = 100;
@@ -217,7 +223,7 @@ void player_set_quest_status(struct player *player, struct quest_status quest_st
         if (existing_quest_status->quest_index == quest_status.quest_index)
         {
             existing_quest_status->stage_index = quest_status.stage_index;
-            return;
+            goto done;
         }
     }
 
@@ -225,6 +231,16 @@ void player_set_quest_status(struct player *player, struct quest_status quest_st
     player->quest_statuses = realloc(player->quest_statuses, player->num_quest_statuses * sizeof(*player->quest_statuses));
     player->quest_statuses[quest_status_index].quest_index = quest_status.quest_index;
     player->quest_statuses[quest_status_index].stage_index = quest_status.stage_index;
+
+done:
+    if (player->socket)
+    {
+        struct message_quest_status_broadcast message;
+        message.type = MESSAGE_QUEST_STATUS;
+        message.id = player->client_id;
+        message.quest_status = quest_status;
+        clients_broadcast(&message, sizeof(message));
+    }
 }
 
 bool player_check_quest_status(struct player *player, struct quest_status quest_status)
