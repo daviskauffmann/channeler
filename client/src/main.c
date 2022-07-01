@@ -31,6 +31,8 @@
 #define SPRITE_SIZE 16
 #define SPRITE_SCALE 2
 
+const bool is_server = false;
+
 struct active_map
 {
     struct map *map;
@@ -270,117 +272,6 @@ int main(int argc, char *argv[])
         current_time = frame_start;
         float delta_time = (current_time - previous_time) / 1000.0f;
 
-        while (online && SDLNet_CheckSockets(socket_set, 0) > 0)
-        {
-            if (SDLNet_SocketReady(tcp_socket))
-            {
-                char data[PACKET_SIZE];
-                if (SDLNet_TCP_Recv(tcp_socket, data, sizeof(data)) > 1)
-                {
-                    enum message_type type = ((struct message *)data)->type;
-                    switch (type)
-                    {
-                    case MESSAGE_CLIENT_CONNECT:
-                    {
-                        struct message_id *message = (struct message_id *)data;
-
-                        clients[message->id].id = message->id;
-
-                        printf("Client with ID %zd has joined\n", message->id);
-                    }
-                    break;
-                    case MESSAGE_CLIENT_DISCONNECT:
-                    {
-                        struct message_id *message = (struct message_id *)data;
-
-                        clients[message->id].id = CLIENT_ID_UNUSED;
-
-                        printf("Client with ID %zd has disconnected\n", message->id);
-                    }
-                    break;
-                    case MESSAGE_QUEST_STATUS:
-                    {
-                        struct message_quest_status_broadcast *message = (struct message_quest_status_broadcast *)data;
-
-                        player_set_quest_status(&clients[message->id].player, message->quest_status);
-
-                        printf("Setting quest %zd to state %zd for client %zd\n", message->quest_status.quest_index, message->quest_status.stage_index, message->id);
-                    }
-                    break;
-                    default:
-                    {
-                        printf("Error: Unknown TCP packet type: %d\n", type);
-                    }
-                    break;
-                    }
-                }
-            }
-
-            if (SDLNet_SocketReady(udp_socket))
-            {
-                UDPpacket *packet = SDLNet_AllocPacket(PACKET_SIZE);
-                if (SDLNet_UDP_Recv(udp_socket, packet) == 1)
-                {
-                    enum message_type type = ((struct message *)packet->data)->type;
-                    switch (type)
-                    {
-                    case MESSAGE_SERVER_SHUTDOWN:
-                    {
-                        online = false;
-                        quit = true;
-                    }
-                    break;
-                    case MESSAGE_GAME_STATE:
-                    {
-                        struct message_game_state *message = (struct message_game_state *)packet->data;
-
-                        for (size_t i = 0; i < MAX_CLIENTS; i++)
-                        {
-                            clients[i].id = message->clients[i].id;
-
-                            if (clients[i].id != CLIENT_ID_UNUSED)
-                            {
-                                clients[i].player.map_index = message->clients[i].player.map_index;
-
-                                clients[i].player.pos_x = message->clients[i].player.pos_x;
-                                clients[i].player.pos_y = message->clients[i].player.pos_y;
-                                clients[i].player.vel_x = message->clients[i].player.vel_x;
-                                clients[i].player.vel_y = message->clients[i].player.vel_y;
-                                clients[i].player.acc_x = message->clients[i].player.acc_x;
-                                clients[i].player.acc_y = message->clients[i].player.acc_y;
-
-                                if (message->clients[i].player.in_conversation)
-                                {
-                                    clients[i].player.conversation_root = &conversations.conversations[message->clients[i].player.conversation_index];
-                                    clients[i].player.conversation_node = conversation_find_by_local_index(clients[i].player.conversation_root, message->clients[i].player.conversation_local_index);
-                                }
-                                else
-                                {
-                                    clients[i].player.conversation_root = NULL;
-                                    clients[i].player.conversation_node = NULL;
-                                }
-                            }
-                        }
-
-                        for (size_t i = 0; i < MAX_MOBS; i++)
-                        {
-                            world.maps[player->map_index].mobs[i].alive = message->mobs[i].alive;
-                            world.maps[player->map_index].mobs[i].x = message->mobs[i].x;
-                            world.maps[player->map_index].mobs[i].y = message->mobs[i].y;
-                        }
-                    }
-                    break;
-                    default:
-                    {
-                        printf("Error: Unknown UDP packet type: %d\n", type);
-                    }
-                    break;
-                    }
-                }
-                SDLNet_FreePacket(packet);
-            }
-        }
-
         int num_keys;
         const uint8_t *keys = SDL_GetKeyboardState(&num_keys);
 
@@ -605,6 +496,126 @@ int main(int argc, char *argv[])
                 quit = true;
             }
             break;
+            }
+        }
+
+        while (online && SDLNet_CheckSockets(socket_set, 0) > 0)
+        {
+            if (SDLNet_SocketReady(tcp_socket))
+            {
+                char data[PACKET_SIZE];
+                if (SDLNet_TCP_Recv(tcp_socket, data, sizeof(data)) > 1)
+                {
+                    enum message_type type = ((struct message *)data)->type;
+                    switch (type)
+                    {
+                    case MESSAGE_SERVER_SHUTDOWN:
+                    {
+                        online = false;
+                        quit = true;
+                    }
+                    break;
+                    case MESSAGE_CLIENT_CONNECT:
+                    {
+                        struct message_id *message = (struct message_id *)data;
+
+                        clients[message->id].id = message->id;
+
+                        printf("Client with ID %zd has joined\n", message->id);
+                    }
+                    break;
+                    case MESSAGE_CLIENT_DISCONNECT:
+                    {
+                        struct message_id *message = (struct message_id *)data;
+
+                        clients[message->id].id = CLIENT_ID_UNUSED;
+
+                        printf("Client with ID %zd has disconnected\n", message->id);
+                    }
+                    break;
+                    case MESSAGE_CONVERSATION_STATE:
+                    {
+                        struct message_conversation_state *message = (struct message_conversation_state *)data;
+
+                        if (message->in_conversation)
+                        {
+                            player->conversation_root = &conversations.conversations[message->conversation_index];
+                            player->conversation_node = conversation_find_by_local_index(player->conversation_root, message->conversation_local_index);
+
+                            printf("Setting conversation %zd to node %zd\n", message->conversation_index, message->conversation_local_index);
+                        }
+                        else
+                        {
+                            player->conversation_root = NULL;
+                            player->conversation_node = NULL;
+
+                            printf("Ending conversation\n");
+                        }
+                    }
+                    break;
+                    case MESSAGE_QUEST_STATUS:
+                    {
+                        struct message_quest_status_broadcast *message = (struct message_quest_status_broadcast *)data;
+
+                        player_set_quest_status(&clients[message->id].player, message->quest_status);
+
+                        printf("Setting quest %zd to state %zd for client %zd\n", message->quest_status.quest_index, message->quest_status.stage_index, message->id);
+                    }
+                    break;
+                    default:
+                    {
+                        printf("Error: Unknown TCP packet type: %d\n", type);
+                    }
+                    break;
+                    }
+                }
+            }
+
+            if (SDLNet_SocketReady(udp_socket))
+            {
+                UDPpacket *packet = SDLNet_AllocPacket(PACKET_SIZE);
+                if (SDLNet_UDP_Recv(udp_socket, packet) == 1)
+                {
+                    enum message_type type = ((struct message *)packet->data)->type;
+                    switch (type)
+                    {
+                    case MESSAGE_GAME_STATE:
+                    {
+                        struct message_game_state *message = (struct message_game_state *)packet->data;
+
+                        for (size_t i = 0; i < MAX_CLIENTS; i++)
+                        {
+                            clients[i].id = message->clients[i].id;
+
+                            if (clients[i].id != CLIENT_ID_UNUSED)
+                            {
+                                clients[i].player.map_index = message->clients[i].player.map_index;
+
+                                clients[i].player.pos_x = message->clients[i].player.pos_x;
+                                clients[i].player.pos_y = message->clients[i].player.pos_y;
+                                clients[i].player.vel_x = message->clients[i].player.vel_x;
+                                clients[i].player.vel_y = message->clients[i].player.vel_y;
+                                clients[i].player.acc_x = message->clients[i].player.acc_x;
+                                clients[i].player.acc_y = message->clients[i].player.acc_y;
+                            }
+                        }
+
+                        for (size_t i = 0; i < MAX_MOBS; i++)
+                        {
+                            world.maps[player->map_index].mobs[i].alive = message->mobs[i].alive;
+                            world.maps[player->map_index].mobs[i].x = message->mobs[i].x;
+                            world.maps[player->map_index].mobs[i].y = message->mobs[i].y;
+                        }
+                    }
+                    break;
+                    default:
+                    {
+                        printf("Error: Unknown UDP packet type: %d\n", type);
+                    }
+                    break;
+                    }
+                }
+                SDLNet_FreePacket(packet);
             }
         }
 

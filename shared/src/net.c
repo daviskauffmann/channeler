@@ -1,10 +1,13 @@
 #include <shared/net.h>
 
+#include <assert.h>
 #include <shared/message.h>
 
 bool tcp_send(TCPsocket sock, const void *data, size_t len)
 {
-    if (SDLNet_TCP_Send(sock, data, (int)len) < len)
+    assert(len <= PACKET_SIZE);
+
+    if (SDLNet_TCP_Send(sock, data, PACKET_SIZE) < PACKET_SIZE)
     {
         printf("Error: Failed to send TCP packet: %s\n", SDLNet_GetError());
 
@@ -16,6 +19,8 @@ bool tcp_send(TCPsocket sock, const void *data, size_t len)
 
 bool udp_send(UDPsocket sock, IPaddress address, const void *data, size_t len)
 {
+    assert(len <= PACKET_SIZE);
+
     bool result = true;
 
     UDPpacket *packet = SDLNet_AllocPacket(PACKET_SIZE);

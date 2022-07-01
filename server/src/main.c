@@ -18,9 +18,11 @@
 
 #define UPDATE_CLIENTS_RATE 20.f
 
+const bool is_server = true;
+
 int main(int argc, char *argv[])
 {
-    if (SDL_Init(0) != 0)
+    if (SDL_Init(SDL_INIT_EVENTS) != 0)
     {
         printf("Error: Failed to initialize SDL: %s\n", SDL_GetError());
         return 1;
@@ -83,6 +85,19 @@ int main(int argc, char *argv[])
         uint32_t previous_time = current_time;
         current_time = frame_start;
         float delta_time = (current_time - previous_time) / 1000.0f;
+
+        SDL_Event event;
+        while (SDL_PollEvent(&event))
+        {
+            switch (event.type)
+            {
+            case SDL_QUIT:
+            {
+                quit = true;
+            }
+            break;
+            }
+        }
 
         while (SDLNet_CheckSockets(socket_set, 0) > 0)
         {
@@ -329,13 +344,6 @@ int main(int argc, char *argv[])
                             message->clients[j].player.vel_y = clients[j].player.vel_y;
                             message->clients[j].player.acc_x = clients[j].player.acc_x;
                             message->clients[j].player.acc_y = clients[j].player.acc_y;
-
-                            message->clients[j].player.in_conversation = clients[j].player.conversation_root != NULL;
-                            if (message->clients[j].player.in_conversation)
-                            {
-                                message->clients[j].player.conversation_index = clients[j].player.conversation_root->index;
-                                message->clients[j].player.conversation_local_index = clients[j].player.conversation_node->local_index;
-                            }
                         }
                     }
 

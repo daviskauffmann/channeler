@@ -8,7 +8,7 @@
 #include "quest_status.h"
 
 #define PACKET_SIZE 1024
-#define MAX_STRLEN 256
+
 #define MAX_CLIENTS 8
 #define CLIENT_ID_UNUSED MAX_CLIENTS
 
@@ -28,6 +28,7 @@ enum message_type
     MESSAGE_ADVANCE_CONVERSATION,
     MESSAGE_CHOOSE_CONVERSATION_RESPONSE,
     MESSAGE_END_CONVERSATION,
+    MESSAGE_CONVERSATION_STATE,
     MESSAGE_QUEST_STATUS,
     MESSAGE_GAME_STATE
 };
@@ -81,6 +82,14 @@ struct message_quest_status
     struct quest_status quest_status;
 };
 
+struct message_conversation_state
+{
+    enum message_type type;
+    bool in_conversation;
+    size_t conversation_index;
+    size_t conversation_local_index;
+};
+
 struct message_quest_status_broadcast
 {
     enum message_type type;
@@ -104,17 +113,13 @@ struct message_game_state
             float vel_y;
             float acc_x;
             float acc_y;
-
-            bool in_conversation;
-            size_t conversation_index;
-            size_t conversation_local_index;
         } player;
     } clients[MAX_CLIENTS];
     struct
     {
         float x;
         float y;
-        int alive;
+        bool alive;
     } mobs[MAX_MOBS];
 };
 

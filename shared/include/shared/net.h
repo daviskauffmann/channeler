@@ -7,4 +7,6 @@
 bool tcp_send(TCPsocket sock, const void *data, size_t len);
 bool udp_send(UDPsocket sock, IPaddress address, const void *data, size_t len);
 
+extern const bool is_server;
+
 #endif

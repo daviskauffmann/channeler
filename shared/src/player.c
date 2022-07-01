@@ -176,6 +176,19 @@ void player_advance_conversation(struct player *player)
             player->conversation_root = player->conversation_node = NULL;
         }
     }
+
+    if (is_server)
+    {
+        struct message_conversation_state message;
+        message.type = MESSAGE_CONVERSATION_STATE;
+        message.in_conversation = player->conversation_root != NULL;
+        if (message.in_conversation)
+        {
+            message.conversation_index = player->conversation_root->index;
+            message.conversation_local_index = player->conversation_node->local_index;
+        }
+        tcp_send(player->socket, &message, sizeof(message));
+    }
 }
 
 void player_choose_conversation_response(struct player *player, size_t choice_index)
@@ -213,6 +226,14 @@ void player_choose_conversation_response(struct player *player, size_t choice_in
 void player_end_conversation(struct player *player)
 {
     player->conversation_root = player->conversation_node = NULL;
+
+    if (is_server)
+    {
+        struct message_conversation_state message;
+        message.type = MESSAGE_CONVERSATION_STATE;
+        message.in_conversation = false;
+        tcp_send(player->socket, &message, sizeof(message));
+    }
 }
 
 void player_set_quest_status(struct player *player, struct quest_status quest_status)
@@ -233,7 +254,7 @@ void player_set_quest_status(struct player *player, struct quest_status quest_st
     player->quest_statuses[quest_status_index].stage_index = quest_status.stage_index;
 
 done:
-    if (player->socket)
+    if (is_server)
     {
         struct message_quest_status_broadcast message;
         message.type = MESSAGE_QUEST_STATUS;
