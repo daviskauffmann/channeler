@@ -1,11 +1,10 @@
 #ifndef MESSAGE_H
 #define MESSAGE_H
 
-#include <stdint.h>
-
 #include "input.h"
 #include "map.h"
 #include "quest_status.h"
+#include <stdint.h>
 
 #define PACKET_SIZE 1024
 

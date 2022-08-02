@@ -1,6 +1,7 @@
 #include <shared/map.h>
 
 #include <json-c/json.h>
+#include <shared/layer.h>
 #include <shared/tileset.h>
 #include <stdio.h>
 #include <string.h>
@@ -19,61 +20,73 @@ void map_load(struct map *map, char *filename)
 
         struct json_object *height_obj = json_object_object_get(root, "height");
         map->height = json_object_get_int64(height_obj);
-
-        map->tiles = malloc(map->width * map->height * sizeof(*map->tiles));
     }
 
     {
+        map->num_layers = 0;
+        map->layers = NULL;
+
         struct json_object *layers_obj = json_object_object_get(root, "layers");
-
+        size_t num_layers = json_object_array_length(layers_obj);
+        for (size_t i = 0; i < num_layers; i++)
         {
-            struct json_object *layer_0_obj = json_object_array_get_idx(layers_obj, 0);
-            struct json_object *data_obj = json_object_object_get(layer_0_obj, "data");
-            for (size_t i = 0; i < map->width * map->height; i++)
+            struct json_object *layer_obj = json_object_array_get_idx(layers_obj, i);
+
+            struct json_object *type_obj = json_object_object_get(layer_obj, "type");
+            const char *type = json_object_get_string(type_obj);
+            if (strcmp(type, "tilelayer") == 0)
             {
-                struct tile *tile = &map->tiles[i];
+                size_t layer_index = map->num_layers++;
+                map->layers = realloc(map->layers, map->num_layers * sizeof(*map->layers));
+                map->layers[layer_index].tiles = malloc(map->width * map->height * sizeof(*map->layers[layer_index].tiles));
 
-                const uint32_t H_FLIP_FLAG = 0x80000000;
-                const uint32_t V_FLIP_FLAG = 0x40000000;
-                const uint32_t D_FLIP_FLAG = 0x20000000;
+                struct json_object *data_obj = json_object_object_get(layer_obj, "data");
+                for (size_t j = 0; j < map->width * map->height; j++)
+                {
+                    struct tile *tile = &map->layers[layer_index].tiles[j];
 
-                struct json_object *tile_obj = json_object_array_get_idx(data_obj, i);
-                int64_t gid = json_object_get_int64(tile_obj);
-                tile->gid = gid & ~(H_FLIP_FLAG | V_FLIP_FLAG | D_FLIP_FLAG);
-                tile->h_flip = gid & H_FLIP_FLAG;
-                tile->v_flip = gid & V_FLIP_FLAG;
-                tile->d_flip = gid & D_FLIP_FLAG;
+                    const uint32_t H_FLIP_FLAG = 0x80000000;
+                    const uint32_t V_FLIP_FLAG = 0x40000000;
+                    const uint32_t D_FLIP_FLAG = 0x20000000;
+
+                    struct json_object *tile_obj = json_object_array_get_idx(data_obj, j);
+                    int64_t gid = json_object_get_int64(tile_obj);
+                    tile->gid = gid & ~(H_FLIP_FLAG | V_FLIP_FLAG | D_FLIP_FLAG);
+                    tile->h_flip = gid & H_FLIP_FLAG;
+                    tile->v_flip = gid & V_FLIP_FLAG;
+                    tile->d_flip = gid & D_FLIP_FLAG;
+                }
             }
-        }
-
-        {
-            struct json_object *layer_1_obj = json_object_array_get_idx(layers_obj, 1);
-            struct json_object *objects_obj = json_object_object_get(layer_1_obj, "objects");
-
-            for (size_t i = 0; i < MAX_MOBS; i++)
+            else if (strcmp(type, "objectgroup") == 0)
             {
-                struct mob *mob = &map->mobs[i];
-                mob->gid = 0;
-            }
+                // TODO: object layer support in the map
+                struct json_object *objects_obj = json_object_object_get(layer_obj, "objects");
 
-            for (size_t i = 0; i < json_object_array_length(objects_obj); i++)
-            {
-                struct mob *mob = &map->mobs[i];
+                for (size_t i = 0; i < MAX_MOBS; i++)
+                {
+                    struct mob *mob = &map->mobs[i];
+                    mob->gid = 0;
+                }
 
-                // TODO: check object type, currently all objects are treated as mobs
-                struct json_object *object_obj = json_object_array_get_idx(objects_obj, i);
+                for (size_t i = 0; i < json_object_array_length(objects_obj); i++)
+                {
+                    struct mob *mob = &map->mobs[i];
 
-                struct json_object *gid_obj = json_object_object_get(object_obj, "gid");
-                mob->gid = json_object_get_int(gid_obj);
+                    // TODO: check object type, currently all objects are treated as mobs
+                    struct json_object *object_obj = json_object_array_get_idx(objects_obj, i);
 
-                struct json_object *x_obj = json_object_object_get(object_obj, "x");
-                mob->origin_x = mob->x = (float)json_object_get_double(x_obj);
+                    struct json_object *gid_obj = json_object_object_get(object_obj, "gid");
+                    mob->gid = json_object_get_int(gid_obj);
 
-                struct json_object *y_obj = json_object_object_get(object_obj, "y");
-                mob->origin_y = mob->y = (float)json_object_get_double(y_obj);
+                    struct json_object *x_obj = json_object_object_get(object_obj, "x");
+                    mob->origin_x = mob->x = (float)json_object_get_double(x_obj);
 
-                mob->alive = true;
-                mob->respawn_timer = 0;
+                    struct json_object *y_obj = json_object_object_get(object_obj, "y");
+                    mob->origin_y = mob->y = (float)json_object_get_double(y_obj);
+
+                    mob->alive = true;
+                    mob->respawn_timer = 0;
+                }
             }
         }
     }
@@ -119,8 +132,12 @@ void map_unload(struct map *map)
 
     free(map->filename);
 
-    free(map->tiles);
-    map->tiles = NULL;
+    for (size_t i = 0; i < map->num_layers; i++)
+    {
+        free(map->layers[i].tiles);
+    }
+    free(map->layers);
+    map->layers = NULL;
 
     for (size_t i = 0; i < map->num_tilesets; i++)
     {
@@ -148,15 +165,6 @@ void map_update(struct map *map, float delta_time)
     }
 }
 
-struct tile *map_get_tile(struct map *map, size_t x, size_t y)
-{
-    if (x < map->width && y < map->height)
-    {
-        return &map->tiles[x + y * map->width];
-    }
-    return NULL;
-}
-
 struct tileset *map_get_tileset(struct map *map, size_t gid)
 {
     size_t tileset_index = 0;
@@ -168,4 +176,24 @@ struct tileset *map_get_tileset(struct map *map, size_t gid)
         }
     }
     return &map->tilesets[tileset_index];
+}
+
+bool map_is_solid(struct map *map, size_t x, size_t y)
+{
+    for (size_t i = 0; i < map->num_layers; i++)
+    {
+        struct layer *layer = &map->layers[i];
+        struct tile *tile = layer_get_tile(layer, map, x, y);
+        if (tile)
+        {
+            struct tileset *tileset = map_get_tileset(map, tile->gid);
+            struct tile_data *tile_data = tileset_get_tile_data(tileset, tile->gid);
+            if (tile_data->solid)
+            {
+                return true;
+            }
+        }
+    }
+
+    return false;
 }

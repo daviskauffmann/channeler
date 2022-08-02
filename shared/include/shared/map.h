@@ -5,14 +5,6 @@
 
 #define MAX_MOBS 20
 
-struct tile
-{
-    size_t gid;
-    bool h_flip;
-    bool v_flip;
-    bool d_flip;
-};
-
 struct mob
 {
     size_t gid;
@@ -33,7 +25,11 @@ struct map
 
     size_t width;
     size_t height;
-    struct tile *tiles; // TODO: layer support
+
+    size_t num_layers;
+    struct layer *layers;
+
+    // TODO: object layers
     struct mob mobs[MAX_MOBS];
 
     size_t tile_width;
@@ -48,7 +44,8 @@ void map_unload(struct map *map);
 
 void map_update(struct map *map, float delta_time);
 
-struct tile *map_get_tile(struct map *map, size_t x, size_t y);
 struct tileset *map_get_tileset(struct map *map, size_t gid);
+
+bool map_is_solid(struct map *map, size_t x, size_t y);
 
 #endif

@@ -3,8 +3,8 @@
 #include <shared/clients.h>
 #include <shared/conversations.h>
 #include <shared/map.h>
-#include <shared/net.h>
 #include <shared/message.h>
+#include <shared/net.h>
 #include <shared/player.h>
 #include <shared/quests.h>
 #include <shared/world.h>
@@ -69,7 +69,7 @@ int main(int argc, char *argv[])
     clients_init();
 
     struct world world;
-    world_load(&world, "assets/world.json");
+    world_load(&world, "assets/world.world");
 
     struct quests quests;
     quests_load(&quests, "assets/quests.json");
@@ -117,7 +117,7 @@ int main(int argc, char *argv[])
                     }
                     if (new_client_id != CLIENT_ID_UNUSED)
                     {
-                        printf("Connected to client, assigning ID %zd\n", new_client_id);
+                        printf("Connected to client, assigning ID %zu\n", new_client_id);
 
                         clients[new_client_id].id = new_client_id;
                         clients[new_client_id].socket = socket;
@@ -172,7 +172,7 @@ int main(int argc, char *argv[])
                             {
                             case MESSAGE_DISCONNECT:
                             {
-                                printf("Client %zd disconnected\n", clients[i].id);
+                                printf("Client %zu disconnected\n", clients[i].id);
 
                                 struct message_id message;
                                 message.type = MESSAGE_CLIENT_DISCONNECT;
@@ -194,7 +194,7 @@ int main(int argc, char *argv[])
                             break;
                             case MESSAGE_ATTACK:
                             {
-                                printf("Client %zd attacking\n", clients[i].id);
+                                printf("Client %zu attacking\n", clients[i].id);
 
                                 player_attack(&clients[i].player, &world.maps[clients[i].player.map_index]);
                             }
@@ -203,7 +203,7 @@ int main(int argc, char *argv[])
                             {
                                 struct message_change_map *message = (struct message_change_map *)data;
 
-                                printf("Client %zd changing map to %zd\n", clients[i].id, message->map_index);
+                                printf("Client %zu changing map to %zu\n", clients[i].id, message->map_index);
 
                                 clients[i].player.map_index = message->map_index;
                             }
@@ -212,16 +212,14 @@ int main(int argc, char *argv[])
                             {
                                 struct message_start_conversation *message = (struct message_start_conversation *)data;
 
-                                printf("Client %zd starting conversation %zd\n", clients[i].id, message->conversation_index);
+                                printf("Client %zu starting conversation %zu\n", clients[i].id, message->conversation_index);
 
                                 player_start_conversation(&clients[i].player, &conversations, message->conversation_index);
                             }
                             break;
                             case MESSAGE_ADVANCE_CONVERSATION:
                             {
-                                struct message *message = (struct message *)data;
-
-                                printf("Client %zd advancing conversation\n", clients[i].id);
+                                printf("Client %zu advancing conversation\n", clients[i].id);
 
                                 player_advance_conversation(&clients[i].player);
                             }
@@ -230,16 +228,14 @@ int main(int argc, char *argv[])
                             {
                                 struct message_choose_conversation_response *message = (struct message_choose_conversation_response *)data;
 
-                                printf("Client %zd choosing conversation response %zd\n", clients[i].id, message->choice_index);
+                                printf("Client %zu choosing conversation response %zu\n", clients[i].id, message->choice_index);
 
                                 player_choose_conversation_response(&clients[i].player, message->choice_index);
                             }
                             break;
                             case MESSAGE_END_CONVERSATION:
                             {
-                                struct message *message = (struct message *)data;
-
-                                printf("Client %zd ending conversation\n", clients[i].id);
+                                printf("Client %zu ending conversation\n", clients[i].id);
 
                                 player_end_conversation(&clients[i].player);
                             }
@@ -248,7 +244,7 @@ int main(int argc, char *argv[])
                             {
                                 struct message_quest_status *message = (struct message_quest_status *)data;
 
-                                printf("Client %zd setting quest %zd to stage %zd\n", clients[i].id, message->quest_status.quest_index, message->quest_status.stage_index);
+                                printf("Client %zu setting quest %zu to stage %zu\n", clients[i].id, message->quest_status.quest_index, message->quest_status.stage_index);
 
                                 player_set_quest_status(&clients[i].player, message->quest_status);
                             }
@@ -278,7 +274,7 @@ int main(int argc, char *argv[])
 
                         clients[message->id].udp_address = packet->address;
 
-                        printf("Saving UDP info of client %zd\n", message->id);
+                        printf("Saving UDP info of client %zu\n", message->id);
                     }
                     break;
                     case MESSAGE_INPUT:

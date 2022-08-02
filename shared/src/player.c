@@ -7,8 +7,8 @@
 #include <shared/map.h>
 #include <shared/message.h>
 #include <shared/net.h>
-#include <shared/tileset.h>
 #include <shared/quest_status.h>
+#include <shared/tileset.h>
 #include <stdbool.h>
 #include <string.h>
 
@@ -63,46 +63,26 @@ void player_accelerate(struct player *player, struct map *map, float delta_time)
 
     int tile_nx_x = (int)roundf(new_pos_x / map->tile_width);
     int tile_nx_y = (int)roundf(player->pos_y / map->tile_height);
-    struct tile *tile_nx = map_get_tile(map, tile_nx_x, tile_nx_y);
-    if (tile_nx)
+    if (map_is_solid(map, tile_nx_x, tile_nx_y))
     {
-        struct tileset *tileset = map_get_tileset(map, tile_nx->gid);
-        struct tile_data *tile_data = tileset_get_tile_data(tileset, tile_nx->gid);
-        if (tile_data->solid)
-        {
-            player->vel_x = 0;
-        }
-        else
-        {
-            player->pos_x = new_pos_x;
-            player->vel_x = player->acc_x * delta_time + player->vel_x;
-        }
+        player->vel_x = 0;
     }
     else
     {
-        player->vel_x = 0;
+        player->pos_x = new_pos_x;
+        player->vel_x = player->acc_x * delta_time + player->vel_x;
     }
 
     int tile_ny_x = (int)roundf(player->pos_x / map->tile_width);
     int tile_ny_y = (int)roundf(new_pos_y / map->tile_height);
-    struct tile *tile_ny = map_get_tile(map, tile_ny_x, tile_ny_y);
-    if (tile_ny)
+    if (map_is_solid(map, tile_ny_x, tile_ny_y))
     {
-        struct tileset *tileset = map_get_tileset(map, tile_ny->gid);
-        struct tile_data *tile_data = tileset_get_tile_data(tileset, tile_ny->gid);
-        if (tile_data->solid)
-        {
-            player->vel_y = 0;
-        }
-        else
-        {
-            player->pos_y = new_pos_y;
-            player->vel_y = player->acc_y * delta_time + player->vel_y;
-        }
+        player->vel_y = 0;
     }
     else
     {
-        player->vel_y = 0;
+        player->pos_y = new_pos_y;
+        player->vel_y = player->acc_y * delta_time + player->vel_y;
     }
 
     player->acc_x = 0;

@@ -1,11 +1,10 @@
 #ifndef CLIENT_H
 #define CLIENT_H
 
-#include <SDL2/SDL_net.h>
-
 #include "input.h"
 #include "message.h"
 #include "player.h"
+#include <SDL2/SDL_net.h>
 
 struct client
 {

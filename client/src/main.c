@@ -6,17 +6,18 @@
 #include <shared/clients.h>
 #include <shared/conversations.h>
 #include <shared/input.h>
+#include <shared/layer.h>
 #include <shared/map.h>
-#include <shared/net.h>
 #include <shared/message.h>
+#include <shared/net.h>
 #include <shared/player.h>
 #include <shared/quests.h>
 #include <shared/tileset.h>
 #include <shared/world.h>
 #include <stdarg.h>
 #include <stdbool.h>
-#include <stdio.h>
 #include <stdint.h>
+#include <stdio.h>
 
 #define WINDOW_TITLE "Project Hypernova"
 #define WINDOW_WIDTH 1280
@@ -28,8 +29,7 @@
 #define FPS_CAP 144
 #define FRAME_DELAY (1000 / FPS_CAP)
 
-#define SPRITE_SIZE 16
-#define SPRITE_SCALE 2
+#define SPRITE_SCALE 4
 
 const bool is_server = false;
 
@@ -200,7 +200,7 @@ int main(int argc, char *argv[])
 
                 client_id = message_connect->id;
                 map_index = message_connect->map_index;
-                printf("ID %zd assigned by server\n", client_id);
+                printf("ID %zu assigned by server\n", client_id);
             }
             break;
             case MESSAGE_SERVER_FULL:
@@ -244,11 +244,13 @@ int main(int argc, char *argv[])
     struct player *player = &clients[client_id].player;
     player_init(player, client_id, NULL, map_index);
 
+    SDL_Texture *player_sprites = IMG_LoadTexture(renderer, "assets/NinjaAdventure/Actor/Characters/BlueNinja/SpriteSheet.png");
+
     // TODO: files to load should be sent from the server
     // first pass will be just giving a filename that the client is expected to have locally and erroring if not
     // second pass might be implementing file transfer from the server if the client does not have the world data
     struct world world;
-    world_load(&world, "assets/world.json");
+    world_load(&world, "assets/world.world");
 
     struct quests quests;
     quests_load(&quests, "assets/quests.json");
@@ -276,7 +278,7 @@ int main(int argc, char *argv[])
         const uint8_t *keys = SDL_GetKeyboardState(&num_keys);
 
         int mouse_x, mouse_y;
-        uint32_t mouse = SDL_GetMouseState(&mouse_x, &mouse_y);
+        /*uint32_t mouse = */ SDL_GetMouseState(&mouse_x, &mouse_y);
 
         SDL_Event event;
         while (SDL_PollEvent(&event))
@@ -384,35 +386,35 @@ int main(int argc, char *argv[])
                 break;
                 case SDLK_F1:
                 {
-                    size_t map_index = 0;
+                    size_t new_map_index = 0;
 
                     if (online)
                     {
                         struct message_change_map message;
                         message.type = MESSAGE_CHANGE_MAP;
-                        message.map_index = map_index;
+                        message.map_index = new_map_index;
                         tcp_send(tcp_socket, &message, sizeof(message));
                     }
                     else
                     {
-                        player->map_index = map_index;
+                        player->map_index = new_map_index;
                     }
                 }
                 break;
                 case SDLK_F2:
                 {
-                    size_t map_index = 1;
+                    size_t new_map_index = 1;
 
                     if (online)
                     {
                         struct message_change_map message;
                         message.type = MESSAGE_CHANGE_MAP;
-                        message.map_index = map_index;
+                        message.map_index = new_map_index;
                         tcp_send(tcp_socket, &message, sizeof(message));
                     }
                     else
                     {
-                        player->map_index = map_index;
+                        player->map_index = new_map_index;
                     }
                 }
                 break;
@@ -521,7 +523,7 @@ int main(int argc, char *argv[])
 
                         clients[message->id].id = message->id;
 
-                        printf("Client with ID %zd has joined\n", message->id);
+                        printf("Client with ID %zu has joined\n", message->id);
                     }
                     break;
                     case MESSAGE_CLIENT_DISCONNECT:
@@ -530,7 +532,7 @@ int main(int argc, char *argv[])
 
                         clients[message->id].id = CLIENT_ID_UNUSED;
 
-                        printf("Client with ID %zd has disconnected\n", message->id);
+                        printf("Client with ID %zu has disconnected\n", message->id);
                     }
                     break;
                     case MESSAGE_CONVERSATION_STATE:
@@ -542,7 +544,7 @@ int main(int argc, char *argv[])
                             player->conversation_root = &conversations.conversations[message->conversation_index];
                             player->conversation_node = conversation_find_by_local_index(player->conversation_root, message->conversation_local_index);
 
-                            printf("Setting conversation %zd to node %zd\n", message->conversation_index, message->conversation_local_index);
+                            printf("Setting conversation %zu to node %zu\n", message->conversation_index, message->conversation_local_index);
                         }
                         else
                         {
@@ -559,7 +561,7 @@ int main(int argc, char *argv[])
 
                         player_set_quest_status(&clients[message->id].player, message->quest_status);
 
-                        printf("Setting quest %zd to state %zd for client %zd\n", message->quest_status.quest_index, message->quest_status.stage_index, message->id);
+                        printf("Setting quest %zu to state %zu for client %zu\n", message->quest_status.quest_index, message->quest_status.stage_index, message->id);
                     }
                     break;
                     default:
@@ -663,8 +665,7 @@ int main(int argc, char *argv[])
         {
             if (clients[i].id != CLIENT_ID_UNUSED && clients[i].player.map_index == player->map_index)
             {
-                struct player *player = &clients[i].player;
-                player_accelerate(player, active_map.map, delta_time);
+                player_accelerate(&clients[i].player, active_map.map, delta_time);
             }
         }
 
@@ -708,51 +709,56 @@ int main(int argc, char *argv[])
         {
             for (int64_t x = view_x / active_map.map->tile_width; x <= (int64_t)((view_x + view_width) / active_map.map->tile_width); x++)
             {
-                struct tile *tile = map_get_tile(active_map.map, x, y);
-                if (tile)
+                for (size_t i = 0; i < active_map.map->num_layers; i++)
                 {
-                    struct tileset *tileset = map_get_tileset(active_map.map, tile->gid);
+                    struct layer *layer = &active_map.map->layers[i];
 
-                    SDL_Rect srcrect = {
-                        (int)(((tile->gid - tileset->first_gid) % tileset->columns) * active_map.map->tile_width),
-                        (int)(((tile->gid - tileset->first_gid) / tileset->columns) * active_map.map->tile_height),
-                        (int)active_map.map->tile_width,
-                        (int)active_map.map->tile_height};
-
-                    SDL_Rect dstrect = {
-                        (int)(((x * active_map.map->tile_width) - view_x) * SPRITE_SCALE),
-                        (int)(((y * active_map.map->tile_height) - view_y) * SPRITE_SCALE),
-                        (int)(active_map.map->tile_width * SPRITE_SCALE),
-                        (int)(active_map.map->tile_height * SPRITE_SCALE)};
-
-                    double angle = 0;
-                    if (tile->d_flip)
+                    struct tile *tile = layer_get_tile(layer, active_map.map, x, y);
+                    if (tile)
                     {
-                        if (tile->h_flip)
-                        {
-                            angle = 90;
-                        }
-                        if (tile->v_flip)
-                        {
-                            angle = 270;
-                        }
-                    }
-                    else
-                    {
-                        if (tile->h_flip && tile->v_flip)
-                        {
-                            angle = 180;
-                        }
-                    }
+                        struct tileset *tileset = map_get_tileset(active_map.map, tile->gid);
 
-                    SDL_RenderCopyEx(
-                        renderer,
-                        active_map.sprites[tileset->index],
-                        &srcrect,
-                        &dstrect,
-                        angle,
-                        NULL,
-                        SDL_FLIP_NONE);
+                        SDL_Rect srcrect = {
+                            (int)(((tile->gid - tileset->first_gid) % tileset->columns) * active_map.map->tile_width),
+                            (int)(((tile->gid - tileset->first_gid) / tileset->columns) * active_map.map->tile_height),
+                            (int)active_map.map->tile_width,
+                            (int)active_map.map->tile_height};
+
+                        SDL_Rect dstrect = {
+                            (int)(((x * active_map.map->tile_width) - view_x) * SPRITE_SCALE),
+                            (int)(((y * active_map.map->tile_height) - view_y) * SPRITE_SCALE),
+                            (int)(active_map.map->tile_width * SPRITE_SCALE),
+                            (int)(active_map.map->tile_height * SPRITE_SCALE)};
+
+                        double angle = 0;
+                        if (tile->d_flip)
+                        {
+                            if (tile->h_flip)
+                            {
+                                angle = 90;
+                            }
+                            if (tile->v_flip)
+                            {
+                                angle = 270;
+                            }
+                        }
+                        else
+                        {
+                            if (tile->h_flip && tile->v_flip)
+                            {
+                                angle = 180;
+                            }
+                        }
+
+                        SDL_RenderCopyEx(
+                            renderer,
+                            active_map.sprites[tileset->index],
+                            &srcrect,
+                            &dstrect,
+                            angle,
+                            NULL,
+                            SDL_FLIP_NONE);
+                    }
                 }
             }
         }
@@ -785,28 +791,21 @@ int main(int argc, char *argv[])
         {
             if (clients[i].id != CLIENT_ID_UNUSED && clients[i].player.map_index == player->map_index)
             {
-                struct player *player = &clients[i].player;
-
-                // TODO: should be on player struct and come from server
-                // should also come from a separate sprite file, makes no sense to use the active map's tilesets
-                int64_t player_gid = 32;
-                struct tileset *tileset = map_get_tileset(active_map.map, player_gid);
-
                 SDL_Rect srcrect = {
-                    (int)(((player_gid - tileset->first_gid) % tileset->columns) * active_map.map->tile_width),
-                    (int)(((player_gid - tileset->first_gid) / tileset->columns) * active_map.map->tile_height),
-                    (int)active_map.map->tile_width,
-                    (int)active_map.map->tile_height};
+                    0,
+                    0,
+                    16,
+                    16};
 
                 SDL_Rect dstrect = {
-                    (int)((player->pos_x - view_x) * SPRITE_SCALE),
-                    (int)((player->pos_y - view_y) * SPRITE_SCALE),
+                    (int)((clients[i].player.pos_x - view_x) * SPRITE_SCALE),
+                    (int)((clients[i].player.pos_y - view_y) * SPRITE_SCALE),
                     (int)(active_map.map->tile_width * SPRITE_SCALE),
                     (int)(active_map.map->tile_height * SPRITE_SCALE)};
 
-                SDL_RenderCopy(renderer, active_map.sprites[tileset->index], &srcrect, &dstrect);
+                SDL_RenderCopy(renderer, player_sprites, &srcrect, &dstrect);
 
-                draw_text(renderer, font, 12, dstrect.x + 12, dstrect.y - 24, WINDOW_WIDTH, (SDL_Color){255, 255, 255}, "%zd", clients[i].id);
+                draw_text(renderer, font, 12, dstrect.x + 12, dstrect.y - 24, WINDOW_WIDTH, (SDL_Color){255, 255, 255}, "%zu", clients[i].id);
             }
         }
 
@@ -844,7 +843,7 @@ int main(int argc, char *argv[])
                 struct conversation_node *child = &player->conversation_node->children[i];
                 if (child->type == CONVERSATION_NODE_RESPONSE && conversation_check_conditions(child, player))
                 {
-                    draw_text(renderer, font, 12, 24, (WINDOW_HEIGHT - 100) + 24 * (i + 1), WINDOW_WIDTH, (SDL_Color){255, 255, 255}, "%zd) %s", i + 1, child->text);
+                    draw_text(renderer, font, 12, 24, (WINDOW_HEIGHT - 100) + 24 * (i + 1), WINDOW_WIDTH, (SDL_Color){255, 255, 255}, "%zu) %s", i + 1, child->text);
                 }
             }
         }
