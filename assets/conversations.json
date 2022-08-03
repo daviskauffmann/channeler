@@ -112,6 +112,10 @@
                                         {
                                             "type": "response",
                                             "text": "*Walk away*"
+                                        },
+                                        {
+                                            "type": "dialog",
+                                            "text": "test"
                                         }
                                     ]
                                 }

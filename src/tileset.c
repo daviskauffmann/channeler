@@ -18,9 +18,10 @@ void tileset_load(struct tileset *tileset, char *filename)
     struct json_object *image_obj = json_object_object_get(root, "image");
     const char *assets_str = "assets/";
     const char *image_str = json_object_get_string(image_obj);
-    tileset->image = malloc(strlen(assets_str) + strlen(image_str) + 1);
-    strcpy(tileset->image, assets_str);
-    strcat(tileset->image, image_str);
+    size_t size = strlen(assets_str) + strlen(image_str) + 1;
+    tileset->image = malloc(size);
+    strcpy_s(tileset->image, size, assets_str);
+    strcat_s(tileset->image, size, image_str);
 
     struct json_object *tile_count_obj = json_object_object_get(root, "tilecount");
     tileset->tile_data = malloc(json_object_get_int(tile_count_obj) * sizeof(*tileset->tile_data));

@@ -6,6 +6,13 @@
             "width": 320,
             "x": 0,
             "y": 0
+        },
+        {
+            "fileName": "map1.tmx",
+            "height": 320,
+            "width": 320,
+            "x": 320,
+            "y": 0
         }
     ],
     "onlyShowAdjacentMaps": false,

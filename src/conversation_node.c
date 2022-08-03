@@ -165,6 +165,20 @@ struct conversation_node *conversation_node_find_by_id(struct conversation_node 
     return NULL;
 }
 
+bool conversation_node_has_response_nodes(struct conversation_node *node)
+{
+    for (size_t i = 0; i < node->num_children; i++)
+    {
+        struct conversation_node *child = &node->children[i];
+        if (child->type == CONVERSATION_NODE_RESPONSE)
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 bool conversation_node_check_conditions(struct conversation_node *node, struct player *player)
 {
     if (node->condition.quest_status)

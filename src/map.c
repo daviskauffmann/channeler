@@ -117,13 +117,16 @@ void map_load(struct map *map, char *filename)
             const char *assets_str = "assets/";
             const char *source_str = json_object_get_string(source_obj);
             const char *ext_str = ".json";
-            char *tileset_filename = malloc(strlen(assets_str) + strlen(source_str) + strlen(ext_str) + 1);
-            strcpy(tileset_filename, assets_str);
-            strncat(tileset_filename, source_str, strlen(source_str) - strlen(".tsx"));
-            strcat(tileset_filename, ext_str);
+            size_t size = strlen(assets_str) + strlen(source_str) + strlen(ext_str) + 1;
+            char *tileset_filename = malloc(size);
+            strcpy_s(tileset_filename, size, assets_str);
+            strncat_s(tileset_filename, size, source_str, strlen(source_str) - strlen(".tsx"));
+            strcat_s(tileset_filename, size, ext_str);
             tileset_load(tileset, tileset_filename);
         }
     }
+
+    map->sprites = NULL;
 }
 
 void map_unload(struct map *map)
@@ -139,12 +142,47 @@ void map_unload(struct map *map)
     free(map->layers);
     map->layers = NULL;
 
+    if (map->sprites)
+    {
+        for (size_t i = 0; i < map->num_tilesets; i++)
+        {
+            printf("Destroying texture: %s\n", map->tilesets[i].image);
+
+            SDL_DestroyTexture(map->sprites[i]);
+        }
+        free(map->sprites);
+        map->sprites = NULL;
+    }
+
     for (size_t i = 0; i < map->num_tilesets; i++)
     {
         tileset_unload(&map->tilesets[i]);
     }
     free(map->tilesets);
     map->tilesets = NULL;
+}
+
+void map_activate(struct map *map, SDL_Renderer *renderer)
+{
+    map->sprites = malloc(map->num_tilesets * sizeof(*map->sprites));
+    for (size_t i = 0; i < map->num_tilesets; i++)
+    {
+        printf("Loading texture: %s\n", map->tilesets[i].image);
+
+        map->sprites[i] = IMG_LoadTexture(renderer, map->tilesets[i].image);
+    }
+}
+
+void map_deactivate(struct map *map)
+{
+    for (size_t i = 0; i < map->num_tilesets; i++)
+    {
+        printf("Destroying texture: %s\n", map->tilesets[i].image);
+
+        SDL_DestroyTexture(map->sprites[i]);
+    }
+    free(map->sprites);
+    map->sprites = NULL;
 }
 
 void map_update(struct map *map, float delta_time)

@@ -1,6 +1,7 @@
 #ifndef MAP_H
 #define MAP_H
 
+#include <SDL2/SDL_image.h>
 #include <stdbool.h>
 
 #define MAX_MOBS 20
@@ -37,10 +38,14 @@ struct map
 
     size_t num_tilesets;
     struct tileset *tilesets;
+    SDL_Texture **sprites;
 };
 
 void map_load(struct map *map, char *filename);
 void map_unload(struct map *map);
+
+void map_activate(struct map *map, SDL_Renderer *renderer);
+void map_deactivate(struct map *map);
 
 void map_update(struct map *map, float delta_time);
 

@@ -44,6 +44,8 @@ void conversation_node_unload(struct conversation_node *node);
 
 struct conversation_node *conversation_node_find_by_local_index(struct conversation_node *node, size_t local_index);
 struct conversation_node *conversation_node_find_by_id(struct conversation_node *node, const char *id);
+
+bool conversation_node_has_response_nodes(struct conversation_node *node);
 bool conversation_node_check_conditions(struct conversation_node *node, struct player *player);
 
 #endif

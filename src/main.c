@@ -24,50 +24,15 @@
 #define FPS_CAP 144
 #define FRAME_DELAY (1000 / FPS_CAP)
 
-#define SPRITE_SCALE 4
-
-struct active_map
-{
-    struct map *map;
-    SDL_Texture **sprites;
-};
-
-void deactivate_map(struct active_map *active_map)
-{
-    for (size_t i = 0; i < active_map->map->num_tilesets; i++)
-    {
-        printf("Destroying texture: %s\n", active_map->map->tilesets[i].image);
-
-        SDL_DestroyTexture(active_map->sprites[i]);
-    }
-    free(active_map->sprites);
-}
-
-void switch_map(struct active_map *active_map, struct world *world, size_t map_index, SDL_Renderer *renderer)
-{
-    if (active_map->map)
-    {
-        deactivate_map(active_map);
-    }
-
-    active_map->map = &world->maps[map_index];
-
-    active_map->sprites = malloc(active_map->map->num_tilesets * sizeof(*active_map->sprites));
-    for (size_t i = 0; i < active_map->map->num_tilesets; i++)
-    {
-        printf("Loading texture: %s\n", active_map->map->tilesets[i].image);
-
-        active_map->sprites[i] = IMG_LoadTexture(renderer, active_map->map->tilesets[i].image);
-    }
-}
+#define SPRITE_SCALE 2
 
 void draw_text(SDL_Renderer *renderer, TTF_Font *font, size_t px, size_t x, size_t y, size_t w, SDL_Color fg, const char *const fmt, ...)
 {
     va_list args;
     va_start(args, fmt);
-    size_t size = vsnprintf(NULL, 0, fmt, args);
-    char *text = malloc(size + 1);
-    vsprintf_s(text, size + 1, fmt, args);
+    size_t size = vsnprintf(NULL, 0, fmt, args) + 1;
+    char *text = malloc(size);
+    vsprintf_s(text, size, fmt, args);
     va_end(args);
 
     SDL_Surface *surface = TTF_RenderText_Blended_Wrapped(font, text, fg, (uint32_t)w);
@@ -141,15 +106,13 @@ int main(int argc, char *argv[])
     struct conversations conversations;
     conversations_load(&conversations, "assets/conversations.json");
 
-    struct active_map active_map;
-    active_map.map = NULL;
-    active_map.sprites = NULL;
-    switch_map(&active_map, &world, player.map_index, renderer);
-
     int pt = 18;
     TTF_Font *font = TTF_OpenFont("assets/NinjaAdventure/HUD/Font/NormalFont.ttf", pt);
 
     SDL_Texture *player_sprites = IMG_LoadTexture(renderer, "assets/NinjaAdventure/Actor/Characters/BlueNinja/SpriteSheet.png");
+
+    struct map *map = &world.maps[player.map_index];
+    map_activate(map, renderer);
 
     bool quest_log_open = false;
 
@@ -207,7 +170,7 @@ int main(int argc, char *argv[])
                     }
                     else
                     {
-                        player_attack(&player, active_map.map);
+                        player_attack(&player, map);
                     }
                 }
                 break;
@@ -236,13 +199,19 @@ int main(int argc, char *argv[])
                 case SDLK_F1:
                 {
                     player.map_index = 0;
-                    switch_map(&active_map, &world, player.map_index, renderer);
+
+                    map_deactivate(map);
+                    map = &world.maps[player.map_index];
+                    map_activate(map, renderer);
                 }
                 break;
                 case SDLK_F2:
                 {
                     player.map_index = 1;
-                    switch_map(&active_map, &world, player.map_index, renderer);
+
+                    map_deactivate(map);
+                    map = &world.maps[player.map_index];
+                    map_activate(map, renderer);
                 }
                 break;
                 case SDLK_F3:
@@ -303,7 +272,7 @@ int main(int argc, char *argv[])
             input.dx = 1;
         }
 
-        player_update(&player, &input, active_map.map, delta_time);
+        player_update(&player, &input, map, delta_time);
 
         for (size_t i = 0; i < world.num_maps; i++)
         {
@@ -314,17 +283,17 @@ int main(int argc, char *argv[])
         size_t view_height = WINDOW_HEIGHT / SPRITE_SCALE;
         int64_t view_x = (int64_t)player.pos_x - view_width / 2;
         int64_t view_y = (int64_t)player.pos_y - view_height / 2;
-        if (view_x + view_width > active_map.map->width * active_map.map->tile_width)
+        if (view_x + view_width > map->width * map->tile_width)
         {
-            view_x = (active_map.map->width * active_map.map->tile_width) - view_width;
+            view_x = (map->width * map->tile_width) - view_width;
         }
         if (view_x < 0)
         {
             view_x = 0;
         }
-        if (view_y + view_height > active_map.map->height * active_map.map->tile_height)
+        if (view_y + view_height > map->height * map->tile_height)
         {
-            view_y = (active_map.map->height * active_map.map->tile_height) - view_height;
+            view_y = (map->height * map->tile_height) - view_height;
         }
         if (view_y < 0)
         {
@@ -333,30 +302,30 @@ int main(int argc, char *argv[])
 
         SDL_RenderClear(renderer);
 
-        for (int64_t y = view_y / active_map.map->tile_height; y <= (int64_t)((view_y + view_height) / active_map.map->tile_height); y++)
+        for (int64_t y = view_y / map->tile_height; y <= (int64_t)((view_y + view_height) / map->tile_height); y++)
         {
-            for (int64_t x = view_x / active_map.map->tile_width; x <= (int64_t)((view_x + view_width) / active_map.map->tile_width); x++)
+            for (int64_t x = view_x / map->tile_width; x <= (int64_t)((view_x + view_width) / map->tile_width); x++)
             {
-                for (size_t i = 0; i < active_map.map->num_layers; i++)
+                for (size_t i = 0; i < map->num_layers; i++)
                 {
-                    struct layer *layer = &active_map.map->layers[i];
+                    struct layer *layer = &map->layers[i];
 
-                    struct tile *tile = layer_get_tile(layer, active_map.map, x, y);
+                    struct tile *tile = layer_get_tile(layer, map, x, y);
                     if (tile)
                     {
-                        struct tileset *tileset = map_get_tileset(active_map.map, tile->gid);
+                        struct tileset *tileset = map_get_tileset(map, tile->gid);
 
                         SDL_Rect srcrect = {
-                            (int)(((tile->gid - tileset->first_gid) % tileset->columns) * active_map.map->tile_width),
-                            (int)(((tile->gid - tileset->first_gid) / tileset->columns) * active_map.map->tile_height),
-                            (int)active_map.map->tile_width,
-                            (int)active_map.map->tile_height};
+                            (int)(((tile->gid - tileset->first_gid) % tileset->columns) * map->tile_width),
+                            (int)(((tile->gid - tileset->first_gid) / tileset->columns) * map->tile_height),
+                            (int)map->tile_width,
+                            (int)map->tile_height};
 
                         SDL_Rect dstrect = {
-                            (int)(((x * active_map.map->tile_width) - view_x) * SPRITE_SCALE),
-                            (int)(((y * active_map.map->tile_height) - view_y) * SPRITE_SCALE),
-                            (int)(active_map.map->tile_width * SPRITE_SCALE),
-                            (int)(active_map.map->tile_height * SPRITE_SCALE)};
+                            (int)(((x * map->tile_width) - view_x) * SPRITE_SCALE),
+                            (int)(((y * map->tile_height) - view_y) * SPRITE_SCALE),
+                            (int)(map->tile_width * SPRITE_SCALE),
+                            (int)(map->tile_height * SPRITE_SCALE)};
 
                         double angle = 0;
                         if (tile->d_flip)
@@ -380,7 +349,7 @@ int main(int argc, char *argv[])
 
                         SDL_RenderCopyEx(
                             renderer,
-                            active_map.sprites[tileset->index],
+                            map->sprites[tileset->index],
                             &srcrect,
                             &dstrect,
                             angle,
@@ -393,25 +362,25 @@ int main(int argc, char *argv[])
 
         for (size_t i = 0; i < MAX_MOBS; i++)
         {
-            struct mob *mob = &active_map.map->mobs[i];
+            struct mob *mob = &map->mobs[i];
 
             if (mob->alive)
             {
-                struct tileset *tileset = map_get_tileset(active_map.map, mob->gid);
+                struct tileset *tileset = map_get_tileset(map, mob->gid);
 
                 SDL_Rect srcrect = {
-                    (int)(((mob->gid - tileset->first_gid) % tileset->columns) * active_map.map->tile_width),
-                    (int)(((mob->gid - tileset->first_gid) / tileset->columns) * active_map.map->tile_height),
-                    (int)active_map.map->tile_width,
-                    (int)active_map.map->tile_height};
+                    (int)(((mob->gid - tileset->first_gid) % tileset->columns) * map->tile_width),
+                    (int)(((mob->gid - tileset->first_gid) / tileset->columns) * map->tile_height),
+                    (int)map->tile_width,
+                    (int)map->tile_height};
 
                 SDL_Rect dstrect = {
                     (int)((mob->x - view_x) * SPRITE_SCALE),
                     (int)((mob->y - view_y) * SPRITE_SCALE),
-                    (int)(active_map.map->tile_width * SPRITE_SCALE),
-                    (int)(active_map.map->tile_height * SPRITE_SCALE)};
+                    (int)(map->tile_width * SPRITE_SCALE),
+                    (int)(map->tile_height * SPRITE_SCALE)};
 
-                SDL_RenderCopy(renderer, active_map.sprites[tileset->index], &srcrect, &dstrect);
+                SDL_RenderCopy(renderer, map->sprites[tileset->index], &srcrect, &dstrect);
             }
         }
 
@@ -490,8 +459,6 @@ int main(int argc, char *argv[])
     }
 
     TTF_CloseFont(font);
-
-    deactivate_map(&active_map);
 
     world_unload(&world);
     quests_unload(&quests);

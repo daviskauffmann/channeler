@@ -26,10 +26,11 @@ void world_load(struct world *world, const char *filename)
         const char *assets_str = "assets/";
         const char *filename_str = json_object_get_string(filename_obj);
         const char *ext_str = ".json";
-        char *map_filename = malloc(strlen(assets_str) + strlen(filename_str) + strlen(ext_str) + 1);
-        strcpy(map_filename, assets_str);
-        strncat(map_filename, filename_str, strlen(filename_str) - strlen(".tmx"));
-        strcat(map_filename, ext_str);
+        size_t size = strlen(assets_str) + strlen(filename_str) + strlen(ext_str) + 1;
+        char *map_filename = malloc(size);
+        strcpy_s(map_filename, size, assets_str);
+        strncat_s(map_filename, size, filename_str, strlen(filename_str) - strlen(".tmx"));
+        strcat_s(map_filename, size, ext_str);
         map_load(map, map_filename);
     }
 }

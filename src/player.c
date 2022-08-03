@@ -151,17 +151,7 @@ void player_advance_conversation(struct player *player)
     {
         if (player->conversation_node->num_children)
         {
-            bool has_response_nodes = false;
-            for (size_t i = 0; i < player->conversation_node->num_children; i++)
-            {
-                struct conversation_node *child = &player->conversation_node->children[i];
-                if (child->type == CONVERSATION_NODE_RESPONSE)
-                {
-                    has_response_nodes = true;
-                    break;
-                }
-            }
-            if (!has_response_nodes)
+            if (!conversation_node_has_response_nodes(player->conversation_node))
             {
                 for (size_t i = 0; i < player->conversation_node->num_children; i++)
                 {
@@ -182,38 +172,25 @@ void player_advance_conversation(struct player *player)
         }
         else
         {
-            player->conversation_root = player->conversation_node = NULL;
+            player_end_conversation(player);
         }
     }
 }
 
 void player_choose_conversation_response(struct player *player, size_t choice_index)
 {
-    bool has_response_nodes = false;
+    size_t valid_choice_index = 0;
     for (size_t i = 0; i < player->conversation_node->num_children; i++)
     {
         struct conversation_node *child = &player->conversation_node->children[i];
-        if (child->type == CONVERSATION_NODE_RESPONSE)
+        if (child->type == CONVERSATION_NODE_RESPONSE && conversation_node_check_conditions(child, player))
         {
-            has_response_nodes = true;
-            break;
-        }
-    }
-    if (has_response_nodes)
-    {
-        size_t valid_choice_index = 0;
-        for (size_t i = 0; i < player->conversation_node->num_children; i++)
-        {
-            struct conversation_node *child = &player->conversation_node->children[i];
-            if (conversation_node_check_conditions(child, player))
+            valid_choice_index++;
+            if (valid_choice_index == choice_index)
             {
-                valid_choice_index++;
-                if (valid_choice_index == choice_index)
-                {
-                    player->conversation_node = child;
-                    player_advance_conversation(player);
-                    break;
-                }
+                player->conversation_node = child;
+                player_advance_conversation(player);
+                break;
             }
         }
     }
