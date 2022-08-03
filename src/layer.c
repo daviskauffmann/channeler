@@ -1,6 +1,6 @@
-#include <shared/layer.h>
+#include "layer.h"
 
-#include <shared/map.h>
+#include "map.h"
 
 struct tile *layer_get_tile(struct layer *layer, struct map *map, size_t x, size_t y)
 {

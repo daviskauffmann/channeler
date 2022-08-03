@@ -1,24 +1,18 @@
-#include <shared/player.h>
+#include "player.h"
 
+#include "conversation_node.h"
+#include "conversations.h"
+#include "input.h"
+#include "map.h"
+#include "quest_status.h"
+#include "tileset.h"
 #include <malloc.h>
 #include <math.h>
-#include <shared/clients.h>
-#include <shared/conversation_node.h>
-#include <shared/conversations.h>
-#include <shared/input.h>
-#include <shared/map.h>
-#include <shared/message.h>
-#include <shared/net.h>
-#include <shared/quest_status.h>
-#include <shared/tileset.h>
 #include <stdbool.h>
 #include <string.h>
 
-void player_init(struct player *player, size_t client_id, TCPsocket socket, size_t map_index)
+void player_init(struct player *player, size_t map_index)
 {
-    player->client_id = client_id;
-    player->socket = socket;
-
     player->map_index = map_index;
     player->pos_x = 100;
     player->pos_y = 100;
@@ -191,19 +185,6 @@ void player_advance_conversation(struct player *player)
             player->conversation_root = player->conversation_node = NULL;
         }
     }
-
-    if (is_server)
-    {
-        struct message_conversation_state message;
-        message.type = MESSAGE_CONVERSATION_STATE;
-        message.in_conversation = player->conversation_root != NULL;
-        if (message.in_conversation)
-        {
-            message.conversation_index = player->conversation_root->index;
-            message.conversation_local_index = player->conversation_node->local_index;
-        }
-        tcp_send(player->socket, &message, sizeof(message));
-    }
 }
 
 void player_choose_conversation_response(struct player *player, size_t choice_index)
@@ -241,14 +222,6 @@ void player_choose_conversation_response(struct player *player, size_t choice_in
 void player_end_conversation(struct player *player)
 {
     player->conversation_root = player->conversation_node = NULL;
-
-    if (is_server)
-    {
-        struct message_conversation_state message;
-        message.type = MESSAGE_CONVERSATION_STATE;
-        message.in_conversation = false;
-        tcp_send(player->socket, &message, sizeof(message));
-    }
 }
 
 void player_set_quest_status(struct player *player, struct quest_status quest_status)
@@ -259,7 +232,7 @@ void player_set_quest_status(struct player *player, struct quest_status quest_st
         if (existing_quest_status->quest_index == quest_status.quest_index)
         {
             existing_quest_status->stage_index = quest_status.stage_index;
-            goto done;
+            return;
         }
     }
 
@@ -267,16 +240,6 @@ void player_set_quest_status(struct player *player, struct quest_status quest_st
     player->quest_statuses = realloc(player->quest_statuses, player->num_quest_statuses * sizeof(*player->quest_statuses));
     player->quest_statuses[quest_status_index].quest_index = quest_status.quest_index;
     player->quest_statuses[quest_status_index].stage_index = quest_status.stage_index;
-
-done:
-    if (is_server)
-    {
-        struct message_quest_status_broadcast message;
-        message.type = MESSAGE_QUEST_STATUS;
-        message.id = player->client_id;
-        message.quest_status = quest_status;
-        clients_broadcast(&message, sizeof(message));
-    }
 }
 
 bool player_check_quest_status(struct player *player, struct quest_status quest_status)

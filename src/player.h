@@ -1,7 +1,6 @@
 #ifndef PLAYER_H
 #define PLAYER_H
 
-#include <SDL2/SDL_net.h>
 #include <stdbool.h>
 
 enum direction
@@ -20,9 +19,6 @@ enum animation
 
 struct player
 {
-    size_t client_id;
-    TCPsocket socket;
-
     size_t map_index;
 
     float pos_x;
@@ -44,7 +40,7 @@ struct player
     struct quest_status *quest_statuses;
 };
 
-void player_init(struct player *player, size_t client_id, TCPsocket socket, size_t map_index);
+void player_init(struct player *player, size_t map_index);
 void player_uninit(struct player *player);
 void player_update(struct player *player, struct input *input, struct map *map, float delta_time);
 void player_attack(struct player *player, struct map *map);

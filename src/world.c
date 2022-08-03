@@ -1,7 +1,7 @@
-#include <shared/world.h>
+#include "world.h"
 
+#include "map.h"
 #include <json-c/json.h>
-#include <shared/map.h>
 #include <stdio.h>
 #include <string.h>
 

@@ -1,4 +1,4 @@
-#include <shared/tileset.h>
+#include "tileset.h"
 
 #include <json-c/json.h>
 #include <stdio.h>

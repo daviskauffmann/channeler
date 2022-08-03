@@ -1,9 +1,9 @@
-#include <shared/conversation_node.h>
+#include "conversation_node.h"
 
+#include "map.h"
+#include "player.h"
+#include "quest_status.h"
 #include <json-c/json.h>
-#include <shared/map.h>
-#include <shared/player.h>
-#include <shared/quest_status.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -107,7 +107,7 @@ void conversation_node_load(struct conversation_node *node, struct json_object *
 }
 
 void conversation_node_unload(struct conversation_node *node)
-{ 
+{
     if (node->condition.quest_status)
     {
         free(node->condition.quest_status);

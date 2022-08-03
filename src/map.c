@@ -1,8 +1,8 @@
-#include <shared/map.h>
+#include "map.h"
 
+#include "layer.h"
+#include "tileset.h"
 #include <json-c/json.h>
-#include <shared/layer.h>
-#include <shared/tileset.h>
 #include <stdio.h>
 #include <string.h>
 

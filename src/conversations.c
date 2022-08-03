@@ -1,10 +1,10 @@
-#include <shared/conversations.h>
+#include "conversations.h"
 
+#include "conversation_node.h"
+#include "map.h"
+#include "player.h"
+#include "quest_status.h"
 #include <json-c/json.h>
-#include <shared/conversation_node.h>
-#include <shared/map.h>
-#include <shared/player.h>
-#include <shared/quest_status.h>
 #include <stdio.h>
 #include <string.h>
 

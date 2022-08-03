@@ -1,4 +1,4 @@
-#include <shared/quests.h>
+#include "quests.h"
 
 #include <json-c/json.h>
 #include <stdio.h>
