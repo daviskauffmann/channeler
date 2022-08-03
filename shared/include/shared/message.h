@@ -112,6 +112,11 @@ struct message_game_state
             float vel_y;
             float acc_x;
             float acc_y;
+
+            enum direction direction;
+            enum animation animation;
+            float animation_timer;
+            size_t frame_index;
         } player;
     } clients[MAX_CLIENTS];
     struct

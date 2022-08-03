@@ -4,6 +4,7 @@
 #include <SDL2/SDL_net.h>
 #include <SDL2/SDL_ttf.h>
 #include <shared/clients.h>
+#include <shared/conversation_node.h>
 #include <shared/conversations.h>
 #include <shared/input.h>
 #include <shared/layer.h>
@@ -20,8 +21,8 @@
 #include <stdio.h>
 
 #define WINDOW_TITLE "Project Hypernova"
-#define WINDOW_WIDTH 1280
-#define WINDOW_HEIGHT 720
+#define WINDOW_WIDTH 640
+#define WINDOW_HEIGHT 480
 
 #define SERVER_HOST "127.0.0.1"
 #define SERVER_PORT 8492
@@ -142,7 +143,8 @@ int main(int argc, char *argv[])
         return 1;
     }
 
-    TTF_Font *font = TTF_OpenFont("assets/VeraMono.ttf", 24);
+    int pt = 18;
+    TTF_Font *font = TTF_OpenFont("assets/NinjaAdventure/HUD/Font/NormalFont.ttf", pt);
 
     SDL_RenderClear(renderer);
     draw_text(renderer, font, 12, 0, 0, WINDOW_WIDTH, (SDL_Color){255, 255, 255}, "Connecting to server...");
@@ -244,6 +246,8 @@ int main(int argc, char *argv[])
     struct player *player = &clients[client_id].player;
     player_init(player, client_id, NULL, map_index);
 
+    struct input *input = &clients[client_id].input;
+
     SDL_Texture *player_sprites = IMG_LoadTexture(renderer, "assets/NinjaAdventure/Actor/Characters/BlueNinja/SpriteSheet.png");
 
     // TODO: files to load should be sent from the server
@@ -273,6 +277,8 @@ int main(int argc, char *argv[])
         uint32_t previous_time = current_time;
         current_time = frame_start;
         float delta_time = (current_time - previous_time) / 1000.0f;
+
+        clients_reset_input();
 
         int num_keys;
         const uint8_t *keys = SDL_GetKeyboardState(&num_keys);
@@ -542,7 +548,7 @@ int main(int argc, char *argv[])
                         if (message->in_conversation)
                         {
                             player->conversation_root = &conversations.conversations[message->conversation_index];
-                            player->conversation_node = conversation_find_by_local_index(player->conversation_root, message->conversation_local_index);
+                            player->conversation_node = conversation_node_find_by_local_index(player->conversation_root, message->conversation_local_index);
 
                             printf("Setting conversation %zu to node %zu\n", message->conversation_index, message->conversation_local_index);
                         }
@@ -599,6 +605,11 @@ int main(int argc, char *argv[])
                                 clients[i].player.vel_y = message->clients[i].player.vel_y;
                                 clients[i].player.acc_x = message->clients[i].player.acc_x;
                                 clients[i].player.acc_y = message->clients[i].player.acc_y;
+
+                                clients[i].player.direction = message->clients[i].player.direction;
+                                clients[i].player.animation = message->clients[i].player.animation;
+                                clients[i].player.animation_timer = message->clients[i].player.animation_timer;
+                                clients[i].player.frame_index = message->clients[i].player.frame_index;
                             }
                         }
 
@@ -627,25 +638,21 @@ int main(int argc, char *argv[])
             switch_map(&active_map, &world, map_index, renderer);
         }
 
-        struct input input;
-        input.dx = 0;
-        input.dy = 0;
-
         if (keys[SDL_SCANCODE_W])
         {
-            input.dy = -1;
+            input->dy = -1;
         }
         if (keys[SDL_SCANCODE_A])
         {
-            input.dx = -1;
+            input->dx = -1;
         }
         if (keys[SDL_SCANCODE_S])
         {
-            input.dy = 1;
+            input->dy = 1;
         }
         if (keys[SDL_SCANCODE_D])
         {
-            input.dx = 1;
+            input->dx = 1;
         }
 
         if (online)
@@ -653,19 +660,16 @@ int main(int argc, char *argv[])
             struct message_input *message = malloc(sizeof(*message));
             message->type = MESSAGE_INPUT;
             message->id = client_id;
-            message->input.dx = input.dx;
-            message->input.dy = input.dy;
+            message->input.dx = input->dx;
+            message->input.dy = input->dy;
             udp_send(udp_socket, server_address, message, sizeof(*message));
         }
-
-        player->acc_x = (float)input.dx;
-        player->acc_y = (float)input.dy;
 
         for (size_t i = 0; i < MAX_CLIENTS; i++)
         {
             if (clients[i].id != CLIENT_ID_UNUSED && clients[i].player.map_index == player->map_index)
             {
-                player_accelerate(&clients[i].player, active_map.map, delta_time);
+                player_update(&clients[i].player, &clients[i].input, active_map.map, delta_time);
             }
         }
 
@@ -791,21 +795,30 @@ int main(int argc, char *argv[])
         {
             if (clients[i].id != CLIENT_ID_UNUSED && clients[i].player.map_index == player->map_index)
             {
-                SDL_Rect srcrect = {
-                    0,
-                    0,
-                    16,
-                    16};
+                SDL_Rect srcrect;
+                switch (clients[i].player.animation)
+                {
+                case ANIMATION_IDLE:
+                    srcrect.x = (int)clients[i].player.direction * 16;
+                    srcrect.y = 0;
+                    break;
+                case ANIMATION_WALKING:
+                    srcrect.x = (int)clients[i].player.direction * 16;
+                    srcrect.y = (1 + (clients[i].player.frame_index % 3)) * 16;
+                    break;
+                }
+                srcrect.w = 16;
+                srcrect.h = 16;
 
                 SDL_Rect dstrect = {
                     (int)((clients[i].player.pos_x - view_x) * SPRITE_SCALE),
                     (int)((clients[i].player.pos_y - view_y) * SPRITE_SCALE),
-                    (int)(active_map.map->tile_width * SPRITE_SCALE),
-                    (int)(active_map.map->tile_height * SPRITE_SCALE)};
+                    (int)(16 * SPRITE_SCALE),
+                    (int)(16 * SPRITE_SCALE)};
 
                 SDL_RenderCopy(renderer, player_sprites, &srcrect, &dstrect);
 
-                draw_text(renderer, font, 12, dstrect.x + 12, dstrect.y - 24, WINDOW_WIDTH, (SDL_Color){255, 255, 255}, "%zu", clients[i].id);
+                draw_text(renderer, font, pt, dstrect.x + pt, dstrect.y - (pt * 2), WINDOW_WIDTH, (SDL_Color){255, 255, 255}, "%zu", clients[i].id);
             }
         }
 
@@ -823,7 +836,7 @@ int main(int argc, char *argv[])
                 struct quest_status *status = &player->quest_statuses[i];
                 struct quest *quest = &quests.quests[status->quest_index];
                 struct quest_stage *stage = &quest->stages[status->stage_index];
-                draw_text(renderer, font, 12, 24, 24 * (i + 1), WINDOW_WIDTH - 24, (SDL_Color){255, 255, 255}, "%s: %s", quest->name, stage->description);
+                draw_text(renderer, font, pt, 24, 24 * (i + 1), WINDOW_WIDTH - 24, (SDL_Color){255, 255, 255}, "%s: %s", quest->name, stage->description);
             }
         }
 
@@ -836,14 +849,14 @@ int main(int argc, char *argv[])
             SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
             SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
 
-            draw_text(renderer, font, 12, 24, WINDOW_HEIGHT - 100, WINDOW_WIDTH, (SDL_Color){255, 255, 255}, "%s", player->conversation_node->text);
+            draw_text(renderer, font, pt, 24, WINDOW_HEIGHT - 100, WINDOW_WIDTH, (SDL_Color){255, 255, 255}, "%s", player->conversation_node->text);
 
             for (size_t i = 0; i < player->conversation_node->num_children; i++)
             {
                 struct conversation_node *child = &player->conversation_node->children[i];
-                if (child->type == CONVERSATION_NODE_RESPONSE && conversation_check_conditions(child, player))
+                if (child->type == CONVERSATION_NODE_RESPONSE && conversation_node_check_conditions(child, player))
                 {
-                    draw_text(renderer, font, 12, 24, (WINDOW_HEIGHT - 100) + 24 * (i + 1), WINDOW_WIDTH, (SDL_Color){255, 255, 255}, "%zu) %s", i + 1, child->text);
+                    draw_text(renderer, font, pt, 24, (WINDOW_HEIGHT - 100) + 24 * (i + 1), WINDOW_WIDTH, (SDL_Color){255, 255, 255}, "%zu) %s", i + 1, child->text);
                 }
             }
         }

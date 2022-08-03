@@ -16,6 +16,7 @@ struct client
 };
 
 void clients_init(void);
+void clients_reset_input(void);
 void clients_broadcast(const void *data, size_t len);
 
 extern struct client clients[MAX_CLIENTS];

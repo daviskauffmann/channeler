@@ -3,7 +3,9 @@
 #include <malloc.h>
 #include <math.h>
 #include <shared/clients.h>
+#include <shared/conversation_node.h>
 #include <shared/conversations.h>
+#include <shared/input.h>
 #include <shared/map.h>
 #include <shared/message.h>
 #include <shared/net.h>
@@ -25,6 +27,11 @@ void player_init(struct player *player, size_t client_id, TCPsocket socket, size
     player->acc_x = 0;
     player->acc_y = 0;
 
+    player->direction = DIRECTION_DOWN;
+    player->animation = ANIMATION_IDLE;
+    player->animation_timer = 0;
+    player->frame_index = 0;
+
     player->conversation_root = NULL;
     player->conversation_node = NULL;
 
@@ -40,10 +47,39 @@ void player_uninit(struct player *player)
     }
 }
 
-void player_accelerate(struct player *player, struct map *map, float delta_time)
+void player_update(struct player *player, struct input *input, struct map *map, float delta_time)
 {
-    float speed = 2000;
-    float drag = 20;
+    player->animation = ANIMATION_IDLE;
+    if (input->dy == -1)
+    {
+        player->direction = DIRECTION_UP;
+        player->animation = ANIMATION_WALKING;
+    }
+    if (input->dx == -1)
+    {
+        player->direction = DIRECTION_LEFT;
+        player->animation = ANIMATION_WALKING;
+    }
+    if (input->dy == 1)
+    {
+        player->direction = DIRECTION_DOWN;
+        player->animation = ANIMATION_WALKING;
+    }
+    if (input->dx == 1)
+    {
+        player->direction = DIRECTION_RIGHT;
+        player->animation = ANIMATION_WALKING;
+    }
+
+    player->animation_timer += delta_time;
+    if (player->animation_timer > 0.15f)
+    {
+        player->animation_timer = 0;
+        player->frame_index++;
+    }
+
+    player->acc_x = (float)input->dx;
+    player->acc_y = (float)input->dy;
 
     float acc_len = sqrtf(powf(player->acc_x, 2) + powf(player->acc_y, 2));
     if (acc_len > 1)
@@ -52,9 +88,11 @@ void player_accelerate(struct player *player, struct map *map, float delta_time)
         player->acc_y /= acc_len;
     }
 
+    float speed = 1000;
     player->acc_x *= speed;
     player->acc_y *= speed;
 
+    float drag = 20;
     player->acc_x -= player->vel_x * drag;
     player->acc_y -= player->vel_y * drag;
 
@@ -84,9 +122,6 @@ void player_accelerate(struct player *player, struct map *map, float delta_time)
         player->pos_y = new_pos_y;
         player->vel_y = player->acc_y * delta_time + player->vel_y;
     }
-
-    player->acc_x = 0;
-    player->acc_y = 0;
 }
 
 void player_attack(struct player *player, struct map *map)
@@ -116,7 +151,7 @@ void player_advance_conversation(struct player *player)
 {
     if (player->conversation_node->jump_id)
     {
-        player->conversation_node = conversation_find_by_id(player->conversation_root, player->conversation_node->jump_id);
+        player->conversation_node = conversation_node_find_by_id(player->conversation_root, player->conversation_node->jump_id);
     }
     else
     {
@@ -137,7 +172,7 @@ void player_advance_conversation(struct player *player)
                 for (size_t i = 0; i < player->conversation_node->num_children; i++)
                 {
                     struct conversation_node *child = &player->conversation_node->children[i];
-                    if (conversation_check_conditions(child, player))
+                    if (conversation_node_check_conditions(child, player))
                     {
                         player->conversation_node = child;
 
@@ -189,7 +224,7 @@ void player_choose_conversation_response(struct player *player, size_t choice_in
         for (size_t i = 0; i < player->conversation_node->num_children; i++)
         {
             struct conversation_node *child = &player->conversation_node->children[i];
-            if (conversation_check_conditions(child, player))
+            if (conversation_node_check_conditions(child, player))
             {
                 valid_choice_index++;
                 if (valid_choice_index == choice_index)

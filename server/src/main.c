@@ -86,6 +86,8 @@ int main(int argc, char *argv[])
         current_time = frame_start;
         float delta_time = (current_time - previous_time) / 1000.0f;
 
+        clients_reset_input();
+
         SDL_Event event;
         while (SDL_PollEvent(&event))
         {
@@ -300,11 +302,7 @@ int main(int argc, char *argv[])
         {
             if (clients[i].id != CLIENT_ID_UNUSED)
             {
-                clients[i].player.acc_x = (float)clients[i].input.dx;
-                clients[i].player.acc_y = (float)clients[i].input.dy;
-
-                struct player *player = &clients[i].player;
-                player_accelerate(player, &world.maps[clients[i].player.map_index], delta_time);
+                player_update(&clients[i].player, &clients[i].input, &world.maps[clients[i].player.map_index], delta_time);
             }
         }
 
@@ -340,6 +338,11 @@ int main(int argc, char *argv[])
                             message->clients[j].player.vel_y = clients[j].player.vel_y;
                             message->clients[j].player.acc_x = clients[j].player.acc_x;
                             message->clients[j].player.acc_y = clients[j].player.acc_y;
+
+                            message->clients[j].player.direction = clients[j].player.direction;
+                            message->clients[j].player.animation = clients[j].player.animation;
+                            message->clients[j].player.animation_timer = clients[j].player.animation_timer;
+                            message->clients[j].player.frame_index = clients[j].player.frame_index;
                         }
                     }
 

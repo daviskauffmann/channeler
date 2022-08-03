@@ -4,6 +4,20 @@
 #include <SDL2/SDL_net.h>
 #include <stdbool.h>
 
+enum direction
+{
+    DIRECTION_DOWN,
+    DIRECTION_UP,
+    DIRECTION_LEFT,
+    DIRECTION_RIGHT
+};
+
+enum animation
+{
+    ANIMATION_IDLE,
+    ANIMATION_WALKING,
+};
+
 struct player
 {
     size_t client_id;
@@ -18,6 +32,11 @@ struct player
     float acc_x;
     float acc_y;
 
+    enum direction direction;
+    enum animation animation;
+    float animation_timer;
+    size_t frame_index;
+
     struct conversation_node *conversation_root;
     struct conversation_node *conversation_node;
 
@@ -27,7 +46,7 @@ struct player
 
 void player_init(struct player *player, size_t client_id, TCPsocket socket, size_t map_index);
 void player_uninit(struct player *player);
-void player_accelerate(struct player *player, struct map *map, float delta_time);
+void player_update(struct player *player, struct input *input, struct map *map, float delta_time);
 void player_attack(struct player *player, struct map *map);
 void player_start_conversation(struct player *player, struct conversations *conversations, size_t conversation_index);
 void player_advance_conversation(struct player *player);

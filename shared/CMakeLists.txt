@@ -11,6 +11,7 @@ find_package(SDL2-net CONFIG REQUIRED)
 
 add_library(${PROJECT_NAME}
     src/clients.c
+    src/conversation_node.c
     src/conversations.c
     src/layer.c
     src/map.c
