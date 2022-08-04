@@ -1,13 +1,12 @@
-#include "conversation_node.h"
-#include "conversations.h"
-#include "input.h"
-#include "layer.h"
-#include "map.h"
-#include "player.h"
-#include "quest_status.h"
-#include "quests.h"
-#include "tileset.h"
-#include "world.h"
+#include "conversation_node.hpp"
+#include "conversations.hpp"
+#include "input.hpp"
+#include "map.hpp"
+#include "player.hpp"
+#include "quest_status.hpp"
+#include "quests.hpp"
+#include "tileset.hpp"
+#include "world.hpp"
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 #include <SDL2/SDL_mixer.h>
@@ -31,7 +30,7 @@ void draw_text(SDL_Renderer *renderer, TTF_Font *font, size_t px, size_t x, size
     va_list args;
     va_start(args, fmt);
     size_t size = vsnprintf(NULL, 0, fmt, args) + 1;
-    char *text = malloc(size);
+    char *text = (char *)malloc(size);
     vsprintf_s(text, size, fmt, args);
     va_end(args);
 
@@ -88,31 +87,24 @@ int main(int argc, char *argv[])
     }
     SDL_SetWindowTitle(window, WINDOW_TITLE);
 
-    if (Mix_OpenAudio(MIX_DEFAULT_FREQUENCY, MIX_DEFAULT_FORMAT, MIX_DEFAULT_CHANNELS, 1024) != 0)
+    if (Mix_OpenAudio(MIX_DEFAULT_FREQUENCY, MIX_DEFAULT_FORMAT, MIX_DEFAULT_CHANNELS, 4096) != 0)
     {
         printf("Error: Failed to initialize the mixer API: %s\n", Mix_GetError());
         return 1;
     }
 
-    struct player player;
-    player_init(&player, 0);
+    hp::world world("assets/world.world", renderer);
+    hp::quests quests("assets/quests.json");
+    hp::conversations conversations("assets/conversations.json");
 
-    struct world world;
-    world_load(&world, "assets/world.world");
+    hp::player player(0);
 
-    struct quests quests;
-    quests_load(&quests, "assets/quests.json");
-
-    struct conversations conversations;
-    conversations_load(&conversations, "assets/conversations.json");
-
-    int pt = 18;
-    TTF_Font *font = TTF_OpenFont("assets/NinjaAdventure/HUD/Font/NormalFont.ttf", pt);
+    hp::map *map = &world.maps.at(player.map_index);
 
     SDL_Texture *player_sprites = IMG_LoadTexture(renderer, "assets/NinjaAdventure/Actor/Characters/BlueNinja/SpriteSheet.png");
 
-    struct map *map = &world.maps[player.map_index];
-    map_activate(map, renderer);
+    int pt = 18;
+    TTF_Font *font = TTF_OpenFont("assets/NinjaAdventure/HUD/Font/NormalFont.ttf", pt);
 
     bool quest_log_open = false;
 
@@ -159,18 +151,18 @@ int main(int argc, char *argv[])
                 case SDLK_ESCAPE:
                 {
                     quest_log_open = false;
-                    player_end_conversation(&player);
+                    player.end_conversation();
                 }
                 break;
                 case SDLK_SPACE:
                 {
                     if (player.conversation_node)
                     {
-                        player_advance_conversation(&player);
+                        player.advance_conversation();
                     }
                     else
                     {
-                        player_attack(&player, map);
+                        player.attack();
                     }
                 }
                 break;
@@ -187,7 +179,7 @@ int main(int argc, char *argv[])
                     if (player.conversation_node)
                     {
                         size_t choice_index = event.key.keysym.sym - 48;
-                        player_choose_conversation_response(&player, choice_index);
+                        player.choose_conversation_response(choice_index);
                     }
                 }
                 break;
@@ -199,45 +191,33 @@ int main(int argc, char *argv[])
                 case SDLK_F1:
                 {
                     player.map_index = 0;
-
-                    map_deactivate(map);
-                    map = &world.maps[player.map_index];
-                    map_activate(map, renderer);
+                    map = &world.maps.at(player.map_index);
                 }
                 break;
                 case SDLK_F2:
                 {
                     player.map_index = 1;
-
-                    map_deactivate(map);
-                    map = &world.maps[player.map_index];
-                    map_activate(map, renderer);
+                    map = &world.maps.at(player.map_index);
                 }
                 break;
                 case SDLK_F3:
                 {
-                    player_start_conversation(&player, &conversations, 0);
+                    player.start_conversation(&conversations, 0);
                 }
                 break;
                 case SDLK_F4:
                 {
-                    player_start_conversation(&player, &conversations, 1);
+                    player.start_conversation(&conversations, 1);
                 }
                 break;
                 case SDLK_F5:
                 {
-                    struct quest_status quest_status;
-                    quest_status.quest_index = 0;
-                    quest_status.stage_index = 1;
-                    player_set_quest_status(&player, quest_status);
+                    player.set_quest_status({0, 1});
                 }
                 break;
                 case SDLK_F6:
                 {
-                    struct quest_status quest_status;
-                    quest_status.quest_index = 0;
-                    quest_status.stage_index = 3;
-                    player_set_quest_status(&player, quest_status);
+                    player.set_quest_status({0, 3});
                 }
                 break;
                 }
@@ -251,7 +231,7 @@ int main(int argc, char *argv[])
             }
         }
 
-        struct input input;
+        hp::input input;
         input.dx = 0;
         input.dy = 0;
 
@@ -272,11 +252,11 @@ int main(int argc, char *argv[])
             input.dx = 1;
         }
 
-        player_update(&player, &input, map, delta_time);
+        player.update(&input, map, delta_time);
 
-        for (size_t i = 0; i < world.num_maps; i++)
+        for (size_t i = 0; i < world.maps.size(); i++)
         {
-            map_update(&world.maps[i], delta_time);
+            world.maps.at(i).update(delta_time);
         }
 
         size_t view_width = WINDOW_WIDTH / SPRITE_SCALE;
@@ -306,18 +286,18 @@ int main(int argc, char *argv[])
         {
             for (int64_t x = view_x / map->tile_width; x <= (int64_t)((view_x + view_width) / map->tile_width); x++)
             {
-                for (size_t i = 0; i < map->num_layers; i++)
+                for (size_t i = 0; i < map->layers.size(); i++)
                 {
-                    struct layer *layer = &map->layers[i];
+                    hp::layer *layer = &map->layers.at(i);
 
-                    struct tile *tile = layer_get_tile(layer, map, x, y);
+                    const hp::tile *tile = layer->get_tile(x, y);
                     if (tile)
                     {
-                        struct tileset *tileset = map_get_tileset(map, tile->gid);
+                        hp::map_tileset *map_tileset = map->get_map_tileset(tile->gid);
 
                         SDL_Rect srcrect = {
-                            (int)(((tile->gid - tileset->first_gid) % tileset->columns) * map->tile_width),
-                            (int)(((tile->gid - tileset->first_gid) / tileset->columns) * map->tile_height),
+                            (int)(((tile->gid - map_tileset->first_gid) % map_tileset->tileset->columns) * map->tile_width),
+                            (int)(((tile->gid - map_tileset->first_gid) / map_tileset->tileset->columns) * map->tile_height),
                             (int)map->tile_width,
                             (int)map->tile_height};
 
@@ -349,7 +329,7 @@ int main(int argc, char *argv[])
 
                         SDL_RenderCopyEx(
                             renderer,
-                            map->sprites[tileset->index],
+                            map_tileset->tileset->sprites,
                             &srcrect,
                             &dstrect,
                             angle,
@@ -360,39 +340,15 @@ int main(int argc, char *argv[])
             }
         }
 
-        for (size_t i = 0; i < MAX_MOBS; i++)
-        {
-            struct mob *mob = &map->mobs[i];
-
-            if (mob->alive)
-            {
-                struct tileset *tileset = map_get_tileset(map, mob->gid);
-
-                SDL_Rect srcrect = {
-                    (int)(((mob->gid - tileset->first_gid) % tileset->columns) * map->tile_width),
-                    (int)(((mob->gid - tileset->first_gid) / tileset->columns) * map->tile_height),
-                    (int)map->tile_width,
-                    (int)map->tile_height};
-
-                SDL_Rect dstrect = {
-                    (int)((mob->x - view_x) * SPRITE_SCALE),
-                    (int)((mob->y - view_y) * SPRITE_SCALE),
-                    (int)(map->tile_width * SPRITE_SCALE),
-                    (int)(map->tile_height * SPRITE_SCALE)};
-
-                SDL_RenderCopy(renderer, map->sprites[tileset->index], &srcrect, &dstrect);
-            }
-        }
-
         {
             SDL_Rect srcrect;
             switch (player.animation)
             {
-            case ANIMATION_IDLE:
+            case hp::animation::IDLE:
                 srcrect.x = (int)player.direction * 16;
                 srcrect.y = 0;
                 break;
-            case ANIMATION_WALKING:
+            case hp::animation::WALKING:
                 srcrect.x = (int)player.direction * 16;
                 srcrect.y = (1 + (player.frame_index % 3)) * 16;
                 break;
@@ -418,12 +374,12 @@ int main(int argc, char *argv[])
             SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
             SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
 
-            for (size_t i = 0; i < player.num_quest_statuses; i++)
+            for (size_t i = 0; i < player.quest_statuses.size(); i++)
             {
-                struct quest_status *status = &player.quest_statuses[i];
-                struct quest *quest = &quests.quests[status->quest_index];
-                struct quest_stage *stage = &quest->stages[status->stage_index];
-                draw_text(renderer, font, pt, 24, 24 * (i + 1), WINDOW_WIDTH - 24, (SDL_Color){255, 255, 255}, "%s: %s", quest->name, stage->description);
+                auto status = player.quest_statuses.at(i);
+                auto quest = &quests._quests[status.quest_index];
+                auto stage = &quest->stages[status.stage_index];
+                draw_text(renderer, font, pt, 24, 24 * (i + 1), WINDOW_WIDTH - 24, {255, 255, 255}, "%s: %s", quest->name.c_str(), stage->description.c_str());
             }
         }
 
@@ -436,14 +392,14 @@ int main(int argc, char *argv[])
             SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
             SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
 
-            draw_text(renderer, font, pt, 24, WINDOW_HEIGHT - 100, WINDOW_WIDTH, (SDL_Color){255, 255, 255}, "%s", player.conversation_node->text);
+            draw_text(renderer, font, pt, 24, WINDOW_HEIGHT - 100, WINDOW_WIDTH, {255, 255, 255}, "%s", player.conversation_node->text.c_str());
 
-            for (size_t i = 0; i < player.conversation_node->num_children; i++)
+            for (size_t i = 0; i < player.conversation_node->children.size(); i++)
             {
-                struct conversation_node *child = &player.conversation_node->children[i];
-                if (child->type == CONVERSATION_NODE_RESPONSE && conversation_node_check_conditions(child, &player))
+                auto child = player.conversation_node->children[i];
+                if (child->type == hp::conversation_node_type::RESPONSE && child->check_conditions(&player))
                 {
-                    draw_text(renderer, font, pt, 24, (WINDOW_HEIGHT - 100) + 24 * (i + 1), WINDOW_WIDTH, (SDL_Color){255, 255, 255}, "%zu) %s", i + 1, child->text);
+                    draw_text(renderer, font, pt, 24, (WINDOW_HEIGHT - 100) + 24 * (i + 1), WINDOW_WIDTH, {255, 255, 255}, "%zu) %s", i + 1, child->text.c_str());
                 }
             }
         }
@@ -459,12 +415,6 @@ int main(int argc, char *argv[])
     }
 
     TTF_CloseFont(font);
-
-    world_unload(&world);
-    quests_unload(&quests);
-    conversations_unload(&conversations);
-
-    player_uninit(&player);
 
     Mix_CloseAudio();
 
