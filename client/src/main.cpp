@@ -1,29 +1,70 @@
-#include "conversation_node.hpp"
-#include "conversations.hpp"
-#include "input.hpp"
-#include "map.hpp"
-#include "player.hpp"
-#include "quest_status.hpp"
-#include "quests.hpp"
-#include "tileset.hpp"
-#include "world.hpp"
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 #include <SDL2/SDL_mixer.h>
 #include <SDL2/SDL_ttf.h>
+#include <enet/enet.h>
+#include <shared/conversation_node.hpp>
+#include <shared/conversations.hpp>
+#include <shared/input.hpp>
+#include <shared/map.hpp>
+#include <shared/player.hpp>
+#include <shared/quest_status.hpp>
+#include <shared/quests.hpp>
+#include <shared/tileset.hpp>
+#include <shared/world.hpp>
 #include <stdarg.h>
-#include <stdbool.h>
-#include <stdint.h>
-#include <stdio.h>
 
-#define WINDOW_TITLE "Project Hypernova"
-#define WINDOW_WIDTH 640
-#define WINDOW_HEIGHT 480
+constexpr const char *window_title = "Project Hypernova";
+constexpr int window_width = 640;
+constexpr int window_height = 480;
 
-#define FPS_CAP 144
-#define FRAME_DELAY (1000 / FPS_CAP)
+constexpr std::uint16_t server_port = 8492;
 
-#define SPRITE_SCALE 2
+constexpr std::size_t fps_cap = 144;
+constexpr std::size_t frame_delay = 1000 / fps_cap;
+
+constexpr std::size_t sprite_scale = 2;
+
+namespace hp_client
+{
+    class active_map
+    {
+    public:
+        SDL_Renderer *renderer;
+        hp::map *map = nullptr;
+        std::vector<SDL_Texture *> sprites;
+
+        active_map(SDL_Renderer *renderer)
+            : renderer(renderer)
+        {
+        }
+
+        void change(hp::map *new_map)
+        {
+            if (map)
+            {
+                deactivate();
+            }
+
+            map = new_map;
+
+            for (const auto map_tileset : map->map_tilesets)
+            {
+                const auto tileset = map_tileset.tileset;
+                sprites.push_back(IMG_LoadTexture(renderer, tileset->sprites_filename.c_str()));
+            }
+        }
+
+        void deactivate()
+        {
+            for (auto sprite : sprites)
+            {
+                SDL_DestroyTexture(sprite);
+            }
+            sprites.clear();
+        }
+    };
+};
 
 void draw_text(SDL_Renderer *renderer, TTF_Font *font, size_t px, size_t x, size_t y, size_t w, SDL_Color fg, const char *const fmt, ...)
 {
@@ -54,52 +95,58 @@ int main(int argc, char *argv[])
 {
     if (SDL_Init(SDL_INIT_AUDIO | SDL_INIT_VIDEO) != 0)
     {
-        printf("Error: Failed to initialize SDL: %s\n", SDL_GetError());
         return 1;
     }
 
     int img_flags = IMG_INIT_PNG;
     if (IMG_Init(img_flags) != img_flags)
     {
-        printf("Error: Failed to initialize SDL_image: %s\n", IMG_GetError());
         return 1;
     }
 
     int mix_flags = 0;
     if (Mix_Init(mix_flags) != mix_flags)
     {
-        printf("Error: Failed to initialize SDL_mixer: %s\n", Mix_GetError());
         return 1;
     }
 
     if (TTF_Init() != 0)
     {
-        printf("Error: Failed to initialize SDL_ttf: %s\n", TTF_GetError());
         return 1;
     }
 
     SDL_Window *window;
     SDL_Renderer *renderer;
-    if (SDL_CreateWindowAndRenderer(WINDOW_WIDTH, WINDOW_HEIGHT, 0, &window, &renderer) != 0)
+    if (SDL_CreateWindowAndRenderer(window_width, window_height, 0, &window, &renderer) != 0)
     {
-        printf("Error: Failed to create window and renderer: %s\n", SDL_GetError());
         return 1;
     }
-    SDL_SetWindowTitle(window, WINDOW_TITLE);
+    SDL_SetWindowTitle(window, window_title);
 
     if (Mix_OpenAudio(MIX_DEFAULT_FREQUENCY, MIX_DEFAULT_FORMAT, MIX_DEFAULT_CHANNELS, 4096) != 0)
     {
-        printf("Error: Failed to initialize the mixer API: %s\n", Mix_GetError());
         return 1;
     }
 
-    hp::world world("assets/world.world", renderer);
+    if (enet_initialize() != 0)
+    {
+        return 1;
+    }
+
+    auto client = enet_host_create(NULL, 1, 2, 0, 0);
+    if (!client)
+    {
+        return 1;
+    }
+
+    hp::world world("assets/world.world");
     hp::quests quests("assets/quests.json");
     hp::conversations conversations("assets/conversations.json");
 
     hp::player player(0);
 
-    hp::map *map = &world.maps.at(player.map_index);
+    hp_client::active_map map(renderer);
+    map.change(&world.maps.at(player.map_index));
 
     SDL_Texture *player_sprites = IMG_LoadTexture(renderer, "assets/NinjaAdventure/Actor/Characters/BlueNinja/SpriteSheet.png");
 
@@ -191,13 +238,13 @@ int main(int argc, char *argv[])
                 case SDLK_F1:
                 {
                     player.map_index = 0;
-                    map = &world.maps.at(player.map_index);
+                    map.change(&world.maps.at(player.map_index));
                 }
                 break;
                 case SDLK_F2:
                 {
                     player.map_index = 1;
-                    map = &world.maps.at(player.map_index);
+                    map.change(&world.maps.at(player.map_index));
                 }
                 break;
                 case SDLK_F3:
@@ -252,28 +299,28 @@ int main(int argc, char *argv[])
             input.dx = 1;
         }
 
-        player.update(&input, map, delta_time);
+        player.update(&input, map.map, delta_time);
 
         for (size_t i = 0; i < world.maps.size(); i++)
         {
             world.maps.at(i).update(delta_time);
         }
 
-        size_t view_width = WINDOW_WIDTH / SPRITE_SCALE;
-        size_t view_height = WINDOW_HEIGHT / SPRITE_SCALE;
+        size_t view_width = window_width / sprite_scale;
+        size_t view_height = window_height / sprite_scale;
         int64_t view_x = (int64_t)player.pos_x - view_width / 2;
         int64_t view_y = (int64_t)player.pos_y - view_height / 2;
-        if (view_x + view_width > map->width * map->tile_width)
+        if (view_x + view_width > map.map->width * map.map->tile_width)
         {
-            view_x = (map->width * map->tile_width) - view_width;
+            view_x = (map.map->width * map.map->tile_width) - view_width;
         }
         if (view_x < 0)
         {
             view_x = 0;
         }
-        if (view_y + view_height > map->height * map->tile_height)
+        if (view_y + view_height > map.map->height * map.map->tile_height)
         {
-            view_y = (map->height * map->tile_height) - view_height;
+            view_y = (map.map->height * map.map->tile_height) - view_height;
         }
         if (view_y < 0)
         {
@@ -282,30 +329,30 @@ int main(int argc, char *argv[])
 
         SDL_RenderClear(renderer);
 
-        for (int64_t y = view_y / map->tile_height; y <= (int64_t)((view_y + view_height) / map->tile_height); y++)
+        for (int64_t y = view_y / map.map->tile_height; y <= (int64_t)((view_y + view_height) / map.map->tile_height); y++)
         {
-            for (int64_t x = view_x / map->tile_width; x <= (int64_t)((view_x + view_width) / map->tile_width); x++)
+            for (int64_t x = view_x / map.map->tile_width; x <= (int64_t)((view_x + view_width) / map.map->tile_width); x++)
             {
-                for (size_t i = 0; i < map->layers.size(); i++)
+                for (size_t i = 0; i < map.map->layers.size(); i++)
                 {
-                    hp::layer *layer = &map->layers.at(i);
+                    hp::layer *layer = &map.map->layers.at(i);
 
                     const hp::tile *tile = layer->get_tile(x, y);
                     if (tile)
                     {
-                        hp::map_tileset *map_tileset = map->get_map_tileset(tile->gid);
+                        hp::map_tileset *map_tileset = map.map->get_map_tileset(tile->gid);
 
                         SDL_Rect srcrect = {
-                            (int)(((tile->gid - map_tileset->first_gid) % map_tileset->tileset->columns) * map->tile_width),
-                            (int)(((tile->gid - map_tileset->first_gid) / map_tileset->tileset->columns) * map->tile_height),
-                            (int)map->tile_width,
-                            (int)map->tile_height};
+                            (int)(((tile->gid - map_tileset->first_gid) % map_tileset->tileset->columns) * map.map->tile_width),
+                            (int)(((tile->gid - map_tileset->first_gid) / map_tileset->tileset->columns) * map.map->tile_height),
+                            (int)map.map->tile_width,
+                            (int)map.map->tile_height};
 
                         SDL_Rect dstrect = {
-                            (int)(((x * map->tile_width) - view_x) * SPRITE_SCALE),
-                            (int)(((y * map->tile_height) - view_y) * SPRITE_SCALE),
-                            (int)(map->tile_width * SPRITE_SCALE),
-                            (int)(map->tile_height * SPRITE_SCALE)};
+                            (int)(((x * map.map->tile_width) - view_x) * sprite_scale),
+                            (int)(((y * map.map->tile_height) - view_y) * sprite_scale),
+                            (int)(map.map->tile_width * sprite_scale),
+                            (int)(map.map->tile_height * sprite_scale)};
 
                         double angle = 0;
                         if (tile->d_flip)
@@ -329,7 +376,7 @@ int main(int argc, char *argv[])
 
                         SDL_RenderCopyEx(
                             renderer,
-                            map_tileset->tileset->sprites,
+                            map.sprites.at(map_tileset->index),
                             &srcrect,
                             &dstrect,
                             angle,
@@ -357,17 +404,17 @@ int main(int argc, char *argv[])
             srcrect.h = 16;
 
             SDL_Rect dstrect = {
-                (int)((player.pos_x - view_x) * SPRITE_SCALE),
-                (int)((player.pos_y - view_y) * SPRITE_SCALE),
-                (int)(16 * SPRITE_SCALE),
-                (int)(16 * SPRITE_SCALE)};
+                (int)((player.pos_x - view_x) * sprite_scale),
+                (int)((player.pos_y - view_y) * sprite_scale),
+                (int)(16 * sprite_scale),
+                (int)(16 * sprite_scale)};
 
             SDL_RenderCopy(renderer, player_sprites, &srcrect, &dstrect);
         }
 
         if (quest_log_open)
         {
-            SDL_Rect rect = {12, 12, WINDOW_WIDTH - 24, WINDOW_HEIGHT - 24};
+            SDL_Rect rect = {12, 12, window_width - 24, window_height - 24};
             SDL_SetRenderDrawColor(renderer, 0, 0, 0, 200);
             SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
             SDL_RenderFillRect(renderer, &rect);
@@ -379,27 +426,27 @@ int main(int argc, char *argv[])
                 auto status = player.quest_statuses.at(i);
                 auto quest = &quests._quests[status.quest_index];
                 auto stage = &quest->stages[status.stage_index];
-                draw_text(renderer, font, pt, 24, 24 * (i + 1), WINDOW_WIDTH - 24, {255, 255, 255}, "%s: %s", quest->name.c_str(), stage->description.c_str());
+                draw_text(renderer, font, pt, 24, 24 * (i + 1), window_width - 24, {255, 255, 255}, "%s: %s", quest->name.c_str(), stage->description.c_str());
             }
         }
 
         if (player.conversation_node)
         {
-            SDL_Rect rect = {12, WINDOW_HEIGHT - 100 - 12, WINDOW_WIDTH - 24, 100};
+            SDL_Rect rect = {12, window_height - 100 - 12, window_width - 24, 100};
             SDL_SetRenderDrawColor(renderer, 0, 0, 0, 200);
             SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
             SDL_RenderFillRect(renderer, &rect);
             SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
             SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
 
-            draw_text(renderer, font, pt, 24, WINDOW_HEIGHT - 100, WINDOW_WIDTH, {255, 255, 255}, "%s", player.conversation_node->text.c_str());
+            draw_text(renderer, font, pt, 24, window_height - 100, window_width, {255, 255, 255}, "%s", player.conversation_node->text.c_str());
 
             for (size_t i = 0; i < player.conversation_node->children.size(); i++)
             {
                 auto child = player.conversation_node->children[i];
                 if (child->type == hp::conversation_node_type::RESPONSE && child->check_conditions(&player))
                 {
-                    draw_text(renderer, font, pt, 24, (WINDOW_HEIGHT - 100) + 24 * (i + 1), WINDOW_WIDTH, {255, 255, 255}, "%zu) %s", i + 1, child->text.c_str());
+                    draw_text(renderer, font, pt, 24, (window_height - 100) + 24 * (i + 1), window_width, {255, 255, 255}, "%zu) %s", i + 1, child->text.c_str());
                 }
             }
         }
@@ -408,11 +455,13 @@ int main(int argc, char *argv[])
 
         uint32_t frame_end = SDL_GetTicks();
         uint32_t frame_time = frame_end - frame_start;
-        if (FRAME_DELAY > frame_time)
+        if (frame_delay > frame_time)
         {
-            SDL_Delay(FRAME_DELAY - frame_time);
+            SDL_Delay(frame_delay - frame_time);
         }
     }
+
+    enet_host_destroy(client);
 
     TTF_CloseFont(font);
 

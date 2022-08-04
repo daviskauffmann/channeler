@@ -1,12 +1,11 @@
-#include "world.hpp"
+#include <shared/world.hpp>
 
-#include "map.hpp"
-#include "tileset.hpp"
 #include <fstream>
 #include <nlohmann/json.hpp>
+#include <shared/map.hpp>
+#include <shared/tileset.hpp>
 
-hp::world::world(const std::string &filename, SDL_Renderer *renderer)
-    : renderer(renderer)
+hp::world::world(const std::string &filename)
 {
     auto world_json = nlohmann::json::parse(std::ifstream(filename));
 
@@ -30,7 +29,7 @@ hp::tileset *hp::world::load_tileset(const std::string &filename)
 {
     if (tilesets.find(filename) == tilesets.end())
     {
-        tilesets.insert({filename, new hp::tileset(filename, renderer)});
+        tilesets.insert({filename, new hp::tileset(filename)});
     }
 
     return tilesets.at(filename);

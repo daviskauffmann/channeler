@@ -29,6 +29,8 @@ namespace hp
 
     struct map_tileset
     {
+        std::size_t index;
+
         size_t first_gid;
         hp::tileset *tileset;
 

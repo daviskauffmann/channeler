@@ -1,9 +1,8 @@
-#include "conversation_node.hpp"
+#include <shared/conversation_node.hpp>
 
-#include "map.hpp"
-#include "player.hpp"
-#include "quest_status.hpp"
-#include <json-c/json.h>
+#include <shared/map.hpp>
+#include <shared/player.hpp>
+#include <shared/quest_status.hpp>
 #include <stdio.h>
 #include <string.h>
 

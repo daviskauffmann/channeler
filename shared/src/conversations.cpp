@@ -1,8 +1,8 @@
-#include "conversations.hpp"
+#include <shared/conversations.hpp>
 
-#include "conversation_node.hpp"
 #include <fstream>
 #include <nlohmann/json.hpp>
+#include <shared/conversation_node.hpp>
 
 hp::conversations::conversations(const std::string &filename)
 {

@@ -1,9 +1,9 @@
-#include "map.hpp"
+#include <shared/map.hpp>
 
-#include "tileset.hpp"
-#include "world.hpp"
 #include <fstream>
 #include <nlohmann/json.hpp>
+#include <shared/tileset.hpp>
+#include <shared/world.hpp>
 
 const hp::tile *hp::layer::get_tile(std::size_t x, std::size_t y) const
 {
@@ -62,9 +62,12 @@ hp::map::map(const std::string &filename, hp::world &world)
         }
     }
 
+    std::size_t index = 0;
     for (const auto &tileset_json : map_json.at("tilesets"))
     {
         hp::map_tileset map_tileset;
+
+        map_tileset.index = index++;
 
         map_tileset.first_gid = tileset_json.at("firstgid");
 

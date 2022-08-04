@@ -1,7 +1,6 @@
 #ifndef TILESET_HPP
 #define TILESET_HPP
 
-#include <SDL2/SDL_image.h>
 #include <string>
 #include <vector>
 
@@ -16,11 +15,10 @@ namespace hp
     {
     public:
         std::size_t columns;
-        SDL_Texture *sprites;
+        std::string sprites_filename;
         std::vector<hp::tile_data> tile_data;
 
-        tileset(const std::string &filename, SDL_Renderer *renderer);
-        ~tileset();
+        tileset(const std::string &filename);
     };
 }
 

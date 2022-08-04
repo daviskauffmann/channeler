@@ -1,16 +1,15 @@
-#include "tileset.hpp"
+#include <shared/tileset.hpp>
 
 #include <fstream>
 #include <nlohmann/json.hpp>
 
-hp::tileset::tileset(const std::string &filename, SDL_Renderer *renderer)
+hp::tileset::tileset(const std::string &filename)
 {
     auto tileset_json = nlohmann::json::parse(std::ifstream(filename));
 
     columns = tileset_json.at("columns");
 
-    const auto sprites_filename = "assets/" + std::string(tileset_json.at("image"));
-    sprites = IMG_LoadTexture(renderer, sprites_filename.c_str());
+    sprites_filename = "assets/" + std::string(tileset_json.at("image"));
 
     for (const auto &tile_json : tileset_json.at("tiles"))
     {
@@ -26,9 +25,4 @@ hp::tileset::tileset(const std::string &filename, SDL_Renderer *renderer)
 
         tile_data.push_back(tile_datum);
     }
-}
-
-hp::tileset::~tileset()
-{
-    SDL_DestroyTexture(sprites);
 }

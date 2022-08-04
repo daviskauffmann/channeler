@@ -1,12 +1,11 @@
-#include "player.hpp"
+#include <shared/player.hpp>
 
-#include "conversation_node.hpp"
-#include "conversations.hpp"
-#include "input.hpp"
-#include "map.hpp"
-#include "quest_status.hpp"
-#include "tileset.hpp"
-#include <iostream>
+#include <shared/conversation_node.hpp>
+#include <shared/conversations.hpp>
+#include <shared/input.hpp>
+#include <shared/map.hpp>
+#include <shared/quest_status.hpp>
+#include <shared/tileset.hpp>
 
 hp::player::player(std::size_t map_index)
     : map_index(map_index)

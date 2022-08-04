@@ -1,4 +1,4 @@
-#include "quests.hpp"
+#include <shared/quests.hpp>
 
 #include <fstream>
 #include <nlohmann/json.hpp>
