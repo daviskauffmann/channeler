@@ -28,7 +28,6 @@ int main(int argc, char *argv[])
     ENetAddress address;
     address.host = ENET_HOST_ANY;
     address.port = server_port;
-
     auto server = enet_host_create(&address, max_clients, 2, 0, 0);
     if (!server)
     {
@@ -66,7 +65,7 @@ int main(int argc, char *argv[])
         {
             ENetEvent event;
             /* Wait up to 1000 milliseconds for an event. */
-            while (enet_host_service(server, &event, 1000) > 0)
+            while (enet_host_service(server, &event, 0) > 0)
             {
                 switch (event.type)
                 {
@@ -105,6 +104,7 @@ int main(int argc, char *argv[])
     }
 
     enet_host_destroy(server);
+    enet_deinitialize();
 
     SDL_Quit();
 

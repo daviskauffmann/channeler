@@ -18,6 +18,7 @@ constexpr const char *window_title = "Project Hypernova";
 constexpr int window_width = 640;
 constexpr int window_height = 480;
 
+constexpr const char *server_host = "127.0.0.1";
 constexpr std::uint16_t server_port = 8492;
 
 constexpr std::size_t fps_cap = 144;
@@ -139,6 +140,28 @@ int main(int argc, char *argv[])
         return 1;
     }
 
+    ENetAddress address;
+    enet_address_set_host(&address, server_host);
+    address.port = server_port;
+
+    auto peer = enet_host_connect(client, &address, 2, 0);
+    if (!peer)
+    {
+        return 1;
+    }
+
+    ENetEvent connect_event;
+    if (enet_host_service(client, &connect_event, 5000) > 0 && connect_event.type == ENET_EVENT_TYPE_CONNECT)
+    {
+        printf("connected");
+    }
+    else
+    {
+        enet_peer_reset(peer);
+
+        printf("not connected");
+    }
+
     hp::world world("assets/world.world");
     hp::quests quests("assets/quests.json");
     hp::conversations conversations("assets/conversations.json");
@@ -170,111 +193,148 @@ int main(int argc, char *argv[])
         int mouse_x, mouse_y;
         /*uint32_t mouse = */ SDL_GetMouseState(&mouse_x, &mouse_y);
 
-        SDL_Event event;
-        while (SDL_PollEvent(&event))
         {
-            switch (event.type)
+            SDL_Event event;
+            while (SDL_PollEvent(&event))
             {
-            case SDL_KEYDOWN:
-            {
-                switch (event.key.keysym.sym)
+                switch (event.type)
                 {
-                case SDLK_RETURN:
+                case SDL_KEYDOWN:
                 {
-                    if (keys[SDL_SCANCODE_LALT])
+                    switch (event.key.keysym.sym)
                     {
-                        uint32_t flags = SDL_GetWindowFlags(window);
-                        if (flags & SDL_WINDOW_FULLSCREEN_DESKTOP)
+                    case SDLK_RETURN:
+                    {
+                        if (keys[SDL_SCANCODE_LALT])
                         {
-                            SDL_SetWindowFullscreen(window, 0);
+                            uint32_t flags = SDL_GetWindowFlags(window);
+                            if (flags & SDL_WINDOW_FULLSCREEN_DESKTOP)
+                            {
+                                SDL_SetWindowFullscreen(window, 0);
+                            }
+                            else
+                            {
+                                SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN_DESKTOP);
+                            }
+                        }
+                    }
+                    break;
+                    case SDLK_ESCAPE:
+                    {
+                        quest_log_open = false;
+                        player.end_conversation();
+                    }
+                    break;
+                    case SDLK_SPACE:
+                    {
+                        if (player.conversation_node)
+                        {
+                            player.advance_conversation();
                         }
                         else
                         {
-                            SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN_DESKTOP);
+                            player.attack();
                         }
                     }
-                }
-                break;
-                case SDLK_ESCAPE:
-                {
-                    quest_log_open = false;
-                    player.end_conversation();
-                }
-                break;
-                case SDLK_SPACE:
-                {
-                    if (player.conversation_node)
+                    break;
+                    case SDLK_1:
+                    case SDLK_2:
+                    case SDLK_3:
+                    case SDLK_4:
+                    case SDLK_5:
+                    case SDLK_6:
+                    case SDLK_7:
+                    case SDLK_8:
+                    case SDLK_9:
                     {
-                        player.advance_conversation();
+                        if (player.conversation_node)
+                        {
+                            size_t choice_index = event.key.keysym.sym - 48;
+                            player.choose_conversation_response(choice_index);
+                        }
                     }
-                    else
+                    break;
+                    case SDLK_j:
                     {
-                        player.attack();
+                        quest_log_open = !quest_log_open;
                     }
-                }
-                break;
-                case SDLK_1:
-                case SDLK_2:
-                case SDLK_3:
-                case SDLK_4:
-                case SDLK_5:
-                case SDLK_6:
-                case SDLK_7:
-                case SDLK_8:
-                case SDLK_9:
-                {
-                    if (player.conversation_node)
+                    break;
+                    case SDLK_F1:
                     {
-                        size_t choice_index = event.key.keysym.sym - 48;
-                        player.choose_conversation_response(choice_index);
+                        player.map_index = 0;
+                        map.change(&world.maps.at(player.map_index));
+                    }
+                    break;
+                    case SDLK_F2:
+                    {
+                        player.map_index = 1;
+                        map.change(&world.maps.at(player.map_index));
+                    }
+                    break;
+                    case SDLK_F3:
+                    {
+                        player.start_conversation(&conversations, 0);
+                    }
+                    break;
+                    case SDLK_F4:
+                    {
+                        player.start_conversation(&conversations, 1);
+                    }
+                    break;
+                    case SDLK_F5:
+                    {
+                        player.set_quest_status({0, 1});
+                    }
+                    break;
+                    case SDLK_F6:
+                    {
+                        player.set_quest_status({0, 3});
+                    }
+                    break;
                     }
                 }
                 break;
-                case SDLK_j:
+                case SDL_QUIT:
                 {
-                    quest_log_open = !quest_log_open;
-                }
-                break;
-                case SDLK_F1:
-                {
-                    player.map_index = 0;
-                    map.change(&world.maps.at(player.map_index));
-                }
-                break;
-                case SDLK_F2:
-                {
-                    player.map_index = 1;
-                    map.change(&world.maps.at(player.map_index));
-                }
-                break;
-                case SDLK_F3:
-                {
-                    player.start_conversation(&conversations, 0);
-                }
-                break;
-                case SDLK_F4:
-                {
-                    player.start_conversation(&conversations, 1);
-                }
-                break;
-                case SDLK_F5:
-                {
-                    player.set_quest_status({0, 1});
-                }
-                break;
-                case SDLK_F6:
-                {
-                    player.set_quest_status({0, 3});
+                    quit = true;
                 }
                 break;
                 }
             }
-            break;
-            case SDL_QUIT:
+        }
+
+        {
+            ENetEvent event;
+            /* Wait up to 1000 milliseconds for an event. */
+            while (enet_host_service(client, &event, 0) > 0)
             {
-                quit = true;
-            }
-            break;
+                switch (event.type)
+                {
+                case ENET_EVENT_TYPE_CONNECT:
+                {
+                    printf("A new client connected from %x:%u.\n",
+                           event.peer->address.host,
+                           event.peer->address.port);
+                    /* Store any relevant client information here. */
+                    event.peer->data = (void *)"Client information";
+                }
+                break;
+                case ENET_EVENT_TYPE_RECEIVE:
+                    printf("A packet of length %u containing %s was received from %s on channel %u.\n",
+                           event.packet->dataLength,
+                           event.packet->data,
+                           event.peer->data,
+                           event.channelID);
+                    /* Clean up the packet now that we're done using it. */
+                    enet_packet_destroy(event.packet);
+
+                    break;
+
+                case ENET_EVENT_TYPE_DISCONNECT:
+                    printf("%s disconnected.\n", event.peer->data);
+                    /* Reset the peer's client information. */
+                    event.peer->data = NULL;
+                }
             }
         }
 
@@ -462,6 +522,7 @@ int main(int argc, char *argv[])
     }
 
     enet_host_destroy(client);
+    enet_deinitialize();
 
     TTF_CloseFont(font);
 
