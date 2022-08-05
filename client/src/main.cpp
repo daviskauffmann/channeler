@@ -16,8 +16,8 @@
 #include <stdarg.h>
 
 constexpr const char *window_title = "Project Hypernova";
-constexpr int window_width = 640;
-constexpr int window_height = 480;
+constexpr std::size_t window_width = 640;
+constexpr std::size_t window_height = 480;
 
 constexpr const char *server_host = "127.0.0.1";
 constexpr std::uint16_t server_port = 8492;
@@ -36,7 +36,7 @@ namespace hp_client
         hp::map *map = nullptr;
         std::vector<SDL_Texture *> sprites;
 
-        active_map(SDL_Renderer *renderer)
+        explicit active_map(SDL_Renderer *renderer)
             : renderer(renderer)
         {
         }
@@ -50,10 +50,14 @@ namespace hp_client
 
             map = new_map;
 
-            for (const auto &map_tileset : map->map_tilesets)
-            {
-                sprites.push_back(IMG_LoadTexture(renderer, map_tileset.tileset->sprites_filename.c_str()));
-            }
+            std::transform(
+                map->map_tilesets.begin(),
+                map->map_tilesets.end(),
+                std::back_inserter(sprites),
+                [this](const hp::map_tileset &map_tileset)
+                {
+                    return IMG_LoadTexture(renderer, map_tileset.tileset->sprites_filename.c_str());
+                });
         }
 
         void deactivate()
@@ -79,16 +83,16 @@ void draw_text(
     va_list args;
     va_start(args, fmt);
     auto size = vsnprintf(NULL, 0, fmt, args) + 1;
-    auto text = (char *)malloc(size);
+    auto text = static_cast<char *>(malloc(size));
     vsprintf_s(text, size, fmt, args);
     va_end(args);
 
-    auto surface = TTF_RenderText_Blended_Wrapped(font, text, fg, (uint32_t)w);
+    auto surface = TTF_RenderText_Blended_Wrapped(font, text, fg, static_cast<uint32_t>(w));
     auto texture = SDL_CreateTextureFromSurface(renderer, surface);
 
     SDL_Rect dstrect = {
-        (int)x,
-        (int)y,
+        static_cast<int>(x),
+        static_cast<int>(y),
         surface->w,
         surface->h};
 
@@ -157,7 +161,9 @@ int main(int, char *[])
     auto online = false;
     ENetHost *host = nullptr;
     ENetPeer *peer = nullptr;
+
     std::size_t client_id = 0;
+    std::size_t map_index = 0;
 
     host = enet_host_create(NULL, 1, 2, 0, 0);
     if (host)
@@ -180,16 +186,15 @@ int main(int, char *[])
                 {
                     const auto type = reinterpret_cast<hp::message *>(event.packet->data)->type;
 
-                    std::cout << "Receive " << (int)type << std::endl;
-
                     if (type == hp::message_type::SERVER_JOINED)
                     {
-                        const auto message = reinterpret_cast<hp::message_client_id *>(event.packet->data);
+                        const auto message = reinterpret_cast<hp::message_id *>(event.packet->data);
 
-                        std::cout << "Assigned ID " << message->client_id << std::endl;
+                        std::cout << "Assigned ID " << message->id << std::endl;
 
                         online = true;
-                        client_id = message->client_id;
+                        client_id = message->id;
+                        map_index = 0; // TODO: get from message
 
                         break;
                     }
@@ -219,11 +224,13 @@ int main(int, char *[])
     hp::quest_list quest_list("assets/quest_list.json");
     hp::conversation_list conversation_list("assets/conversation_list.json");
 
-    client_list.clients.at(client_id).id = client_id;
-    hp::player &player = client_list.clients.at(client_id).player;
+    auto &client = client_list.clients.at(client_id);
+    client.id = client_id;
+    auto &player = client.player;
+    auto &input = client.input;
 
     hp_client::active_map map(renderer);
-    map.change(&world.maps.at(player.map_index));
+    map.change(&world.maps.at(map_index));
 
     SDL_Texture *player_sprites = IMG_LoadTexture(renderer, "assets/NinjaAdventure/Actor/Characters/BlueNinja/SpriteSheet.png");
 
@@ -310,14 +317,38 @@ int main(int, char *[])
                     break;
                     case SDLK_F1:
                     {
-                        player.map_index = 0;
-                        map.change(&world.maps.at(player.map_index));
+                        std::size_t new_map_index = 0;
+
+                        if (online)
+                        {
+                            hp::message_id message;
+                            message.type = hp::message_type::CHANGE_MAP;
+                            message.id = new_map_index;
+                            auto packet = enet_packet_create(&message, sizeof(message), 0);
+                            enet_peer_send(peer, 0, packet);
+                        }
+                        else
+                        {
+                            player.map_index = new_map_index;
+                        }
                     }
                     break;
                     case SDLK_F2:
                     {
-                        player.map_index = 1;
-                        map.change(&world.maps.at(player.map_index));
+                        std::size_t new_map_index = 1;
+
+                        if (online)
+                        {
+                            hp::message_id message;
+                            message.type = hp::message_type::CHANGE_MAP;
+                            message.id = new_map_index;
+                            auto packet = enet_packet_create(&message, sizeof(message), 0);
+                            enet_peer_send(peer, 0, packet);
+                        }
+                        else
+                        {
+                            player.map_index = new_map_index;
+                        }
                     }
                     break;
                     case SDLK_F3:
@@ -364,14 +395,12 @@ int main(int, char *[])
                 {
                     const auto type = reinterpret_cast<hp::message *>(event.packet->data)->type;
 
-                    std::cout << "Receive " << (int)type << std::endl;
-
                     switch (type)
                     {
                     case hp::message_type::CLIENT_JOINED:
                     {
-                        const auto message = reinterpret_cast<hp::message_client_id *>(event.packet->data);
-                        const auto new_client_id = message->client_id;
+                        const auto message = reinterpret_cast<hp::message_id *>(event.packet->data);
+                        const auto new_client_id = message->id;
 
                         std::cout << "New client ID " << new_client_id << std::endl;
 
@@ -380,12 +409,36 @@ int main(int, char *[])
                     break;
                     case hp::message_type::CLIENT_DISCONNECTED:
                     {
-                        const auto message = reinterpret_cast<hp::message_client_id *>(event.packet->data);
-                        const auto disconnected_client_id = message->client_id;
+                        const auto message = reinterpret_cast<hp::message_id *>(event.packet->data);
+                        const auto disconnected_client_id = message->id;
 
                         std::cout << "Client disconnected " << disconnected_client_id << std::endl;
 
                         client_list.clients.at(disconnected_client_id).id = client_list.max_clients;
+                    }
+                    break;
+                    case hp::message_type::GAME_STATE:
+                    {
+                        const auto message = reinterpret_cast<hp::message_game_state *>(event.packet->data);
+
+                        for (std::size_t i = 0; i < message->clients.size(); i++)
+                        {
+                            client_list.clients.at(i).id = message->clients.at(i).id;
+
+                            client_list.clients.at(i).player.map_index = message->clients.at(i).player.map_index;
+
+                            client_list.clients.at(i).player.pos_x = message->clients.at(i).player.pos_x;
+                            client_list.clients.at(i).player.pos_y = message->clients.at(i).player.pos_y;
+
+                            client_list.clients.at(i).player.direction = message->clients.at(i).player.direction;
+                            client_list.clients.at(i).player.animation = message->clients.at(i).player.animation;
+                            client_list.clients.at(i).player.frame_index = message->clients.at(i).player.frame_index;
+                        }
+                    }
+                    break;
+                    default:
+                    {
+                        std::cout << "Unknown message type " << static_cast<int>(type) << std::endl;
                     }
                     break;
                     }
@@ -397,7 +450,12 @@ int main(int, char *[])
             }
         }
 
-        hp::input input;
+        if (map_index != player.map_index)
+        {
+            map_index = player.map_index;
+            map.change(&world.maps.at(map_index));
+        }
+
         input.dx = 0;
         input.dy = 0;
 
@@ -418,17 +476,34 @@ int main(int, char *[])
             input.dx = 1;
         }
 
-        player.update(input, *map.map, delta_time);
-
-        for (std::size_t i = 0; i < world.maps.size(); i++)
+        if (online)
         {
-            world.maps.at(i).update(delta_time);
+            hp::message_input message;
+            message.type = hp::message_type::INPUT;
+            message.input = input;
+            auto packet = enet_packet_create(&message, sizeof(message), 0);
+            enet_peer_send(peer, 0, packet);
+        }
+        else
+        {
+            for (std::size_t i = 0; i < world.maps.size(); i++)
+            {
+                world.maps.at(i).update(delta_time);
+            }
+
+            for (auto &_client : client_list.clients)
+            {
+                if (_client.id != client_list.max_clients)
+                {
+                    _client.player.update(_client.input, world.maps.at(_client.player.map_index), delta_time);
+                }
+            }
         }
 
-        const std::size_t view_width = window_width / sprite_scale;
-        const std::size_t view_height = window_height / sprite_scale;
-        std::int64_t view_x = (std::int64_t)player.pos_x - view_width / 2;
-        std::int64_t view_y = (std::int64_t)player.pos_y - view_height / 2;
+        const auto view_width = window_width / sprite_scale;
+        const auto view_height = window_height / sprite_scale;
+        auto view_x = static_cast<std::int64_t>(player.pos_x - view_width / 2);
+        auto view_y = static_cast<std::int64_t>(player.pos_y - view_height / 2);
         if (view_x + view_width > map.map->width * map.map->tile_width)
         {
             view_x = (map.map->width * map.map->tile_width) - view_width;
@@ -448,9 +523,9 @@ int main(int, char *[])
 
         SDL_RenderClear(renderer);
 
-        for (std::int64_t y = view_y / map.map->tile_height; y <= (std::int64_t)((view_y + view_height) / map.map->tile_height); y++)
+        for (std::int64_t y = view_y / map.map->tile_height; y <= static_cast<std::int64_t>((view_y + view_height) / map.map->tile_height); y++)
         {
-            for (std::int64_t x = view_x / map.map->tile_width; x <= (std::int64_t)((view_x + view_width) / map.map->tile_width); x++)
+            for (std::int64_t x = view_x / map.map->tile_width; x <= static_cast<std::int64_t>((view_x + view_width) / map.map->tile_width); x++)
             {
                 for (const auto &layer : map.map->layers)
                 {
@@ -460,16 +535,16 @@ int main(int, char *[])
                         const auto &map_tileset = map.map->get_map_tileset(tile->gid);
 
                         const SDL_Rect srcrect = {
-                            (int)(((tile->gid - map_tileset.first_gid) % map_tileset.tileset->columns) * map.map->tile_width),
-                            (int)(((tile->gid - map_tileset.first_gid) / map_tileset.tileset->columns) * map.map->tile_height),
-                            (int)map.map->tile_width,
-                            (int)map.map->tile_height};
+                            static_cast<int>(((tile->gid - map_tileset.first_gid) % map_tileset.tileset->columns) * map.map->tile_width),
+                            static_cast<int>(((tile->gid - map_tileset.first_gid) / map_tileset.tileset->columns) * map.map->tile_height),
+                            static_cast<int>(map.map->tile_width),
+                            static_cast<int>(map.map->tile_height)};
 
                         const SDL_Rect dstrect = {
-                            (int)(((x * map.map->tile_width) - view_x) * sprite_scale),
-                            (int)(((y * map.map->tile_height) - view_y) * sprite_scale),
-                            (int)(map.map->tile_width * sprite_scale),
-                            (int)(map.map->tile_height * sprite_scale)};
+                            static_cast<int>(((x * map.map->tile_width) - view_x) * sprite_scale),
+                            static_cast<int>(((y * map.map->tile_height) - view_y) * sprite_scale),
+                            static_cast<int>(map.map->tile_width * sprite_scale),
+                            static_cast<int>(map.map->tile_height * sprite_scale)};
 
                         double angle = 0;
                         if (tile->d_flip)
@@ -504,34 +579,34 @@ int main(int, char *[])
             }
         }
 
-        for (const auto &client : client_list.clients)
+        for (const auto &_client : client_list.clients)
         {
-            if (client.id != client_list.max_clients)
+            if (_client.id != client_list.max_clients && _client.player.map_index == map_index)
             {
                 SDL_Rect srcrect;
-                switch (client.player.animation)
+                switch (_client.player.animation)
                 {
                 case hp::animation::IDLE:
-                    srcrect.x = (int)client.player.direction * 16;
+                    srcrect.x = static_cast<int>(_client.player.direction) * 16;
                     srcrect.y = 0;
                     break;
                 case hp::animation::WALKING:
-                    srcrect.x = (int)client.player.direction * 16;
-                    srcrect.y = (1 + (client.player.frame_index % 3)) * 16;
+                    srcrect.x = static_cast<int>(_client.player.direction) * 16;
+                    srcrect.y = (1 + (_client.player.frame_index % 3)) * 16;
                     break;
                 }
                 srcrect.w = 16;
                 srcrect.h = 16;
 
                 const SDL_Rect dstrect = {
-                    (int)((client.player.pos_x - view_x) * sprite_scale),
-                    (int)((client.player.pos_y - view_y) * sprite_scale),
-                    (int)(16 * sprite_scale),
-                    (int)(16 * sprite_scale)};
+                    static_cast<int>((_client.player.pos_x - view_x) * sprite_scale),
+                    static_cast<int>((_client.player.pos_y - view_y) * sprite_scale),
+                    static_cast<int>(16 * sprite_scale),
+                    static_cast<int>(16 * sprite_scale)};
 
                 SDL_RenderCopy(renderer, player_sprites, &srcrect, &dstrect);
 
-                draw_text(renderer, font, dstrect.x + 24, dstrect.y - (24 * 2), window_width, {255, 255, 255}, "%zu", client.id);
+                draw_text(renderer, font, dstrect.x + 24, dstrect.y - (24 * 2), window_width, {255, 255, 255}, "%zu", _client.id);
             }
         }
 
@@ -546,10 +621,10 @@ int main(int, char *[])
 
             for (std::size_t i = 0; i < player.quest_statuses.size(); i++)
             {
-                auto status = player.quest_statuses.at(i);
-                auto quest = &quest_list.quests.at(status.quest_index);
-                auto stage = &quest->stages.at(status.stage_index);
-                draw_text(renderer, font, 24, 24 * (i + 1), window_width - 24, {255, 255, 255}, "%s: %s", quest->name.c_str(), stage->description.c_str());
+                const auto &status = player.quest_statuses.at(i);
+                const auto &quest = quest_list.quests.at(status.quest_index);
+                const auto &stage = quest.stages.at(status.stage_index);
+                draw_text(renderer, font, 24, 24 * (i + 1), window_width - 24, {255, 255, 255}, "%s: %s", quest.name.c_str(), stage.description.c_str());
             }
         }
 

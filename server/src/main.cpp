@@ -83,10 +83,10 @@ int main(int, char *[])
                         std::cout << "Assigned ID " << new_client_id << std::endl;
 
                         {
-                            hp::message_client_id message;
+                            hp::message_id message;
                             message.type = hp::message_type::SERVER_JOINED;
-                            message.client_id = new_client_id;
-                            ENetPacket *packet = enet_packet_create(&message, sizeof(message), ENET_PACKET_FLAG_RELIABLE);
+                            message.id = new_client_id;
+                            auto packet = enet_packet_create(&message, sizeof(message), ENET_PACKET_FLAG_RELIABLE);
                             enet_peer_send(event.peer, 0, packet);
                         }
 
@@ -97,10 +97,10 @@ int main(int, char *[])
                         }
 
                         {
-                            hp::message_client_id message;
+                            hp::message_id message;
                             message.type = hp::message_type::CLIENT_JOINED;
-                            message.client_id = new_client_id;
-                            ENetPacket *packet = enet_packet_create(&message, sizeof(message), ENET_PACKET_FLAG_RELIABLE);
+                            message.id = new_client_id;
+                            auto packet = enet_packet_create(&message, sizeof(message), ENET_PACKET_FLAG_RELIABLE);
                             enet_host_broadcast(host, 0, packet);
                         }
                     }
@@ -108,13 +108,42 @@ int main(int, char *[])
                     {
                         hp::message message;
                         message.type = hp::message_type::SERVER_JOINED;
-                        ENetPacket *packet = enet_packet_create(&message, sizeof(message), ENET_PACKET_FLAG_RELIABLE);
+                        auto packet = enet_packet_create(&message, sizeof(message), ENET_PACKET_FLAG_RELIABLE);
                         enet_peer_send(event.peer, 0, packet);
                     }
                 }
                 break;
                 case ENET_EVENT_TYPE_RECEIVE:
                 {
+                    const auto client = static_cast<hp::client *>(event.peer->data);
+                    const auto type = reinterpret_cast<hp::message *>(event.packet->data)->type;
+
+                    switch (type)
+                    {
+                    case hp::message_type::INPUT:
+                    {
+                        const auto message = reinterpret_cast<hp::message_input *>(event.packet->data);
+
+                        client->input.dx = message->input.dx;
+                        client->input.dy = message->input.dy;
+                    }
+                    break;
+                    case hp::message_type::CHANGE_MAP:
+                    {
+                        const auto message = reinterpret_cast<hp::message_id *>(event.packet->data);
+
+                        client->player.map_index = message->id;
+
+                        std::cout << "Change map " << client->id << " " << message->id << std::endl;
+                    }
+                    break;
+                    default:
+                    {
+                        std::cout << "Unknown message type " << static_cast<int>(type) << std::endl;
+                    }
+                    break;
+                    }
+
                     enet_packet_destroy(event.packet);
                 }
                 break;
@@ -131,16 +160,50 @@ int main(int, char *[])
                     }
 
                     {
-                        hp::message_client_id message;
+                        hp::message_id message;
                         message.type = hp::message_type::CLIENT_DISCONNECTED;
-                        message.client_id = disconnected_client_id;
-                        ENetPacket *packet = enet_packet_create(&message, sizeof(message), ENET_PACKET_FLAG_RELIABLE);
+                        message.id = disconnected_client_id;
+                        auto packet = enet_packet_create(&message, sizeof(message), ENET_PACKET_FLAG_RELIABLE);
                         enet_host_broadcast(host, 0, packet);
                     }
                 }
                 break;
                 }
             }
+        }
+
+        for (std::size_t i = 0; i < world.maps.size(); i++)
+        {
+            world.maps.at(i).update(delta_time);
+        }
+
+        for (auto &client : client_list.clients)
+        {
+            if (client.id != client_list.max_clients)
+            {
+                client.player.update(client.input, world.maps.at(client.player.map_index), delta_time);
+            }
+        }
+
+        {
+            hp::message_game_state message;
+            message.type = hp::message_type::GAME_STATE;
+            for (std::size_t i = 0; i < client_list.clients.size(); i++)
+            {
+                message.clients.at(i).id = client_list.clients.at(i).id;
+
+                message.clients.at(i).player.map_index = client_list.clients.at(i).player.map_index;
+
+                message.clients.at(i).player.pos_x = client_list.clients.at(i).player.pos_x;
+                message.clients.at(i).player.pos_y = client_list.clients.at(i).player.pos_y;
+
+                message.clients.at(i).player.direction = client_list.clients.at(i).player.direction;
+                message.clients.at(i).player.animation = client_list.clients.at(i).player.animation;
+                message.clients.at(i).player.frame_index = client_list.clients.at(i).player.frame_index;
+            }
+
+            auto packet = enet_packet_create(&message, sizeof(message), 0);
+            enet_host_broadcast(host, 0, packet);
         }
 
         const auto frame_time = SDL_GetTicks() - current_time;

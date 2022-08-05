@@ -88,7 +88,7 @@ hp::conversation::~conversation()
         delete effect.quest_status;
     }
 
-    for (const auto &child : children)
+    for (const auto child : children)
     {
         delete child;
     }
@@ -96,15 +96,13 @@ hp::conversation::~conversation()
 
 bool hp::conversation::has_response_nodes() const
 {
-    for (const auto &child : children)
-    {
-        if (child->type == hp::conversation_type::RESPONSE)
+    return std::any_of(
+        children.begin(),
+        children.end(),
+        [](const hp::conversation *const child)
         {
-            return true;
-        }
-    }
-
-    return false;
+            return child->type == hp::conversation_type::RESPONSE;
+        });
 }
 
 bool hp::conversation::check_conditions(const hp::player &player) const
@@ -127,7 +125,7 @@ hp::conversation *hp::conversation::find_by_node_index(const std::size_t index)
         return this;
     }
 
-    for (const auto &child : children)
+    for (const auto child : children)
     {
         const auto result = child->find_by_node_index(index);
         if (result)
@@ -146,7 +144,7 @@ hp::conversation *hp::conversation::find_by_id(const std::string &id_to_find)
         return this;
     }
 
-    for (const auto &child : children)
+    for (const auto child : children)
     {
         const auto result = child->find_by_id(id_to_find);
         if (result)

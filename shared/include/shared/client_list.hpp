@@ -2,6 +2,7 @@
 #define CLIENT_LIST_HPP
 
 #include "player.hpp"
+#include "input.hpp"
 #include <array>
 
 namespace hp
@@ -10,6 +11,7 @@ namespace hp
     {
         std::size_t id;
         hp::player player;
+        hp::input input;
     };
 
     class client_list

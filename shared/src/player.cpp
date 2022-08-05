@@ -37,29 +37,29 @@ void hp::player::update(const hp::input &input, const hp::map &map, const float 
         frame_index++;
     }
 
-    acc_x = (float)input.dx;
-    acc_y = (float)input.dy;
+    acc_x = static_cast<float>(input.dx);
+    acc_y = static_cast<float>(input.dy);
 
-    const float acc_len = sqrtf(powf(acc_x, 2) + powf(acc_y, 2));
+    const auto acc_len = sqrtf(powf(acc_x, 2) + powf(acc_y, 2));
     if (acc_len > 1)
     {
         acc_x /= acc_len;
         acc_y /= acc_len;
     }
 
-    const float speed = 1000;
+    const auto speed = 1000.0f;
     acc_x *= speed;
     acc_y *= speed;
 
-    const float drag = 20;
+    const auto drag = 20.0f;
     acc_x -= vel_x * drag;
     acc_y -= vel_y * drag;
 
-    const float new_pos_x = 0.5f * acc_x * powf(delta_time, 2) + vel_x * delta_time + pos_x;
-    const float new_pos_y = 0.5f * acc_y * powf(delta_time, 2) + vel_y * delta_time + pos_y;
+    const auto new_pos_x = 0.5f * acc_x * powf(delta_time, 2) + vel_x * delta_time + pos_x;
+    const auto new_pos_y = 0.5f * acc_y * powf(delta_time, 2) + vel_y * delta_time + pos_y;
 
-    const int tile_nx_x = (int)roundf(new_pos_x / map.tile_width);
-    const int tile_nx_y = (int)roundf(pos_y / map.tile_height);
+    const auto tile_nx_x = static_cast<std::size_t>(roundf(new_pos_x / map.tile_width));
+    const auto tile_nx_y = static_cast<std::size_t>(roundf(pos_y / map.tile_height));
     if (map.is_solid(tile_nx_x, tile_nx_y))
     {
         vel_x = 0;
@@ -70,8 +70,8 @@ void hp::player::update(const hp::input &input, const hp::map &map, const float 
         vel_x = acc_x * delta_time + vel_x;
     }
 
-    const int tile_ny_x = (int)roundf(pos_x / map.tile_width);
-    const int tile_ny_y = (int)roundf(new_pos_y / map.tile_height);
+    const auto tile_ny_x = static_cast<std::size_t>(roundf(pos_x / map.tile_width));
+    const auto tile_ny_y = static_cast<std::size_t>(roundf(new_pos_y / map.tile_height));
     if (map.is_solid(tile_ny_x, tile_ny_y))
     {
         vel_y = 0;
@@ -108,7 +108,7 @@ void hp::player::advance_conversation()
 
         if (!conversation_node->has_response_nodes())
         {
-            for (auto &child : conversation_node->children)
+            for (auto child : conversation_node->children)
             {
                 if (child->check_conditions(*this))
                 {
@@ -126,10 +126,10 @@ void hp::player::advance_conversation()
     }
 }
 
-void hp::player::choose_conversation_response(std::size_t choice_index)
+void hp::player::choose_conversation_response(const std::size_t choice_index)
 {
-    size_t valid_choice_index = 0;
-    for (auto &child : conversation_node->children)
+    std::size_t valid_choice_index = 0;
+    for (auto child : conversation_node->children)
     {
         if (child->type == hp::conversation_type::RESPONSE && child->check_conditions(*this))
         {
@@ -151,27 +151,31 @@ void hp::player::end_conversation()
 
 void hp::player::set_quest_status(const hp::quest_status &status)
 {
-    for (auto &quest_status : quest_statuses)
-    {
-        if (quest_status.quest_index == status.quest_index)
+    const auto quest_status = std::find_if(
+        quest_statuses.begin(),
+        quest_statuses.end(),
+        [status](const hp::quest_status &quest_status)
         {
-            quest_status.stage_index = status.stage_index;
-            return;
-        }
-    }
+            return quest_status.quest_index == status.quest_index;
+        });
 
-    quest_statuses.push_back(status);
+    if (quest_status == quest_statuses.end())
+    {
+        quest_statuses.push_back(status);
+    }
+    else
+    {
+        quest_status->stage_index = status.stage_index;
+    }
 }
 
 bool hp::player::check_quest_status(const hp::quest_status &status) const
 {
-    for (const auto &quest_status : quest_statuses)
-    {
-        if (quest_status.quest_index == status.quest_index && quest_status.stage_index == status.stage_index)
+    return std::any_of(
+        quest_statuses.begin(),
+        quest_statuses.end(),
+        [status](const hp::quest_status &quest_status)
         {
-            return true;
-        }
-    }
-
-    return false;
+            return quest_status.quest_index == status.quest_index && quest_status.stage_index == status.stage_index;
+        });
 }
