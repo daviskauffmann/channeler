@@ -1,5 +1,5 @@
-#ifndef QUESTS_HPP
-#define QUESTS_HPP
+#ifndef QUEST_LIST_HPP
+#define QUEST_LIST_HPP
 
 #include <string>
 #include <vector>
@@ -17,12 +17,12 @@ namespace hp
         std::vector<hp::quest_stage> stages;
     };
 
-    class quests
+    class quest_list
     {
     public:
-        std::vector<hp::quest> _quests;
+        std::vector<hp::quest> quests;
 
-        quests(const std::string &filename);
+        quest_list(const std::string &filename);
     };
 
 }

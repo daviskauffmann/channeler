@@ -5,11 +5,12 @@
 
 hp::tileset::tileset(const std::string &filename)
 {
-    auto tileset_json = nlohmann::json::parse(std::ifstream(filename));
+    const auto tileset_json = nlohmann::json::parse(std::ifstream(filename));
 
     columns = tileset_json.at("columns");
 
-    sprites_filename = "assets/" + std::string(tileset_json.at("image"));
+    const std::string image_string = tileset_json.at("image");
+    sprites_filename = "assets/" + image_string;
 
     for (const auto &tile_json : tileset_json.at("tiles"))
     {

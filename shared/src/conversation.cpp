@@ -1,27 +1,26 @@
-#include <shared/conversation_node.hpp>
+#include <shared/conversation.hpp>
 
 #include <shared/map.hpp>
 #include <shared/player.hpp>
-#include <shared/quest_status.hpp>
 #include <stdio.h>
 #include <string.h>
 
-hp::conversation_node::conversation_node(nlohmann::json conversation_json, size_t root_index, size_t *node_index)
+hp::conversation::conversation(const nlohmann::json &conversation_json, const std::size_t root_index, std::size_t *const node_index)
     : root_index(root_index),
       node_index(*node_index)
 {
-    std::string type_json = conversation_json.at("type");
-    if (type_json == "root")
+    const std::string type_string = conversation_json.at("type");
+    if (type_string == "root")
     {
-        type = hp::conversation_node_type::ROOT;
+        type = hp::conversation_type::ROOT;
     }
-    else if (type_json == "dialog")
+    else if (type_string == "dialog")
     {
-        type = hp::conversation_node_type::DIALOG;
+        type = hp::conversation_type::DIALOG;
     }
-    else if (type_json == "response")
+    else if (type_string == "response")
     {
-        type = hp::conversation_node_type::RESPONSE;
+        type = hp::conversation_type::RESPONSE;
     }
 
     if (conversation_json.contains("id"))
@@ -36,11 +35,11 @@ hp::conversation_node::conversation_node(nlohmann::json conversation_json, size_
 
     if (conversation_json.contains("condition"))
     {
-        auto condition_json = conversation_json.at("condition");
+        const auto condition_json = conversation_json.at("condition");
 
         if (condition_json.contains("quest_status"))
         {
-            auto quest_status_json = condition_json.at("quest_status");
+            const auto quest_status_json = condition_json.at("quest_status");
 
             condition.quest_status = new hp::quest_status;
             condition.quest_status->quest_index = quest_status_json.at("quest_index");
@@ -50,11 +49,11 @@ hp::conversation_node::conversation_node(nlohmann::json conversation_json, size_
 
     if (conversation_json.contains("effect"))
     {
-        auto effect_json = conversation_json.at("effect");
+        const auto effect_json = conversation_json.at("effect");
 
         if (effect_json.contains("quest_status"))
         {
-            auto quest_status_json = effect_json.at("quest_status");
+            const auto quest_status_json = effect_json.at("quest_status");
 
             effect.quest_status = new hp::quest_status;
             effect.quest_status->quest_index = quest_status_json.at("quest_index");
@@ -72,12 +71,12 @@ hp::conversation_node::conversation_node(nlohmann::json conversation_json, size_
         for (const auto &child_json : conversation_json.at("children"))
         {
             (*node_index)++;
-            children.push_back(new hp::conversation_node(child_json, root_index, node_index));
+            children.push_back(new hp::conversation(child_json, root_index, node_index));
         }
     }
 }
 
-hp::conversation_node::~conversation_node()
+hp::conversation::~conversation()
 {
     if (condition.quest_status)
     {
@@ -89,17 +88,17 @@ hp::conversation_node::~conversation_node()
         delete effect.quest_status;
     }
 
-    for (auto child : children)
+    for (const auto &child : children)
     {
         delete child;
     }
 }
 
-bool hp::conversation_node::has_response_nodes() const
+bool hp::conversation::has_response_nodes() const
 {
-    for (const auto child : children)
+    for (const auto &child : children)
     {
-        if (child->type == hp::conversation_node_type::RESPONSE)
+        if (child->type == hp::conversation_type::RESPONSE)
         {
             return true;
         }
@@ -108,11 +107,11 @@ bool hp::conversation_node::has_response_nodes() const
     return false;
 }
 
-bool hp::conversation_node::check_conditions(hp::player *player) const
+bool hp::conversation::check_conditions(const hp::player &player) const
 {
     if (condition.quest_status)
     {
-        if (!player->check_quest_status(*condition.quest_status))
+        if (!player.check_quest_status(*condition.quest_status))
         {
             return false;
         }
@@ -121,16 +120,16 @@ bool hp::conversation_node::check_conditions(hp::player *player) const
     return true;
 }
 
-hp::conversation_node *hp::conversation_node::find_by_node_index(std::size_t index)
+hp::conversation *hp::conversation::find_by_node_index(const std::size_t index)
 {
     if (node_index == index)
     {
         return this;
     }
 
-    for (auto child : children)
+    for (const auto &child : children)
     {
-        auto result = child->find_by_node_index(index);
+        const auto result = child->find_by_node_index(index);
         if (result)
         {
             return result;
@@ -140,16 +139,16 @@ hp::conversation_node *hp::conversation_node::find_by_node_index(std::size_t ind
     return nullptr;
 }
 
-hp::conversation_node *hp::conversation_node::find_by_id(const std::string &_id)
+hp::conversation *hp::conversation::find_by_id(const std::string &id_to_find)
 {
-    if (!id.empty() && id == _id)
+    if (!id.empty() && id == id_to_find)
     {
         return this;
     }
 
-    for (auto child : children)
+    for (const auto &child : children)
     {
-        auto result = child->find_by_id(_id);
+        const auto result = child->find_by_id(id_to_find);
         if (result)
         {
             return result;

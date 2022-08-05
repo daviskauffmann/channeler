@@ -1,13 +1,12 @@
 #ifndef PLAYER_HPP
 #define PLAYER_HPP
 
-#include "quest_status.hpp"
 #include <vector>
 
 namespace hp
 {
-    class conversation_node;
-    class conversations;
+    class conversation;
+    class conversation_list;
     struct input;
     class map;
 
@@ -25,10 +24,16 @@ namespace hp
         WALKING,
     };
 
+    struct quest_status
+    {
+        std::size_t quest_index;
+        std::size_t stage_index;
+    };
+
     class player
     {
     public:
-        std::size_t map_index;
+        std::size_t map_index = 0;
 
         float pos_x = 100;
         float pos_y = 100;
@@ -42,24 +47,22 @@ namespace hp
         float animation_timer = 0;
         std::size_t frame_index = 0;
 
-        hp::conversation_node *conversation_root = nullptr;
-        hp::conversation_node *conversation_node = nullptr;
+        hp::conversation *conversation_root = nullptr;
+        hp::conversation *conversation_node = nullptr;
 
         std::vector<hp::quest_status> quest_statuses;
 
-        player(std::size_t map_index);
-
-        void update(hp::input *input, hp::map *map, float delta_time);
+        void update(const hp::input &input, const hp::map &map, float delta_time);
 
         void attack();
 
-        void start_conversation(hp::conversations *conversations, size_t root_index);
+        void start_conversation(const hp::conversation_list &conversation_list, std::size_t root_index);
         void advance_conversation();
-        void choose_conversation_response(size_t choice_index);
+        void choose_conversation_response(std::size_t choice_index);
         void end_conversation();
 
-        void set_quest_status(struct quest_status status);
-        bool check_quest_status(struct quest_status status);
+        void set_quest_status(const hp::quest_status &status);
+        bool check_quest_status(const hp::quest_status &status) const;
     };
 }
 

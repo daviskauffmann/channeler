@@ -12,7 +12,7 @@ namespace hp
 
     struct tile
     {
-        size_t gid;
+        std::size_t gid;
         bool h_flip;
         bool v_flip;
         bool d_flip;
@@ -31,10 +31,10 @@ namespace hp
     {
         std::size_t index;
 
-        size_t first_gid;
+        std::size_t first_gid;
         hp::tileset *tileset;
 
-        hp::tile_data *get_tile_data(std::size_t gid);
+        const hp::tile_data &get_tile_data(std::size_t gid) const;
     };
 
     class map
@@ -49,13 +49,13 @@ namespace hp
         std::vector<hp::layer> layers;
         std::vector<hp::map_tileset> map_tilesets;
 
-        map(const std::string &filename, world &world);
+        map(const std::string &filename, hp::world &world);
 
         void update(float delta_time);
 
-        hp::map_tileset *get_map_tileset(std::size_t gid);
+        const hp::map_tileset &get_map_tileset(std::size_t gid) const;
 
-        bool is_solid(std::size_t x, std::size_t y);
+        bool is_solid(std::size_t x, std::size_t y) const;
     };
 };
 

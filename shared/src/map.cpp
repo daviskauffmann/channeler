@@ -5,29 +5,29 @@
 #include <shared/tileset.hpp>
 #include <shared/world.hpp>
 
-const hp::tile *hp::layer::get_tile(std::size_t x, std::size_t y) const
+const hp::tile *hp::layer::get_tile(const std::size_t x, const std::size_t y) const
 {
     if (x < width && y < height)
     {
-        const hp::tile *tile = &tiles.at(x + y * width);
+        const auto tile = &tiles.at(x + y * width);
         if (tile->gid)
         {
             return tile;
         }
     }
 
-    return NULL;
+    return nullptr;
 }
 
-hp::tile_data *hp::map_tileset::get_tile_data(std::size_t gid)
+const hp::tile_data &hp::map_tileset::get_tile_data(const std::size_t gid) const
 {
-    return &tileset->tile_data.at(gid - first_gid);
+    return tileset->tile_data.at(gid - first_gid);
 }
 
 hp::map::map(const std::string &filename, hp::world &world)
     : filename(filename)
 {
-    auto map_json = nlohmann::json::parse(std::ifstream(filename));
+    const auto map_json = nlohmann::json::parse(std::ifstream(filename));
 
     width = map_json.at("width");
     height = map_json.at("height");
@@ -71,8 +71,8 @@ hp::map::map(const std::string &filename, hp::world &world)
 
         map_tileset.first_gid = tileset_json.at("firstgid");
 
-        const auto source_json = std::string(tileset_json.at("source"));
-        map_tileset.tileset = world.load_tileset("assets/" + source_json.substr(0, source_json.find_last_of(".")) + ".json");
+        const std::string source_string = tileset_json.at("source");
+        map_tileset.tileset = world.load_tileset("assets/" + source_string.substr(0, source_string.find_last_of(".")) + ".json");
 
         map_tilesets.push_back(map_tileset);
     }
@@ -82,29 +82,29 @@ void hp::map::update(float)
 {
 }
 
-hp::map_tileset *hp::map::get_map_tileset(size_t gid)
+const hp::map_tileset &hp::map::get_map_tileset(const size_t gid) const
 {
-    size_t index = 0;
-    for (size_t i = 0; i < map_tilesets.size(); i++)
+    std::size_t index = 0;
+    for (std::size_t i = 0; i < map_tilesets.size(); i++)
     {
         if (map_tilesets.at(i).first_gid <= gid)
         {
             index = i;
         }
     }
-    return &map_tilesets[index];
+    return map_tilesets.at(index);
 }
 
-bool hp::map::is_solid(std::size_t x, std::size_t y)
+bool hp::map::is_solid(const std::size_t x, const std::size_t y) const
 {
-    for (auto &layer : layers)
+    for (const auto &layer : layers)
     {
-        const hp::tile *tile = layer.get_tile(x, y);
+        const auto tile = layer.get_tile(x, y);
         if (tile)
         {
-            hp::map_tileset *map_tileset = get_map_tileset(tile->gid);
-            hp::tile_data *tile_data = map_tileset->get_tile_data(tile->gid);
-            if (tile_data->solid)
+            const auto &map_tileset = get_map_tileset(tile->gid);
+            const auto &tile_data = map_tileset.get_tile_data(tile->gid);
+            if (tile_data.solid)
             {
                 return true;
             }

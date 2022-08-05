@@ -7,7 +7,7 @@
 
 hp::world::world(const std::string &filename)
 {
-    auto world_json = nlohmann::json::parse(std::ifstream(filename));
+    const auto world_json = nlohmann::json::parse(std::ifstream(filename));
 
     for (const auto &map_json : world_json.at("maps"))
     {
@@ -19,7 +19,7 @@ hp::world::world(const std::string &filename)
 
 hp::world::~world()
 {
-    for (const auto [filename, tileset] : tilesets)
+    for (const auto &[filename, tileset] : tilesets)
     {
         delete tileset;
     }

@@ -1,13 +1,13 @@
-#include <shared/quests.hpp>
+#include <shared/quest_list.hpp>
 
 #include <fstream>
 #include <nlohmann/json.hpp>
 
-hp::quests::quests(const std::string &filename)
+hp::quest_list::quest_list(const std::string &filename)
 {
-    auto quests_json = nlohmann::json::parse(std::ifstream(filename));
+    const auto quest_list_json = nlohmann::json::parse(std::ifstream(filename));
 
-    for (const auto &quest_json : quests_json.at("quests"))
+    for (const auto &quest_json : quest_list_json.at("quests"))
     {
         struct hp::quest quest;
 
@@ -22,6 +22,6 @@ hp::quests::quests(const std::string &filename)
             quest.stages.push_back(stage);
         }
 
-        _quests.push_back(quest);
+        quests.push_back(quest);
     }
 }

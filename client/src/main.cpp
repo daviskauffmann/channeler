@@ -3,13 +3,14 @@
 #include <SDL2/SDL_mixer.h>
 #include <SDL2/SDL_ttf.h>
 #include <enet/enet.h>
-#include <shared/conversation_node.hpp>
-#include <shared/conversations.hpp>
+#include <iostream>
+#include <shared/conversation.hpp>
+#include <shared/conversation_list.hpp>
 #include <shared/input.hpp>
 #include <shared/map.hpp>
+#include <shared/message.hpp>
 #include <shared/player.hpp>
-#include <shared/quest_status.hpp>
-#include <shared/quests.hpp>
+#include <shared/quest_list.hpp>
 #include <shared/tileset.hpp>
 #include <shared/world.hpp>
 #include <stdarg.h>
@@ -49,16 +50,15 @@ namespace hp_client
 
             map = new_map;
 
-            for (const auto map_tileset : map->map_tilesets)
+            for (const auto &map_tileset : map->map_tilesets)
             {
-                const auto tileset = map_tileset.tileset;
-                sprites.push_back(IMG_LoadTexture(renderer, tileset->sprites_filename.c_str()));
+                sprites.push_back(IMG_LoadTexture(renderer, map_tileset.tileset->sprites_filename.c_str()));
             }
         }
 
         void deactivate()
         {
-            for (auto sprite : sprites)
+            for (auto &sprite : sprites)
             {
                 SDL_DestroyTexture(sprite);
             }
@@ -67,17 +67,24 @@ namespace hp_client
     };
 };
 
-void draw_text(SDL_Renderer *renderer, TTF_Font *font, size_t px, size_t x, size_t y, size_t w, SDL_Color fg, const char *const fmt, ...)
+void draw_text(
+    SDL_Renderer *renderer,
+    TTF_Font *font,
+    const std::size_t x,
+    const std::size_t y,
+    const std::size_t w,
+    SDL_Color fg,
+    const char *const fmt, ...)
 {
     va_list args;
     va_start(args, fmt);
-    size_t size = vsnprintf(NULL, 0, fmt, args) + 1;
-    char *text = (char *)malloc(size);
+    auto size = vsnprintf(NULL, 0, fmt, args) + 1;
+    auto text = (char *)malloc(size);
     vsprintf_s(text, size, fmt, args);
     va_end(args);
 
-    SDL_Surface *surface = TTF_RenderText_Blended_Wrapped(font, text, fg, (uint32_t)w);
-    SDL_Texture *texture = SDL_CreateTextureFromSurface(renderer, surface);
+    auto surface = TTF_RenderText_Blended_Wrapped(font, text, fg, (uint32_t)w);
+    auto texture = SDL_CreateTextureFromSurface(renderer, surface);
 
     SDL_Rect dstrect = {
         (int)x,
@@ -85,36 +92,52 @@ void draw_text(SDL_Renderer *renderer, TTF_Font *font, size_t px, size_t x, size
         surface->w,
         surface->h};
 
-    SDL_RenderCopy(renderer, texture, NULL, &dstrect);
+    SDL_RenderCopy(renderer, texture, nullptr, &dstrect);
 
     SDL_FreeSurface(surface);
     SDL_DestroyTexture(texture);
     free(text);
 }
 
-int main(int argc, char *argv[])
+int main(int, char *[])
 {
     if (SDL_Init(SDL_INIT_AUDIO | SDL_INIT_VIDEO) != 0)
     {
         return 1;
     }
+    atexit(SDL_Quit);
 
-    int img_flags = IMG_INIT_PNG;
+    constexpr int img_flags = IMG_INIT_PNG;
     if (IMG_Init(img_flags) != img_flags)
     {
         return 1;
     }
+    atexit(IMG_Quit);
 
-    int mix_flags = 0;
+    constexpr int mix_flags = 0;
     if (Mix_Init(mix_flags) != mix_flags)
     {
         return 1;
     }
+    atexit(Mix_Quit);
 
     if (TTF_Init() != 0)
     {
         return 1;
     }
+    atexit(TTF_Quit);
+
+    if (Mix_OpenAudio(MIX_DEFAULT_FREQUENCY, MIX_DEFAULT_FORMAT, MIX_DEFAULT_CHANNELS, 4096) != 0)
+    {
+        return 1;
+    }
+    atexit(Mix_CloseAudio);
+
+    if (enet_initialize() != 0)
+    {
+        return 1;
+    }
+    atexit(enet_deinitialize);
 
     SDL_Window *window;
     SDL_Renderer *renderer;
@@ -124,74 +147,100 @@ int main(int argc, char *argv[])
     }
     SDL_SetWindowTitle(window, window_title);
 
-    if (Mix_OpenAudio(MIX_DEFAULT_FREQUENCY, MIX_DEFAULT_FORMAT, MIX_DEFAULT_CHANNELS, 4096) != 0)
-    {
-        return 1;
-    }
+    TTF_Font *font = TTF_OpenFont("assets/NinjaAdventure/HUD/Font/NormalFont.ttf", 18);
 
-    if (enet_initialize() != 0)
-    {
-        return 1;
-    }
+    SDL_RenderClear(renderer);
+    draw_text(renderer, font, 0, 0, window_width, {255, 255, 255}, "Connecting to server...");
+    SDL_RenderPresent(renderer);
 
-    auto client = enet_host_create(NULL, 1, 2, 0, 0);
-    if (!client)
-    {
-        return 1;
-    }
+    hp::client_list client_list;
+    auto online = false;
+    ENetHost *host = nullptr;
+    ENetPeer *peer = nullptr;
+    std::size_t client_id = 0;
 
-    ENetAddress address;
-    enet_address_set_host(&address, server_host);
-    address.port = server_port;
-
-    auto peer = enet_host_connect(client, &address, 2, 0);
-    if (!peer)
+    host = enet_host_create(NULL, 1, 2, 0, 0);
+    if (host)
     {
-        return 1;
-    }
+        ENetAddress address;
+        enet_address_set_host(&address, server_host);
+        address.port = server_port;
 
-    ENetEvent connect_event;
-    if (enet_host_service(client, &connect_event, 5000) > 0 && connect_event.type == ENET_EVENT_TYPE_CONNECT)
-    {
-        printf("connected");
-    }
-    else
-    {
-        enet_peer_reset(peer);
+        peer = enet_host_connect(host, &address, 2, 0);
+        if (peer)
+        {
+            ENetEvent event;
+            while (enet_host_service(host, &event, 5000) > 0)
+            {
+                if (event.type == ENET_EVENT_TYPE_CONNECT)
+                {
+                    std::cout << "Connected to " << server_host << ":" << server_port << std::endl;
+                }
+                else if (event.type == ENET_EVENT_TYPE_RECEIVE)
+                {
+                    const auto type = reinterpret_cast<hp::message *>(event.packet->data)->type;
 
-        printf("not connected");
+                    std::cout << "Receive " << (int)type << std::endl;
+
+                    if (type == hp::message_type::SERVER_JOINED)
+                    {
+                        const auto message = reinterpret_cast<hp::message_client_id *>(event.packet->data);
+
+                        std::cout << "Assigned ID " << message->client_id << std::endl;
+
+                        online = true;
+                        client_id = message->client_id;
+
+                        break;
+                    }
+                    else if (type == hp::message_type::SERVER_FULL)
+                    {
+                        std::cout << "Server full" << std::endl;
+                    }
+                    else
+                    {
+                        std::cout << "Unknown server response" << std::endl;
+                    }
+
+                    enet_packet_destroy(event.packet);
+                }
+            }
+
+            if (!online)
+            {
+                std::cout << "No server response, starting in offline mode" << std::endl;
+
+                enet_peer_reset(peer);
+            }
+        }
     }
 
     hp::world world("assets/world.world");
-    hp::quests quests("assets/quests.json");
-    hp::conversations conversations("assets/conversations.json");
+    hp::quest_list quest_list("assets/quest_list.json");
+    hp::conversation_list conversation_list("assets/conversation_list.json");
 
-    hp::player player(0);
+    client_list.clients.at(client_id).id = client_id;
+    hp::player &player = client_list.clients.at(client_id).player;
 
     hp_client::active_map map(renderer);
     map.change(&world.maps.at(player.map_index));
 
     SDL_Texture *player_sprites = IMG_LoadTexture(renderer, "assets/NinjaAdventure/Actor/Characters/BlueNinja/SpriteSheet.png");
 
-    int pt = 18;
-    TTF_Font *font = TTF_OpenFont("assets/NinjaAdventure/HUD/Font/NormalFont.ttf", pt);
+    auto quest_log_open = false;
 
-    bool quest_log_open = false;
-
-    bool quit = false;
+    auto quit = false;
     while (!quit)
     {
-        static uint32_t current_time = 0;
-        uint32_t frame_start = SDL_GetTicks();
-        uint32_t previous_time = current_time;
-        current_time = frame_start;
-        float delta_time = (current_time - previous_time) / 1000.0f;
+        static std::uint32_t current_time = 0;
+        const auto previous_time = current_time;
+        current_time = SDL_GetTicks();
+        const auto delta_time = (current_time - previous_time) / 1000.0f;
 
-        int num_keys;
-        const uint8_t *keys = SDL_GetKeyboardState(&num_keys);
+        const auto keys = SDL_GetKeyboardState(nullptr);
 
         int mouse_x, mouse_y;
-        /*uint32_t mouse = */ SDL_GetMouseState(&mouse_x, &mouse_y);
+        /*const auto mouse = */ SDL_GetMouseState(&mouse_x, &mouse_y);
 
         {
             SDL_Event event;
@@ -207,7 +256,7 @@ int main(int argc, char *argv[])
                     {
                         if (keys[SDL_SCANCODE_LALT])
                         {
-                            uint32_t flags = SDL_GetWindowFlags(window);
+                            const auto flags = SDL_GetWindowFlags(window);
                             if (flags & SDL_WINDOW_FULLSCREEN_DESKTOP)
                             {
                                 SDL_SetWindowFullscreen(window, 0);
@@ -249,7 +298,7 @@ int main(int argc, char *argv[])
                     {
                         if (player.conversation_node)
                         {
-                            size_t choice_index = event.key.keysym.sym - 48;
+                            std::size_t choice_index = event.key.keysym.sym - 48;
                             player.choose_conversation_response(choice_index);
                         }
                     }
@@ -273,12 +322,12 @@ int main(int argc, char *argv[])
                     break;
                     case SDLK_F3:
                     {
-                        player.start_conversation(&conversations, 0);
+                        player.start_conversation(conversation_list, 0);
                     }
                     break;
                     case SDLK_F4:
                     {
-                        player.start_conversation(&conversations, 1);
+                        player.start_conversation(conversation_list, 1);
                     }
                     break;
                     case SDLK_F5:
@@ -303,37 +352,47 @@ int main(int argc, char *argv[])
             }
         }
 
+        if (online)
         {
             ENetEvent event;
             /* Wait up to 1000 milliseconds for an event. */
-            while (enet_host_service(client, &event, 0) > 0)
+            while (enet_host_service(host, &event, 0) > 0)
             {
                 switch (event.type)
                 {
-                case ENET_EVENT_TYPE_CONNECT:
+                case ENET_EVENT_TYPE_RECEIVE:
                 {
-                    printf("A new client connected from %x:%u.\n",
-                           event.peer->address.host,
-                           event.peer->address.port);
-                    /* Store any relevant client information here. */
-                    event.peer->data = (void *)"Client information";
+                    const auto type = reinterpret_cast<hp::message *>(event.packet->data)->type;
+
+                    std::cout << "Receive " << (int)type << std::endl;
+
+                    switch (type)
+                    {
+                    case hp::message_type::CLIENT_JOINED:
+                    {
+                        const auto message = reinterpret_cast<hp::message_client_id *>(event.packet->data);
+                        const auto new_client_id = message->client_id;
+
+                        std::cout << "New client ID " << new_client_id << std::endl;
+
+                        client_list.clients.at(new_client_id).id = new_client_id;
+                    }
+                    break;
+                    case hp::message_type::CLIENT_DISCONNECTED:
+                    {
+                        const auto message = reinterpret_cast<hp::message_client_id *>(event.packet->data);
+                        const auto disconnected_client_id = message->client_id;
+
+                        std::cout << "Client disconnected " << disconnected_client_id << std::endl;
+
+                        client_list.clients.at(disconnected_client_id).id = client_list.max_clients;
+                    }
+                    break;
+                    }
+
+                    enet_packet_destroy(event.packet);
                 }
                 break;
-                case ENET_EVENT_TYPE_RECEIVE:
-                    printf("A packet of length %u containing %s was received from %s on channel %u.\n",
-                           event.packet->dataLength,
-                           event.packet->data,
-                           event.peer->data,
-                           event.channelID);
-                    /* Clean up the packet now that we're done using it. */
-                    enet_packet_destroy(event.packet);
-
-                    break;
-
-                case ENET_EVENT_TYPE_DISCONNECT:
-                    printf("%s disconnected.\n", event.peer->data);
-                    /* Reset the peer's client information. */
-                    event.peer->data = NULL;
                 }
             }
         }
@@ -359,17 +418,17 @@ int main(int argc, char *argv[])
             input.dx = 1;
         }
 
-        player.update(&input, map.map, delta_time);
+        player.update(input, *map.map, delta_time);
 
-        for (size_t i = 0; i < world.maps.size(); i++)
+        for (std::size_t i = 0; i < world.maps.size(); i++)
         {
             world.maps.at(i).update(delta_time);
         }
 
-        size_t view_width = window_width / sprite_scale;
-        size_t view_height = window_height / sprite_scale;
-        int64_t view_x = (int64_t)player.pos_x - view_width / 2;
-        int64_t view_y = (int64_t)player.pos_y - view_height / 2;
+        const std::size_t view_width = window_width / sprite_scale;
+        const std::size_t view_height = window_height / sprite_scale;
+        std::int64_t view_x = (std::int64_t)player.pos_x - view_width / 2;
+        std::int64_t view_y = (std::int64_t)player.pos_y - view_height / 2;
         if (view_x + view_width > map.map->width * map.map->tile_width)
         {
             view_x = (map.map->width * map.map->tile_width) - view_width;
@@ -389,26 +448,24 @@ int main(int argc, char *argv[])
 
         SDL_RenderClear(renderer);
 
-        for (int64_t y = view_y / map.map->tile_height; y <= (int64_t)((view_y + view_height) / map.map->tile_height); y++)
+        for (std::int64_t y = view_y / map.map->tile_height; y <= (std::int64_t)((view_y + view_height) / map.map->tile_height); y++)
         {
-            for (int64_t x = view_x / map.map->tile_width; x <= (int64_t)((view_x + view_width) / map.map->tile_width); x++)
+            for (std::int64_t x = view_x / map.map->tile_width; x <= (std::int64_t)((view_x + view_width) / map.map->tile_width); x++)
             {
-                for (size_t i = 0; i < map.map->layers.size(); i++)
+                for (const auto &layer : map.map->layers)
                 {
-                    hp::layer *layer = &map.map->layers.at(i);
-
-                    const hp::tile *tile = layer->get_tile(x, y);
+                    const auto tile = layer.get_tile(x, y);
                     if (tile)
                     {
-                        hp::map_tileset *map_tileset = map.map->get_map_tileset(tile->gid);
+                        const auto &map_tileset = map.map->get_map_tileset(tile->gid);
 
-                        SDL_Rect srcrect = {
-                            (int)(((tile->gid - map_tileset->first_gid) % map_tileset->tileset->columns) * map.map->tile_width),
-                            (int)(((tile->gid - map_tileset->first_gid) / map_tileset->tileset->columns) * map.map->tile_height),
+                        const SDL_Rect srcrect = {
+                            (int)(((tile->gid - map_tileset.first_gid) % map_tileset.tileset->columns) * map.map->tile_width),
+                            (int)(((tile->gid - map_tileset.first_gid) / map_tileset.tileset->columns) * map.map->tile_height),
                             (int)map.map->tile_width,
                             (int)map.map->tile_height};
 
-                        SDL_Rect dstrect = {
+                        const SDL_Rect dstrect = {
                             (int)(((x * map.map->tile_width) - view_x) * sprite_scale),
                             (int)(((y * map.map->tile_height) - view_y) * sprite_scale),
                             (int)(map.map->tile_width * sprite_scale),
@@ -436,106 +493,133 @@ int main(int argc, char *argv[])
 
                         SDL_RenderCopyEx(
                             renderer,
-                            map.sprites.at(map_tileset->index),
+                            map.sprites.at(map_tileset.index),
                             &srcrect,
                             &dstrect,
                             angle,
-                            NULL,
+                            nullptr,
                             SDL_FLIP_NONE);
                     }
                 }
             }
         }
 
+        for (const auto &client : client_list.clients)
         {
-            SDL_Rect srcrect;
-            switch (player.animation)
+            if (client.id != client_list.max_clients)
             {
-            case hp::animation::IDLE:
-                srcrect.x = (int)player.direction * 16;
-                srcrect.y = 0;
-                break;
-            case hp::animation::WALKING:
-                srcrect.x = (int)player.direction * 16;
-                srcrect.y = (1 + (player.frame_index % 3)) * 16;
-                break;
+                SDL_Rect srcrect;
+                switch (client.player.animation)
+                {
+                case hp::animation::IDLE:
+                    srcrect.x = (int)client.player.direction * 16;
+                    srcrect.y = 0;
+                    break;
+                case hp::animation::WALKING:
+                    srcrect.x = (int)client.player.direction * 16;
+                    srcrect.y = (1 + (client.player.frame_index % 3)) * 16;
+                    break;
+                }
+                srcrect.w = 16;
+                srcrect.h = 16;
+
+                const SDL_Rect dstrect = {
+                    (int)((client.player.pos_x - view_x) * sprite_scale),
+                    (int)((client.player.pos_y - view_y) * sprite_scale),
+                    (int)(16 * sprite_scale),
+                    (int)(16 * sprite_scale)};
+
+                SDL_RenderCopy(renderer, player_sprites, &srcrect, &dstrect);
+
+                draw_text(renderer, font, dstrect.x + 24, dstrect.y - (24 * 2), window_width, {255, 255, 255}, "%zu", client.id);
             }
-            srcrect.w = 16;
-            srcrect.h = 16;
-
-            SDL_Rect dstrect = {
-                (int)((player.pos_x - view_x) * sprite_scale),
-                (int)((player.pos_y - view_y) * sprite_scale),
-                (int)(16 * sprite_scale),
-                (int)(16 * sprite_scale)};
-
-            SDL_RenderCopy(renderer, player_sprites, &srcrect, &dstrect);
         }
 
         if (quest_log_open)
         {
-            SDL_Rect rect = {12, 12, window_width - 24, window_height - 24};
+            const SDL_Rect rect = {12, 12, window_width - 24, window_height - 24};
             SDL_SetRenderDrawColor(renderer, 0, 0, 0, 200);
             SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
             SDL_RenderFillRect(renderer, &rect);
             SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
             SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
 
-            for (size_t i = 0; i < player.quest_statuses.size(); i++)
+            for (std::size_t i = 0; i < player.quest_statuses.size(); i++)
             {
                 auto status = player.quest_statuses.at(i);
-                auto quest = &quests._quests[status.quest_index];
-                auto stage = &quest->stages[status.stage_index];
-                draw_text(renderer, font, pt, 24, 24 * (i + 1), window_width - 24, {255, 255, 255}, "%s: %s", quest->name.c_str(), stage->description.c_str());
+                auto quest = &quest_list.quests.at(status.quest_index);
+                auto stage = &quest->stages.at(status.stage_index);
+                draw_text(renderer, font, 24, 24 * (i + 1), window_width - 24, {255, 255, 255}, "%s: %s", quest->name.c_str(), stage->description.c_str());
             }
         }
 
         if (player.conversation_node)
         {
-            SDL_Rect rect = {12, window_height - 100 - 12, window_width - 24, 100};
+            const SDL_Rect rect = {12, window_height - 100 - 12, window_width - 24, 100};
             SDL_SetRenderDrawColor(renderer, 0, 0, 0, 200);
             SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
             SDL_RenderFillRect(renderer, &rect);
             SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
             SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
 
-            draw_text(renderer, font, pt, 24, window_height - 100, window_width, {255, 255, 255}, "%s", player.conversation_node->text.c_str());
+            draw_text(renderer, font, 24, window_height - 100, window_width, {255, 255, 255}, "%s", player.conversation_node->text.c_str());
 
-            for (size_t i = 0; i < player.conversation_node->children.size(); i++)
+            for (std::size_t i = 0; i < player.conversation_node->children.size(); i++)
             {
-                auto child = player.conversation_node->children[i];
-                if (child->type == hp::conversation_node_type::RESPONSE && child->check_conditions(&player))
+                const auto child = player.conversation_node->children.at(i);
+                if (child->type == hp::conversation_type::RESPONSE && child->check_conditions(player))
                 {
-                    draw_text(renderer, font, pt, 24, (window_height - 100) + 24 * (i + 1), window_width, {255, 255, 255}, "%zu) %s", i + 1, child->text.c_str());
+                    draw_text(renderer, font, 24, (window_height - 100) + 24 * (i + 1), window_width, {255, 255, 255}, "%zu) %s", i + 1, child->text.c_str());
                 }
             }
         }
 
         SDL_RenderPresent(renderer);
 
-        uint32_t frame_end = SDL_GetTicks();
-        uint32_t frame_time = frame_end - frame_start;
+        const auto frame_time = SDL_GetTicks() - current_time;
         if (frame_delay > frame_time)
         {
             SDL_Delay(frame_delay - frame_time);
         }
     }
 
-    enet_host_destroy(client);
-    enet_deinitialize();
+    map.deactivate();
+
+    if (online)
+    {
+        enet_peer_disconnect(peer, 0);
+
+        auto disconnected = false;
+
+        ENetEvent event;
+        while (enet_host_service(host, &event, 3000) > 0)
+        {
+            if (event.type == ENET_EVENT_TYPE_RECEIVE)
+            {
+                enet_packet_destroy(event.packet);
+            }
+            else if (event.type == ENET_EVENT_TYPE_DISCONNECT)
+            {
+                std::cout << "Disconnected" << std::endl;
+
+                disconnected = true;
+
+                break;
+            }
+        }
+
+        if (!disconnected)
+        {
+            enet_peer_reset(peer);
+        }
+    }
+
+    enet_host_destroy(host);
 
     TTF_CloseFont(font);
 
-    Mix_CloseAudio();
-
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
-
-    IMG_Quit();
-    Mix_Quit();
-    TTF_Quit();
-
-    SDL_Quit();
 
     return 0;
 }
