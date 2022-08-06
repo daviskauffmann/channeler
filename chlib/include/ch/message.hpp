@@ -1,7 +1,7 @@
 #ifndef CH_MESSAGE_HPP
 #define CH_MESSAGE_HPP
 
-#include "client_list.hpp"
+#include "server.hpp"
 #include <array>
 
 namespace ch
@@ -56,7 +56,7 @@ namespace ch
             } player;
         };
 
-        std::array<client, ch::client_list::max_clients> clients;
+        std::array<client, ch::server::max_clients> clients;
     };
 }
 

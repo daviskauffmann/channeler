@@ -250,8 +250,8 @@ int main(int, char *[])
     ch::world world("assets/world.world", "assets/quests.json", "assets/conversations.json");
     SDL_Texture *player_sprites = IMG_LoadTexture(renderer, "assets/NinjaAdventure/Actor/Characters/BlueNinja/SpriteSheet.png");
 
-    ch::client_list client_list;
-    auto &client = client_list.clients.at(client_id);
+    std::array<ch::client, ch::server::max_clients> clients;
+    auto &client = clients.at(client_id);
     client.id = client_id;
     auto &player = client.player;
     auto &input = client.input;
@@ -409,7 +409,7 @@ int main(int, char *[])
 
                         std::cout << "[Client] Client " << new_client_id << " connected" << std::endl;
 
-                        client_list.clients.at(new_client_id).id = new_client_id;
+                        clients.at(new_client_id).id = new_client_id;
                     }
                     break;
                     case ch::message_type::CLIENT_DISCONNECTED:
@@ -419,7 +419,7 @@ int main(int, char *[])
 
                         std::cout << "[Client] Client " << disconnected_client_id << " disconnected" << std::endl;
 
-                        client_list.clients.at(disconnected_client_id).id = client_list.max_clients;
+                        clients.at(disconnected_client_id).id = ch::server::max_clients;
                     }
                     break;
                     case ch::message_type::GAME_STATE:
@@ -428,16 +428,16 @@ int main(int, char *[])
 
                         for (std::size_t i = 0; i < message->clients.size(); i++)
                         {
-                            client_list.clients.at(i).id = message->clients.at(i).id;
+                            clients.at(i).id = message->clients.at(i).id;
 
-                            client_list.clients.at(i).player.map_index = message->clients.at(i).player.map_index;
+                            clients.at(i).player.map_index = message->clients.at(i).player.map_index;
 
-                            client_list.clients.at(i).player.pos_x = message->clients.at(i).player.pos_x;
-                            client_list.clients.at(i).player.pos_y = message->clients.at(i).player.pos_y;
+                            clients.at(i).player.pos_x = message->clients.at(i).player.pos_x;
+                            clients.at(i).player.pos_y = message->clients.at(i).player.pos_y;
 
-                            client_list.clients.at(i).player.direction = message->clients.at(i).player.direction;
-                            client_list.clients.at(i).player.animation = message->clients.at(i).player.animation;
-                            client_list.clients.at(i).player.frame_index = message->clients.at(i).player.frame_index;
+                            clients.at(i).player.direction = message->clients.at(i).player.direction;
+                            clients.at(i).player.animation = message->clients.at(i).player.animation;
+                            clients.at(i).player.frame_index = message->clients.at(i).player.frame_index;
                         }
                     }
                     break;
@@ -571,9 +571,9 @@ int main(int, char *[])
             }
         }
 
-        for (const auto &_client : client_list.clients)
+        for (const auto &_client : clients)
         {
-            if (_client.id != client_list.max_clients && _client.player.map_index == map_index)
+            if (_client.id != ch::server::max_clients && _client.player.map_index == map_index)
             {
                 SDL_Rect srcrect;
                 switch (_client.player.animation)

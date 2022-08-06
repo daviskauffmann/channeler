@@ -10,7 +10,6 @@ find_package(SDL2-mixer CONFIG REQUIRED)
 find_package(SDL2-ttf CONFIG REQUIRED)
 
 add_library(${PROJECT_NAME}
-    src/client_list.cpp
     src/conversation.cpp
     src/map.cpp
     src/player.cpp

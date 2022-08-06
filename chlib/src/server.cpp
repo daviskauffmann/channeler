@@ -6,10 +6,13 @@
 
 ch::server::server(const std::uint16_t port)
 {
+    clients.fill(
+        {.id = max_clients});
+
     ENetAddress address;
     address.host = ENET_HOST_ANY;
     address.port = port;
-    host = enet_host_create(&address, client_list.max_clients, 2, 0, 0);
+    host = enet_host_create(&address, max_clients, 2, 0, 0);
 
     std::cout << "[Server] Listening on port " << port << std::endl;
 
@@ -24,6 +27,19 @@ ch::server::~server()
     enet_host_destroy(host);
 }
 
+std::size_t ch::server::get_available_client() const
+{
+    for (std::size_t i = 0; i < max_clients; i++)
+    {
+        if (clients.at(i).id == max_clients)
+        {
+            return i;
+        }
+    }
+
+    return max_clients;
+}
+
 void ch::server::update(const float delta_time, ch::world &world)
 {
     for (std::size_t i = 0; i < world.maps.size(); i++)
@@ -31,9 +47,9 @@ void ch::server::update(const float delta_time, ch::world &world)
         world.maps.at(i).update(delta_time);
     }
 
-    for (auto &client : client_list.clients)
+    for (auto &client : clients)
     {
-        if (client.id != client_list.max_clients)
+        if (client.id != max_clients)
         {
             client.player.update(client.input, world.maps.at(client.player.map_index), delta_time);
         }
@@ -42,18 +58,18 @@ void ch::server::update(const float delta_time, ch::world &world)
     {
         ch::message_game_state message;
         message.type = ch::message_type::GAME_STATE;
-        for (std::size_t i = 0; i < client_list.clients.size(); i++)
+        for (std::size_t i = 0; i < clients.size(); i++)
         {
-            message.clients.at(i).id = client_list.clients.at(i).id;
+            message.clients.at(i).id = clients.at(i).id;
 
-            message.clients.at(i).player.map_index = client_list.clients.at(i).player.map_index;
+            message.clients.at(i).player.map_index = clients.at(i).player.map_index;
 
-            message.clients.at(i).player.pos_x = client_list.clients.at(i).player.pos_x;
-            message.clients.at(i).player.pos_y = client_list.clients.at(i).player.pos_y;
+            message.clients.at(i).player.pos_x = clients.at(i).player.pos_x;
+            message.clients.at(i).player.pos_y = clients.at(i).player.pos_y;
 
-            message.clients.at(i).player.direction = client_list.clients.at(i).player.direction;
-            message.clients.at(i).player.animation = client_list.clients.at(i).player.animation;
-            message.clients.at(i).player.frame_index = client_list.clients.at(i).player.frame_index;
+            message.clients.at(i).player.direction = clients.at(i).player.direction;
+            message.clients.at(i).player.animation = clients.at(i).player.animation;
+            message.clients.at(i).player.frame_index = clients.at(i).player.frame_index;
         }
 
         auto packet = enet_packet_create(&message, sizeof(message), 0);
@@ -74,8 +90,8 @@ void ch::server::listen()
             {
                 std::cout << "[Server] Client connected " << event.peer->address.host << ":" << event.peer->address.port << std::endl;
 
-                const auto new_client_id = client_list.get_available_client();
-                if (new_client_id != client_list.max_clients)
+                const auto new_client_id = get_available_client();
+                if (new_client_id != max_clients)
                 {
                     std::cout << "[Server] Assigning ID " << new_client_id << std::endl;
 
@@ -88,7 +104,7 @@ void ch::server::listen()
                     }
 
                     {
-                        auto &new_client = client_list.clients.at(new_client_id);
+                        auto &new_client = clients.at(new_client_id);
                         new_client.id = new_client_id;
                         event.peer->data = &new_client;
                     }
@@ -152,7 +168,7 @@ void ch::server::listen()
                 std::cout << "[Server] Client " << disconnected_client_id << " disconnected" << std::endl;
 
                 {
-                    client->id = client_list.max_clients;
+                    client->id = max_clients;
                     event.peer->data = nullptr;
                 }
 
