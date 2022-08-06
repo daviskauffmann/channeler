@@ -13,6 +13,7 @@ cd channeler
 
 Install the following using the package manager of your choice:
 
+- enet
 - nlohmann_json
 - sdl2
 - sdl2-image
