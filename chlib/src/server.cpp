@@ -116,9 +116,33 @@ void ch::server::listen()
                         enet_peer_send(event.peer, 0, packet);
                     }
 
+                    for (const auto &client : clients)
+                    {
+                        for (const auto &quest_status : client.player.quest_statuses)
+                        {
+                            ch::message_quest_status message;
+                            message.type = ch::message_type::QUEST_STATUS;
+                            message.id = client.id;
+                            message.status = quest_status;
+                            auto packet = enet_packet_create(&message, sizeof(message), ENET_PACKET_FLAG_RELIABLE);
+                            enet_peer_send(event.peer, 0, packet);
+                        }
+                    }
+
                     {
                         auto &new_client = clients.at(new_client_id);
                         new_client.id = new_client_id;
+                        new_client.player.on_quest_status_set = [this, new_client](const ch::quest_status &status)
+                        {
+                            std::cout << "[Server] Client " << new_client.id << " has advanced quest " << status.quest_index << " to stage " << status.stage_index << std::endl;
+
+                            ch::message_quest_status message;
+                            message.type = ch::message_type::QUEST_STATUS;
+                            message.id = new_client.id;
+                            message.status = status;
+                            auto packet = enet_packet_create(&message, sizeof(message), ENET_PACKET_FLAG_RELIABLE);
+                            enet_host_broadcast(host, 0, packet);
+                        };
                         event.peer->data = &new_client;
                     }
 
@@ -133,7 +157,7 @@ void ch::server::listen()
                 else
                 {
                     ch::message message;
-                    message.type = ch::message_type::SERVER_JOINED;
+                    message.type = ch::message_type::SERVER_FULL;
                     auto packet = enet_packet_create(&message, sizeof(message), ENET_PACKET_FLAG_RELIABLE);
                     enet_peer_send(event.peer, 0, packet);
                 }
@@ -156,43 +180,59 @@ void ch::server::listen()
                 break;
                 case ch::message_type::ATTACK:
                 {
+                    std::cout << "[Server] Client " << client->id << " attacking" << std::endl;
+
                     client->player.attack();
                 }
                 break;
                 case ch::message_type::CHANGE_MAP:
                 {
                     const auto message = reinterpret_cast<ch::message_id *>(event.packet->data);
-                    const auto map_index = message->id;
 
-                    std::cout << "[Server] Client " << client->id << " changing map to " << map_index << std::endl;
+                    std::cout << "[Server] Client " << client->id << " changing map to " << message->id << std::endl;
 
-                    client->player.map_index = map_index;
+                    client->player.map_index = message->id;
                 }
                 break;
                 case ch::message_type::START_CONVERSATION:
                 {
                     const auto message = reinterpret_cast<ch::message_id *>(event.packet->data);
-                    const auto root_index = message->id;
 
-                    client->player.start_conversation(world, root_index);
+                    std::cout << "[Server] Client " << client->id << " starting conversation " << message->id << std::endl;
+
+                    client->player.start_conversation(world, message->id);
                 }
                 break;
                 case ch::message_type::ADVANCE_CONVERSATION:
                 {
+                    std::cout << "[Server] Client " << client->id << " advancing conversation" << std::endl;
+
                     client->player.advance_conversation();
                 }
                 break;
                 case ch::message_type::CHOOSE_CONVERSATION_RESPONSE:
                 {
                     const auto message = reinterpret_cast<ch::message_id *>(event.packet->data);
-                    const auto choice_index = message->id;
 
-                    client->player.choose_conversation_response(choice_index);
+                    std::cout << "[Server] Client " << client->id << " choosing conversation response " << message->id << std::endl;
+
+                    client->player.choose_conversation_response(message->id);
                 }
                 break;
                 case ch::message_type::END_CONVERSATION:
                 {
+                    std::cout << "[Server] Client " << client->id << " ending conversation" << std::endl;
+
                     client->player.end_conversation();
+                }
+                break;
+                case ch::message_type::QUEST_STATUS:
+                {
+                    const auto message = reinterpret_cast<ch::message_quest_status *>(event.packet->data);
+
+                    std::cout << "[Server] Client " << client->id << " requesting to change quest " << message->status.quest_index << " to stage " << message->status.stage_index << std::endl;
+
+                    client->player.set_quest_status(message->status);
                 }
                 break;
                 default:

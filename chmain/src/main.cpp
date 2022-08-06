@@ -148,8 +148,8 @@ int main(int, char *[])
     std::cout << "1: Host" << std::endl;
     std::cout << "2: Join" << std::endl;
     std::cout << "> ";
-    int response = 1;
-    // std::cin >> response;
+    int response;
+    std::cin >> response;
 
     if (response == 1)
     {
@@ -393,12 +393,20 @@ int main(int, char *[])
                     break;
                     case SDLK_F5:
                     {
-                        player.set_quest_status({0, 1});
+                        ch::message_quest_status message;
+                        message.type = ch::message_type::QUEST_STATUS;
+                        message.status = {0, 1};
+                        auto packet = enet_packet_create(&message, sizeof(message), 0);
+                        enet_peer_send(peer, 0, packet);
                     }
                     break;
                     case SDLK_F6:
                     {
-                        player.set_quest_status({0, 3});
+                        ch::message_quest_status message;
+                        message.type = ch::message_type::QUEST_STATUS;
+                        message.status = {0, 3};
+                        auto packet = enet_packet_create(&message, sizeof(message), 0);
+                        enet_peer_send(peer, 0, packet);
                     }
                     break;
                     }
@@ -428,21 +436,28 @@ int main(int, char *[])
                     case ch::message_type::CLIENT_JOINED:
                     {
                         const auto message = reinterpret_cast<ch::message_id *>(event.packet->data);
-                        const auto new_client_id = message->id;
 
-                        std::cout << "[Client] Client " << new_client_id << " connected" << std::endl;
+                        std::cout << "[Client] Client " << message->id << " connected" << std::endl;
 
-                        clients.at(new_client_id).id = new_client_id;
+                        clients.at(message->id).id = message->id;
                     }
                     break;
                     case ch::message_type::CLIENT_DISCONNECTED:
                     {
                         const auto message = reinterpret_cast<ch::message_id *>(event.packet->data);
-                        const auto disconnected_client_id = message->id;
 
-                        std::cout << "[Client] Client " << disconnected_client_id << " disconnected" << std::endl;
+                        std::cout << "[Client] Client " << message->id << " disconnected" << std::endl;
 
-                        clients.at(disconnected_client_id).id = ch::server::max_clients;
+                        clients.at(message->id).id = ch::server::max_clients;
+                    }
+                    break;
+                    case ch::message_type::QUEST_STATUS:
+                    {
+                        const auto message = reinterpret_cast<ch::message_quest_status *>(event.packet->data);
+
+                        std::cout << "[Client] Client " << message->id << " has advanced quest " << message->status.quest_index << " to stage " << message->status.stage_index << std::endl;
+
+                        clients.at(message->id).player.set_quest_status(message->status);
                     }
                     break;
                     case ch::message_type::GAME_STATE:

@@ -1,6 +1,7 @@
 #ifndef CH_PLAYER_HPP
 #define CH_PLAYER_HPP
 
+#include <functional>
 #include <vector>
 
 namespace ch
@@ -55,6 +56,7 @@ namespace ch
         ch::conversation *conversation_node = nullptr;
 
         std::vector<ch::quest_status> quest_statuses;
+        std::function<void(const ch::quest_status &)> on_quest_status_set;
 
         void update(const ch::input &input, const ch::map &map, float delta_time);
 

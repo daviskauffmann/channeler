@@ -184,6 +184,11 @@ void ch::player::set_quest_status(const ch::quest_status &status)
     {
         quest_status->stage_index = status.stage_index;
     }
+
+    if (on_quest_status_set)
+    {
+        on_quest_status_set(status);
+    }
 }
 
 bool ch::player::check_quest_status(const ch::quest_status &status) const

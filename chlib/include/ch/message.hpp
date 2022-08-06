@@ -22,6 +22,8 @@ namespace ch
         CHOOSE_CONVERSATION_RESPONSE,
         END_CONVERSATION,
 
+        QUEST_STATUS,
+
         GAME_STATE
     };
 
@@ -38,6 +40,12 @@ namespace ch
     struct message_input : message
     {
         ch::input input;
+    };
+
+    struct message_quest_status : message
+    {
+        std::size_t id;
+        ch::quest_status status;
     };
 
     struct message_game_state : message
