@@ -12,10 +12,9 @@ find_package(SDL2-ttf CONFIG REQUIRED)
 add_library(${PROJECT_NAME}
     src/client_list.cpp
     src/conversation.cpp
-    src/conversation_list.cpp
     src/map.cpp
     src/player.cpp
-    src/quest_list.cpp
+    src/server.cpp
     src/tileset.cpp
     src/world.cpp
 )

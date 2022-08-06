@@ -6,9 +6,9 @@
 namespace hp
 {
     class conversation;
-    class conversation_list;
     struct input;
     class map;
+    class world;
 
     enum class direction
     {
@@ -56,7 +56,7 @@ namespace hp
 
         void attack();
 
-        void start_conversation(const hp::conversation_list &conversation_list, std::size_t root_index);
+        void start_conversation(const hp::world &world, std::size_t root_index);
         void advance_conversation();
         void choose_conversation_response(std::size_t choice_index);
         void end_conversation();

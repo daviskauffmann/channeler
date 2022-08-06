@@ -1,10 +1,10 @@
 #include <shared/player.hpp>
 
 #include <shared/conversation.hpp>
-#include <shared/conversation_list.hpp>
 #include <shared/input.hpp>
 #include <shared/map.hpp>
 #include <shared/tileset.hpp>
+#include <shared/world.hpp>
 
 void hp::player::update(const hp::input &input, const hp::map &map, const float delta_time)
 {
@@ -87,9 +87,9 @@ void hp::player::attack()
 {
 }
 
-void hp::player::start_conversation(const hp::conversation_list &conversation_list, const std::size_t root_index)
+void hp::player::start_conversation(const hp::world &world, const std::size_t root_index)
 {
-    conversation_root = conversation_node = conversation_list.conversations.at(root_index);
+    conversation_root = conversation_node = world.conversations.at(root_index);
     advance_conversation();
 }
 

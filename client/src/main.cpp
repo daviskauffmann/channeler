@@ -5,12 +5,11 @@
 #include <enet/enet.h>
 #include <iostream>
 #include <shared/conversation.hpp>
-#include <shared/conversation_list.hpp>
 #include <shared/input.hpp>
 #include <shared/map.hpp>
 #include <shared/message.hpp>
 #include <shared/player.hpp>
-#include <shared/quest_list.hpp>
+#include <shared/server.hpp>
 #include <shared/tileset.hpp>
 #include <shared/world.hpp>
 #include <stdarg.h>
@@ -143,6 +142,30 @@ int main(int, char *[])
     }
     atexit(enet_deinitialize);
 
+    hp::server *server = nullptr;
+
+    std::cout << "1: Host" << std::endl;
+    std::cout << "2: Join" << std::endl;
+    std::cout << "> ";
+    int response;
+    std::cin >> response;
+
+    if (response == 1)
+    {
+        std::cout << "[Client] Hosting server" << std::endl;
+
+        server = new hp::server(server_port);
+    }
+    else if (response == 2)
+    {
+        std::cout << "[Client] Joining server" << std::endl;
+    }
+    else
+    {
+        std::cout << "Invalid choice" << std::endl;
+        return 1;
+    }
+
     SDL_Window *window;
     SDL_Renderer *renderer;
     if (SDL_CreateWindowAndRenderer(window_width, window_height, 0, &window, &renderer) != 0)
@@ -157,73 +180,77 @@ int main(int, char *[])
     draw_text(renderer, font, 0, 0, window_width, {255, 255, 255}, "Connecting to server...");
     SDL_RenderPresent(renderer);
 
-    hp::client_list client_list;
-    auto online = false;
-    ENetHost *host = nullptr;
-    ENetPeer *peer = nullptr;
+    auto host = enet_host_create(NULL, 1, 2, 0, 0);
+    if (!host)
+    {
+        return 1;
+    }
+
+    ENetAddress address;
+    enet_address_set_host(&address, server_host);
+    address.port = server_port;
+    auto peer = enet_host_connect(host, &address, 2, 0);
+    if (!peer)
+    {
+        return 1;
+    }
 
     std::size_t client_id = 0;
     std::size_t map_index = 0;
 
-    host = enet_host_create(NULL, 1, 2, 0, 0);
-    if (host)
     {
-        ENetAddress address;
-        enet_address_set_host(&address, server_host);
-        address.port = server_port;
+        bool connected = false;
 
-        peer = enet_host_connect(host, &address, 2, 0);
-        if (peer)
+        ENetEvent event;
+        while (enet_host_service(host, &event, 5000) > 0)
         {
-            ENetEvent event;
-            while (enet_host_service(host, &event, 5000) > 0)
+            if (event.type == ENET_EVENT_TYPE_CONNECT)
             {
-                if (event.type == ENET_EVENT_TYPE_CONNECT)
-                {
-                    std::cout << "Connected to " << server_host << ":" << server_port << std::endl;
-                }
-                else if (event.type == ENET_EVENT_TYPE_RECEIVE)
-                {
-                    const auto type = reinterpret_cast<hp::message *>(event.packet->data)->type;
-
-                    if (type == hp::message_type::SERVER_JOINED)
-                    {
-                        const auto message = reinterpret_cast<hp::message_id *>(event.packet->data);
-
-                        std::cout << "Assigned ID " << message->id << std::endl;
-
-                        online = true;
-                        client_id = message->id;
-                        map_index = 0; // TODO: get from message
-
-                        break;
-                    }
-                    else if (type == hp::message_type::SERVER_FULL)
-                    {
-                        std::cout << "Server full" << std::endl;
-                    }
-                    else
-                    {
-                        std::cout << "Unknown server response" << std::endl;
-                    }
-
-                    enet_packet_destroy(event.packet);
-                }
+                std::cout << "[Client] Connected to " << server_host << ":" << server_port << std::endl;
             }
-
-            if (!online)
+            else if (event.type == ENET_EVENT_TYPE_RECEIVE)
             {
-                std::cout << "No server response, starting in offline mode" << std::endl;
+                const auto type = reinterpret_cast<hp::message *>(event.packet->data)->type;
 
-                enet_peer_reset(peer);
+                if (type == hp::message_type::SERVER_JOINED)
+                {
+                    const auto message = reinterpret_cast<hp::message_id *>(event.packet->data);
+
+                    std::cout << "[Client] Assigned ID " << message->id << std::endl;
+
+                    connected = true;
+                    client_id = message->id;
+                    map_index = 0; // TODO: get from message
+
+                    break;
+                }
+                else if (type == hp::message_type::SERVER_FULL)
+                {
+                    std::cout << "[Client] Server full" << std::endl;
+                }
+                else
+                {
+                    std::cout << "[Client] Unknown server response" << std::endl;
+                }
+
+                enet_packet_destroy(event.packet);
             }
+        }
+
+        if (!connected)
+        {
+            std::cout << "[Client] Could not connect to server" << std::endl;
+
+            enet_peer_reset(peer);
+
+            return 1;
         }
     }
 
-    hp::world world("assets/world.world");
-    hp::quest_list quest_list("assets/quest_list.json");
-    hp::conversation_list conversation_list("assets/conversation_list.json");
+    hp::world world("assets/world.world", "assets/quests.json", "assets/conversations.json");
+    SDL_Texture *player_sprites = IMG_LoadTexture(renderer, "assets/NinjaAdventure/Actor/Characters/BlueNinja/SpriteSheet.png");
 
+    hp::client_list client_list;
     auto &client = client_list.clients.at(client_id);
     client.id = client_id;
     auto &player = client.player;
@@ -231,8 +258,6 @@ int main(int, char *[])
 
     hp_client::active_map map(renderer);
     map.change(&world.maps.at(map_index));
-
-    SDL_Texture *player_sprites = IMG_LoadTexture(renderer, "assets/NinjaAdventure/Actor/Characters/BlueNinja/SpriteSheet.png");
 
     auto quest_log_open = false;
 
@@ -317,48 +342,30 @@ int main(int, char *[])
                     break;
                     case SDLK_F1:
                     {
-                        std::size_t new_map_index = 0;
-
-                        if (online)
-                        {
-                            hp::message_id message;
-                            message.type = hp::message_type::CHANGE_MAP;
-                            message.id = new_map_index;
-                            auto packet = enet_packet_create(&message, sizeof(message), 0);
-                            enet_peer_send(peer, 0, packet);
-                        }
-                        else
-                        {
-                            player.map_index = new_map_index;
-                        }
+                        hp::message_id message;
+                        message.type = hp::message_type::CHANGE_MAP;
+                        message.id = 0;
+                        auto packet = enet_packet_create(&message, sizeof(message), 0);
+                        enet_peer_send(peer, 0, packet);
                     }
                     break;
                     case SDLK_F2:
                     {
-                        std::size_t new_map_index = 1;
-
-                        if (online)
-                        {
-                            hp::message_id message;
-                            message.type = hp::message_type::CHANGE_MAP;
-                            message.id = new_map_index;
-                            auto packet = enet_packet_create(&message, sizeof(message), 0);
-                            enet_peer_send(peer, 0, packet);
-                        }
-                        else
-                        {
-                            player.map_index = new_map_index;
-                        }
+                        hp::message_id message;
+                        message.type = hp::message_type::CHANGE_MAP;
+                        message.id = 1;
+                        auto packet = enet_packet_create(&message, sizeof(message), 0);
+                        enet_peer_send(peer, 0, packet);
                     }
                     break;
                     case SDLK_F3:
                     {
-                        player.start_conversation(conversation_list, 0);
+                        player.start_conversation(world, 0);
                     }
                     break;
                     case SDLK_F4:
                     {
-                        player.start_conversation(conversation_list, 1);
+                        player.start_conversation(world, 1);
                     }
                     break;
                     case SDLK_F5:
@@ -383,10 +390,8 @@ int main(int, char *[])
             }
         }
 
-        if (online)
         {
             ENetEvent event;
-            /* Wait up to 1000 milliseconds for an event. */
             while (enet_host_service(host, &event, 0) > 0)
             {
                 switch (event.type)
@@ -402,7 +407,7 @@ int main(int, char *[])
                         const auto message = reinterpret_cast<hp::message_id *>(event.packet->data);
                         const auto new_client_id = message->id;
 
-                        std::cout << "New client ID " << new_client_id << std::endl;
+                        std::cout << "[Client] Client " << new_client_id << " connected" << std::endl;
 
                         client_list.clients.at(new_client_id).id = new_client_id;
                     }
@@ -412,7 +417,7 @@ int main(int, char *[])
                         const auto message = reinterpret_cast<hp::message_id *>(event.packet->data);
                         const auto disconnected_client_id = message->id;
 
-                        std::cout << "Client disconnected " << disconnected_client_id << std::endl;
+                        std::cout << "[Client] Client " << disconnected_client_id << " disconnected" << std::endl;
 
                         client_list.clients.at(disconnected_client_id).id = client_list.max_clients;
                     }
@@ -438,7 +443,7 @@ int main(int, char *[])
                     break;
                     default:
                     {
-                        std::cout << "Unknown message type " << static_cast<int>(type) << std::endl;
+                        std::cout << "[Client] Unknown message type " << static_cast<int>(type) << std::endl;
                     }
                     break;
                     }
@@ -476,28 +481,15 @@ int main(int, char *[])
             input.dx = 1;
         }
 
-        if (online)
-        {
-            hp::message_input message;
-            message.type = hp::message_type::INPUT;
-            message.input = input;
-            auto packet = enet_packet_create(&message, sizeof(message), 0);
-            enet_peer_send(peer, 0, packet);
-        }
-        else
-        {
-            for (std::size_t i = 0; i < world.maps.size(); i++)
-            {
-                world.maps.at(i).update(delta_time);
-            }
+        hp::message_input message;
+        message.type = hp::message_type::INPUT;
+        message.input = input;
+        auto packet = enet_packet_create(&message, sizeof(message), 0);
+        enet_peer_send(peer, 0, packet);
 
-            for (auto &_client : client_list.clients)
-            {
-                if (_client.id != client_list.max_clients)
-                {
-                    _client.player.update(_client.input, world.maps.at(_client.player.map_index), delta_time);
-                }
-            }
+        if (server)
+        {
+            server->update(delta_time, world);
         }
 
         const auto view_width = window_width / sprite_scale;
@@ -622,7 +614,7 @@ int main(int, char *[])
             for (std::size_t i = 0; i < player.quest_statuses.size(); i++)
             {
                 const auto &status = player.quest_statuses.at(i);
-                const auto &quest = quest_list.quests.at(status.quest_index);
+                const auto &quest = world.quests.at(status.quest_index);
                 const auto &stage = quest.stages.at(status.stage_index);
                 draw_text(renderer, font, 24, 24 * (i + 1), window_width - 24, {255, 255, 255}, "%s: %s", quest.name.c_str(), stage.description.c_str());
             }
@@ -660,7 +652,6 @@ int main(int, char *[])
 
     map.deactivate();
 
-    if (online)
     {
         enet_peer_disconnect(peer, 0);
 
@@ -675,7 +666,7 @@ int main(int, char *[])
             }
             else if (event.type == ENET_EVENT_TYPE_DISCONNECT)
             {
-                std::cout << "Disconnected" << std::endl;
+                std::cout << "[Client] Disconnected" << std::endl;
 
                 disconnected = true;
 
@@ -685,11 +676,18 @@ int main(int, char *[])
 
         if (!disconnected)
         {
+            std::cout << "[Client] Server did not confirm disconnect" << std::endl;
+
             enet_peer_reset(peer);
         }
     }
 
     enet_host_destroy(host);
+
+    if (server)
+    {
+        delete server;
+    }
 
     TTF_CloseFont(font);
 
