@@ -26,7 +26,7 @@ constexpr std::size_t frame_delay = 1000 / fps_cap;
 
 constexpr std::size_t sprite_scale = 2;
 
-namespace hp_client
+namespace ch
 {
     class active_map
     {
@@ -256,7 +256,7 @@ int main(int, char *[])
     auto &player = client.player;
     auto &input = client.input;
 
-    hp_client::active_map map(renderer);
+    ch::active_map map(renderer);
     map.change(&world.maps.at(map_index));
 
     auto quest_log_open = false;
