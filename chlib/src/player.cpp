@@ -5,29 +5,44 @@
 #include <ch/map.hpp>
 #include <ch/tileset.hpp>
 #include <ch/world.hpp>
+#include <iostream>
 
 void ch::player::update(const ch::input &input, const ch::map &map, const float delta_time)
 {
-    animation = ch::animation::IDLE;
-    if (input.dy == -1)
+    if (attacking)
     {
-        direction = ch::direction::UP;
-        animation = ch::animation::WALKING;
+        animation = ch::animation::ATTACKING;
+
+        attack_timer -= delta_time;
+        if (attack_timer <= 0)
+        {
+            attacking = false;
+        }
     }
-    if (input.dx == -1)
+
+    if (!attacking)
     {
-        direction = ch::direction::LEFT;
-        animation = ch::animation::WALKING;
-    }
-    if (input.dy == 1)
-    {
-        direction = ch::direction::DOWN;
-        animation = ch::animation::WALKING;
-    }
-    if (input.dx == 1)
-    {
-        direction = ch::direction::RIGHT;
-        animation = ch::animation::WALKING;
+        animation = ch::animation::IDLE;
+        if (input.dy == -1)
+        {
+            direction = ch::direction::UP;
+            animation = ch::animation::WALKING;
+        }
+        if (input.dx == -1)
+        {
+            direction = ch::direction::LEFT;
+            animation = ch::animation::WALKING;
+        }
+        if (input.dy == 1)
+        {
+            direction = ch::direction::DOWN;
+            animation = ch::animation::WALKING;
+        }
+        if (input.dx == 1)
+        {
+            direction = ch::direction::RIGHT;
+            animation = ch::animation::WALKING;
+        }
     }
 
     animation_timer += delta_time;
@@ -85,6 +100,8 @@ void ch::player::update(const ch::input &input, const ch::map &map, const float 
 
 void ch::player::attack()
 {
+    attacking = true;
+    attack_timer = 0.1f;
 }
 
 void ch::player::start_conversation(const ch::world &world, const std::size_t root_index)

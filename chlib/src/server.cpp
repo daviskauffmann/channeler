@@ -1,10 +1,12 @@
 #include <ch/server.hpp>
 
+#include <ch/conversation.hpp>
 #include <ch/message.hpp>
 #include <ch/world.hpp>
 #include <iostream>
 
-ch::server::server(const std::uint16_t port)
+ch::server::server(const std::uint16_t port, ch::world &world)
+    : world(world)
 {
     clients.fill(
         {.id = max_clients});
@@ -40,7 +42,7 @@ std::size_t ch::server::get_available_client() const
     return max_clients;
 }
 
-void ch::server::update(const float delta_time, ch::world &world)
+void ch::server::update(const float delta_time)
 {
     for (std::size_t i = 0; i < world.maps.size(); i++)
     {
@@ -70,6 +72,17 @@ void ch::server::update(const float delta_time, ch::world &world)
             message.clients.at(i).player.direction = clients.at(i).player.direction;
             message.clients.at(i).player.animation = clients.at(i).player.animation;
             message.clients.at(i).player.frame_index = clients.at(i).player.frame_index;
+
+            if (clients.at(i).player.conversation_node)
+            {
+                message.clients.at(i).player.in_conversation = true;
+                message.clients.at(i).player.conversation_root_index = clients.at(i).player.conversation_node->root_index;
+                message.clients.at(i).player.conversation_node_index = clients.at(i).player.conversation_node->node_index;
+            }
+            else
+            {
+                message.clients.at(i).player.in_conversation = false;
+            }
         }
 
         auto packet = enet_packet_create(&message, sizeof(message), 0);
@@ -141,13 +154,45 @@ void ch::server::listen()
                     client->input.dy = message->input.dy;
                 }
                 break;
+                case ch::message_type::ATTACK:
+                {
+                    client->player.attack();
+                }
+                break;
                 case ch::message_type::CHANGE_MAP:
                 {
                     const auto message = reinterpret_cast<ch::message_id *>(event.packet->data);
+                    const auto map_index = message->id;
 
-                    client->player.map_index = message->id;
+                    std::cout << "[Server] Client " << client->id << " changing map to " << map_index << std::endl;
 
-                    std::cout << "[Server] Client " << client->id << " changing map to " << message->id << std::endl;
+                    client->player.map_index = map_index;
+                }
+                break;
+                case ch::message_type::START_CONVERSATION:
+                {
+                    const auto message = reinterpret_cast<ch::message_id *>(event.packet->data);
+                    const auto root_index = message->id;
+
+                    client->player.start_conversation(world, root_index);
+                }
+                break;
+                case ch::message_type::ADVANCE_CONVERSATION:
+                {
+                    client->player.advance_conversation();
+                }
+                break;
+                case ch::message_type::CHOOSE_CONVERSATION_RESPONSE:
+                {
+                    const auto message = reinterpret_cast<ch::message_id *>(event.packet->data);
+                    const auto choice_index = message->id;
+
+                    client->player.choose_conversation_response(choice_index);
+                }
+                break;
+                case ch::message_type::END_CONVERSATION:
+                {
+                    client->player.end_conversation();
                 }
                 break;
                 default:

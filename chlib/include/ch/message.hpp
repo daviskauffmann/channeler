@@ -15,7 +15,12 @@ namespace ch
         CLIENT_DISCONNECTED,
 
         INPUT,
+        ATTACK,
         CHANGE_MAP,
+        START_CONVERSATION,
+        ADVANCE_CONVERSATION,
+        CHOOSE_CONVERSATION_RESPONSE,
+        END_CONVERSATION,
 
         GAME_STATE
     };
@@ -51,6 +56,7 @@ namespace ch
                 ch::animation animation;
                 std::size_t frame_index;
 
+                bool in_conversation;
                 std::size_t conversation_root_index;
                 std::size_t conversation_node_index;
             } player;

@@ -26,9 +26,8 @@ int main(int, char *[])
     }
     atexit(enet_deinitialize);
 
-    ch::server server(server_port);
-
     ch::world world("assets/world.world", "assets/quests.json", "assets/conversations.json");
+    ch::server server(server_port, world);
 
     auto quit = false;
     while (!quit)
@@ -51,7 +50,7 @@ int main(int, char *[])
             }
         }
 
-        server.update(delta_time, world);
+        server.update(delta_time);
 
         const auto frame_time = SDL_GetTicks() - current_time;
         if (frame_delay > frame_time)

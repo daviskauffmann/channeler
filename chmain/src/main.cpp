@@ -142,19 +142,20 @@ int main(int, char *[])
     }
     atexit(enet_deinitialize);
 
+    ch::world world("assets/world.world", "assets/quests.json", "assets/conversations.json");
     ch::server *server = nullptr;
 
     std::cout << "1: Host" << std::endl;
     std::cout << "2: Join" << std::endl;
     std::cout << "> ";
-    int response;
-    std::cin >> response;
+    int response = 1;
+    // std::cin >> response;
 
     if (response == 1)
     {
         std::cout << "[Client] Hosting server" << std::endl;
 
-        server = new ch::server(server_port);
+        server = new ch::server(server_port, world);
     }
     else if (response == 2)
     {
@@ -247,8 +248,9 @@ int main(int, char *[])
         }
     }
 
-    ch::world world("assets/world.world", "assets/quests.json", "assets/conversations.json");
-    SDL_Texture *player_sprites = IMG_LoadTexture(renderer, "assets/NinjaAdventure/Actor/Characters/BlueNinja/SpriteSheet.png");
+    SDL_Texture *player_idle_sprites = IMG_LoadTexture(renderer, "assets/NinjaAdventure/Actor/Characters/BlueNinja/SeparateAnim/Idle.png");
+    SDL_Texture *player_walk_sprites = IMG_LoadTexture(renderer, "assets/NinjaAdventure/Actor/Characters/BlueNinja/SeparateAnim/Walk.png");
+    SDL_Texture *player_attack_sprites = IMG_LoadTexture(renderer, "assets/NinjaAdventure/Actor/Characters/BlueNinja/SeparateAnim/Attack.png");
 
     std::array<ch::client, ch::server::max_clients> clients;
     auto &client = clients.at(client_id);
@@ -303,18 +305,28 @@ int main(int, char *[])
                     case SDLK_ESCAPE:
                     {
                         quest_log_open = false;
-                        player.end_conversation();
+
+                        ch::message message;
+                        message.type = ch::message_type::END_CONVERSATION;
+                        auto packet = enet_packet_create(&message, sizeof(message), 0);
+                        enet_peer_send(peer, 0, packet);
                     }
                     break;
                     case SDLK_SPACE:
                     {
                         if (player.conversation_node)
                         {
-                            player.advance_conversation();
+                            ch::message message;
+                            message.type = ch::message_type::ADVANCE_CONVERSATION;
+                            auto packet = enet_packet_create(&message, sizeof(message), 0);
+                            enet_peer_send(peer, 0, packet);
                         }
                         else
                         {
-                            player.attack();
+                            ch::message message;
+                            message.type = ch::message_type::ATTACK;
+                            auto packet = enet_packet_create(&message, sizeof(message), 0);
+                            enet_peer_send(peer, 0, packet);
                         }
                     }
                     break;
@@ -330,8 +342,11 @@ int main(int, char *[])
                     {
                         if (player.conversation_node)
                         {
-                            std::size_t choice_index = event.key.keysym.sym - 48;
-                            player.choose_conversation_response(choice_index);
+                            ch::message_id message;
+                            message.type = ch::message_type::CHOOSE_CONVERSATION_RESPONSE;
+                            message.id = event.key.keysym.sym - 48;
+                            auto packet = enet_packet_create(&message, sizeof(message), 0);
+                            enet_peer_send(peer, 0, packet);
                         }
                     }
                     break;
@@ -360,12 +375,20 @@ int main(int, char *[])
                     break;
                     case SDLK_F3:
                     {
-                        player.start_conversation(world, 0);
+                        ch::message_id message;
+                        message.type = ch::message_type::START_CONVERSATION;
+                        message.id = 0;
+                        auto packet = enet_packet_create(&message, sizeof(message), 0);
+                        enet_peer_send(peer, 0, packet);
                     }
                     break;
                     case SDLK_F4:
                     {
-                        player.start_conversation(world, 1);
+                        ch::message_id message;
+                        message.type = ch::message_type::START_CONVERSATION;
+                        message.id = 1;
+                        auto packet = enet_packet_create(&message, sizeof(message), 0);
+                        enet_peer_send(peer, 0, packet);
                     }
                     break;
                     case SDLK_F5:
@@ -438,6 +461,17 @@ int main(int, char *[])
                             clients.at(i).player.direction = message->clients.at(i).player.direction;
                             clients.at(i).player.animation = message->clients.at(i).player.animation;
                             clients.at(i).player.frame_index = message->clients.at(i).player.frame_index;
+
+                            if (message->clients.at(i).player.in_conversation)
+                            {
+                                clients.at(i).player.conversation_root = world.conversations.at(message->clients.at(i).player.conversation_root_index);
+                                clients.at(i).player.conversation_node = clients.at(i).player.conversation_root->find_by_node_index(message->clients.at(i).player.conversation_node_index);
+                            }
+                            else
+                            {
+                                clients.at(i).player.conversation_root = nullptr;
+                                clients.at(i).player.conversation_node = nullptr;
+                            }
                         }
                     }
                     break;
@@ -489,7 +523,7 @@ int main(int, char *[])
 
         if (server)
         {
-            server->update(delta_time, world);
+            server->update(delta_time);
         }
 
         const auto view_width = window_width / sprite_scale;
@@ -575,16 +609,24 @@ int main(int, char *[])
         {
             if (_client.id != ch::server::max_clients && _client.player.map_index == map_index)
             {
+                SDL_Texture *sprites = nullptr;
                 SDL_Rect srcrect;
                 switch (_client.player.animation)
                 {
                 case ch::animation::IDLE:
+                    sprites = player_idle_sprites;
                     srcrect.x = static_cast<int>(_client.player.direction) * 16;
                     srcrect.y = 0;
                     break;
                 case ch::animation::WALKING:
+                    sprites = player_walk_sprites;
                     srcrect.x = static_cast<int>(_client.player.direction) * 16;
-                    srcrect.y = (1 + (_client.player.frame_index % 3)) * 16;
+                    srcrect.y = (_client.player.frame_index % 4) * 16;
+                    break;
+                case ch::animation::ATTACKING:
+                    sprites = player_attack_sprites;
+                    srcrect.x = static_cast<int>(_client.player.direction) * 16;
+                    srcrect.y = 0;
                     break;
                 }
                 srcrect.w = 16;
@@ -596,7 +638,7 @@ int main(int, char *[])
                     static_cast<int>(16 * sprite_scale),
                     static_cast<int>(16 * sprite_scale)};
 
-                SDL_RenderCopy(renderer, player_sprites, &srcrect, &dstrect);
+                SDL_RenderCopy(renderer, sprites, &srcrect, &dstrect);
 
                 draw_text(renderer, font, dstrect.x + 24, dstrect.y - (24 * 2), window_width, {255, 255, 255}, "%zu", _client.id);
             }

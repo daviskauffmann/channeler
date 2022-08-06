@@ -26,14 +26,15 @@ namespace ch
         std::array<ch::client, max_clients> clients;
         bool listening = true;
 
-        server(std::uint16_t port);
+        server(std::uint16_t port, ch::world &world);
         ~server();
 
         std::size_t get_available_client() const;
 
-        void update(float delta_time, ch::world &world);
+        void update(float delta_time);
 
     private:
+        ch::world &world;
         ENetHost *host;
         std::thread listen_thread;
 

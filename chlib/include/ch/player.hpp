@@ -22,6 +22,7 @@ namespace ch
     {
         IDLE,
         WALKING,
+        ATTACKING
     };
 
     struct quest_status
@@ -41,6 +42,9 @@ namespace ch
         float vel_y = 0;
         float acc_x = 0;
         float acc_y = 0;
+
+        bool attacking = false;
+        float attack_timer = 0;
 
         ch::direction direction = ch::direction::DOWN;
         ch::animation animation = ch::animation::IDLE;
