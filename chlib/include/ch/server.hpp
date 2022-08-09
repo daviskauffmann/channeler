@@ -11,7 +11,7 @@ namespace ch
 {
     class world;
 
-    struct client
+    struct connection
     {
         std::size_t id;
         ch::player player;
@@ -21,15 +21,15 @@ namespace ch
     class server
     {
     public:
-        static constexpr std::size_t max_clients = 32;
+        static constexpr std::size_t max_connections = 32;
 
-        std::array<ch::client, max_clients> clients;
+        std::array<ch::connection, max_connections> connections;
         bool listening = true;
 
         server(std::uint16_t port, ch::world &world);
         ~server();
 
-        std::size_t get_available_client() const;
+        std::size_t get_free_connection_id() const;
 
         void update(float delta_time);
 

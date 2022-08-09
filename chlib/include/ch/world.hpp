@@ -24,7 +24,7 @@ namespace ch
             const std::string &conversations_filename);
         ~world();
 
-        tileset *load_tileset(const std::string &filename);
+        ch::tileset *load_tileset(const std::string &filename);
 
         std::size_t get_map_index(const std::string &filename) const;
 

@@ -11,8 +11,8 @@ namespace ch
         SERVER_JOINED,
         SERVER_FULL,
 
-        CLIENT_JOINED,
-        CLIENT_DISCONNECTED,
+        PLAYER_JOINED,
+        PLAYER_DISCONNECTED,
 
         INPUT,
         ATTACK,
@@ -50,7 +50,7 @@ namespace ch
 
     struct message_game_state : message
     {
-        struct client
+        struct connection
         {
             std::size_t id;
             struct
@@ -70,7 +70,7 @@ namespace ch
             } player;
         };
 
-        std::array<client, ch::server::max_clients> clients;
+        std::array<connection, ch::server::max_connections> connections;
     };
 }
 

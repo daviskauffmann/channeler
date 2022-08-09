@@ -2,6 +2,7 @@
 #include <SDL2/SDL_image.h>
 #include <SDL2/SDL_mixer.h>
 #include <SDL2/SDL_ttf.h>
+#include <ch/client.hpp>
 #include <ch/conversation.hpp>
 #include <ch/input.hpp>
 #include <ch/map.hpp>
@@ -32,7 +33,6 @@ namespace ch
     {
     public:
         SDL_Renderer *renderer;
-        ch::map *map = nullptr;
         std::vector<SDL_Texture *> sprites;
 
         explicit active_map(SDL_Renderer *renderer)
@@ -40,14 +40,14 @@ namespace ch
         {
         }
 
-        void change(ch::map *new_map)
+        ~active_map()
         {
-            if (map)
-            {
-                deactivate();
-            }
+            deactivate();
+        }
 
-            map = new_map;
+        void change(ch::map *map)
+        {
+            deactivate();
 
             std::transform(
                 map->map_tilesets.begin(),
@@ -143,6 +143,7 @@ int main(int, char *[])
     atexit(enet_deinitialize);
 
     ch::world world("assets/world.world", "assets/quests.json", "assets/conversations.json");
+
     ch::server *server = nullptr;
 
     std::cout << "1: Host" << std::endl;
@@ -153,13 +154,13 @@ int main(int, char *[])
 
     if (response == 1)
     {
-        std::cout << "[Client] Hosting server" << std::endl;
+        std::cout << "Hosting server" << std::endl;
 
         server = new ch::server(server_port, world);
     }
     else if (response == 2)
     {
-        std::cout << "[Client] Joining server" << std::endl;
+        std::cout << "Joining server" << std::endl;
     }
     else
     {
@@ -181,85 +182,21 @@ int main(int, char *[])
     draw_text(renderer, font, 0, 0, window_width, {255, 255, 255}, "Connecting to server...");
     SDL_RenderPresent(renderer);
 
-    auto host = enet_host_create(NULL, 1, 2, 0, 0);
-    if (!host)
+    auto *client = new ch::client(world);
+    if (!client->connect(server_host, server_port))
     {
         return 1;
     }
 
-    ENetAddress address;
-    enet_address_set_host(&address, server_host);
-    address.port = server_port;
-    auto peer = enet_host_connect(host, &address, 2, 0);
-    if (!peer)
-    {
-        return 1;
-    }
+    auto &player = client->get_player();
 
-    std::size_t client_id = 0;
-    std::size_t map_index = 0;
-
-    {
-        bool connected = false;
-
-        ENetEvent event;
-        while (enet_host_service(host, &event, 5000) > 0)
-        {
-            if (event.type == ENET_EVENT_TYPE_CONNECT)
-            {
-                std::cout << "[Client] Connected to " << server_host << ":" << server_port << std::endl;
-            }
-            else if (event.type == ENET_EVENT_TYPE_RECEIVE)
-            {
-                const auto type = reinterpret_cast<ch::message *>(event.packet->data)->type;
-
-                if (type == ch::message_type::SERVER_JOINED)
-                {
-                    const auto message = reinterpret_cast<ch::message_id *>(event.packet->data);
-
-                    std::cout << "[Client] Assigned ID " << message->id << std::endl;
-
-                    connected = true;
-                    client_id = message->id;
-                    map_index = 0; // TODO: get from message
-
-                    break;
-                }
-                else if (type == ch::message_type::SERVER_FULL)
-                {
-                    std::cout << "[Client] Server full" << std::endl;
-                }
-                else
-                {
-                    std::cout << "[Client] Unknown server response" << std::endl;
-                }
-
-                enet_packet_destroy(event.packet);
-            }
-        }
-
-        if (!connected)
-        {
-            std::cout << "[Client] Could not connect to server" << std::endl;
-
-            enet_peer_reset(peer);
-
-            return 1;
-        }
-    }
+    ch::active_map active_map(renderer);
+    std::size_t map_index = 0; // TODO: get initial map from server when connecting
+    active_map.change(&world.maps.at(map_index));
 
     SDL_Texture *player_idle_sprites = IMG_LoadTexture(renderer, "assets/NinjaAdventure/Actor/Characters/BlueNinja/SeparateAnim/Idle.png");
     SDL_Texture *player_walk_sprites = IMG_LoadTexture(renderer, "assets/NinjaAdventure/Actor/Characters/BlueNinja/SeparateAnim/Walk.png");
     SDL_Texture *player_attack_sprites = IMG_LoadTexture(renderer, "assets/NinjaAdventure/Actor/Characters/BlueNinja/SeparateAnim/Attack.png");
-
-    std::array<ch::client, ch::server::max_clients> clients;
-    auto &client = clients.at(client_id);
-    client.id = client_id;
-    auto &player = client.player;
-    auto &input = client.input;
-
-    ch::active_map map(renderer);
-    map.change(&world.maps.at(map_index));
 
     auto quest_log_open = false;
 
@@ -276,286 +213,205 @@ int main(int, char *[])
         int mouse_x, mouse_y;
         /*const auto mouse = */ SDL_GetMouseState(&mouse_x, &mouse_y);
 
+        SDL_Event event;
+        while (SDL_PollEvent(&event))
         {
-            SDL_Event event;
-            while (SDL_PollEvent(&event))
+            switch (event.type)
             {
-                switch (event.type)
+            case SDL_KEYDOWN:
+            {
+                switch (event.key.keysym.sym)
                 {
-                case SDL_KEYDOWN:
+                case SDLK_RETURN:
                 {
-                    switch (event.key.keysym.sym)
+                    if (keys[SDL_SCANCODE_LALT])
                     {
-                    case SDLK_RETURN:
-                    {
-                        if (keys[SDL_SCANCODE_LALT])
+                        const auto flags = SDL_GetWindowFlags(window);
+                        if (flags & SDL_WINDOW_FULLSCREEN_DESKTOP)
                         {
-                            const auto flags = SDL_GetWindowFlags(window);
-                            if (flags & SDL_WINDOW_FULLSCREEN_DESKTOP)
-                            {
-                                SDL_SetWindowFullscreen(window, 0);
-                            }
-                            else
-                            {
-                                SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN_DESKTOP);
-                            }
-                        }
-                    }
-                    break;
-                    case SDLK_ESCAPE:
-                    {
-                        quest_log_open = false;
-
-                        ch::message message;
-                        message.type = ch::message_type::END_CONVERSATION;
-                        auto packet = enet_packet_create(&message, sizeof(message), 0);
-                        enet_peer_send(peer, 0, packet);
-                    }
-                    break;
-                    case SDLK_SPACE:
-                    {
-                        if (player.conversation_node)
-                        {
-                            ch::message message;
-                            message.type = ch::message_type::ADVANCE_CONVERSATION;
-                            auto packet = enet_packet_create(&message, sizeof(message), 0);
-                            enet_peer_send(peer, 0, packet);
+                            SDL_SetWindowFullscreen(window, 0);
                         }
                         else
                         {
-                            ch::message message;
-                            message.type = ch::message_type::ATTACK;
-                            auto packet = enet_packet_create(&message, sizeof(message), 0);
-                            enet_peer_send(peer, 0, packet);
+                            SDL_SetWindowFullscreen(window, SDL_WINDOW_FULLSCREEN_DESKTOP);
                         }
-                    }
-                    break;
-                    case SDLK_1:
-                    case SDLK_2:
-                    case SDLK_3:
-                    case SDLK_4:
-                    case SDLK_5:
-                    case SDLK_6:
-                    case SDLK_7:
-                    case SDLK_8:
-                    case SDLK_9:
-                    {
-                        if (player.conversation_node)
-                        {
-                            ch::message_id message;
-                            message.type = ch::message_type::CHOOSE_CONVERSATION_RESPONSE;
-                            message.id = event.key.keysym.sym - 48;
-                            auto packet = enet_packet_create(&message, sizeof(message), 0);
-                            enet_peer_send(peer, 0, packet);
-                        }
-                    }
-                    break;
-                    case SDLK_j:
-                    {
-                        quest_log_open = !quest_log_open;
-                    }
-                    break;
-                    case SDLK_F1:
-                    {
-                        ch::message_id message;
-                        message.type = ch::message_type::CHANGE_MAP;
-                        message.id = 0;
-                        auto packet = enet_packet_create(&message, sizeof(message), 0);
-                        enet_peer_send(peer, 0, packet);
-                    }
-                    break;
-                    case SDLK_F2:
-                    {
-                        ch::message_id message;
-                        message.type = ch::message_type::CHANGE_MAP;
-                        message.id = 1;
-                        auto packet = enet_packet_create(&message, sizeof(message), 0);
-                        enet_peer_send(peer, 0, packet);
-                    }
-                    break;
-                    case SDLK_F3:
-                    {
-                        ch::message_id message;
-                        message.type = ch::message_type::START_CONVERSATION;
-                        message.id = 0;
-                        auto packet = enet_packet_create(&message, sizeof(message), 0);
-                        enet_peer_send(peer, 0, packet);
-                    }
-                    break;
-                    case SDLK_F4:
-                    {
-                        ch::message_id message;
-                        message.type = ch::message_type::START_CONVERSATION;
-                        message.id = 1;
-                        auto packet = enet_packet_create(&message, sizeof(message), 0);
-                        enet_peer_send(peer, 0, packet);
-                    }
-                    break;
-                    case SDLK_F5:
-                    {
-                        ch::message_quest_status message;
-                        message.type = ch::message_type::QUEST_STATUS;
-                        message.status = {0, 1};
-                        auto packet = enet_packet_create(&message, sizeof(message), 0);
-                        enet_peer_send(peer, 0, packet);
-                    }
-                    break;
-                    case SDLK_F6:
-                    {
-                        ch::message_quest_status message;
-                        message.type = ch::message_type::QUEST_STATUS;
-                        message.status = {0, 3};
-                        auto packet = enet_packet_create(&message, sizeof(message), 0);
-                        enet_peer_send(peer, 0, packet);
-                    }
-                    break;
                     }
                 }
                 break;
-                case SDL_QUIT:
+                case SDLK_ESCAPE:
                 {
-                    quit = true;
+                    quest_log_open = false;
+
+                    ch::message message;
+                    message.type = ch::message_type::END_CONVERSATION;
+                    auto packet = enet_packet_create(&message, sizeof(message), 0);
+                    client->send(packet);
+                }
+                break;
+                case SDLK_SPACE:
+                {
+                    if (player.conversation_node)
+                    {
+                        ch::message message;
+                        message.type = ch::message_type::ADVANCE_CONVERSATION;
+                        auto packet = enet_packet_create(&message, sizeof(message), 0);
+                        client->send(packet);
+                    }
+                    else
+                    {
+                        ch::message message;
+                        message.type = ch::message_type::ATTACK;
+                        auto packet = enet_packet_create(&message, sizeof(message), 0);
+                        client->send(packet);
+                    }
+                }
+                break;
+                case SDLK_1:
+                case SDLK_2:
+                case SDLK_3:
+                case SDLK_4:
+                case SDLK_5:
+                case SDLK_6:
+                case SDLK_7:
+                case SDLK_8:
+                case SDLK_9:
+                {
+                    if (player.conversation_node)
+                    {
+                        ch::message_id message;
+                        message.type = ch::message_type::CHOOSE_CONVERSATION_RESPONSE;
+                        message.id = event.key.keysym.sym - 48;
+                        auto packet = enet_packet_create(&message, sizeof(message), 0);
+                        client->send(packet);
+                    }
+                }
+                break;
+                case SDLK_j:
+                {
+                    quest_log_open = !quest_log_open;
+                }
+                break;
+                case SDLK_F1:
+                {
+                    ch::message_id message;
+                    message.type = ch::message_type::CHANGE_MAP;
+                    message.id = 0;
+                    auto packet = enet_packet_create(&message, sizeof(message), 0);
+                    client->send(packet);
+                }
+                break;
+                case SDLK_F2:
+                {
+                    ch::message_id message;
+                    message.type = ch::message_type::CHANGE_MAP;
+                    message.id = 1;
+                    auto packet = enet_packet_create(&message, sizeof(message), 0);
+                    client->send(packet);
+                }
+                break;
+                case SDLK_F3:
+                {
+                    ch::message_id message;
+                    message.type = ch::message_type::START_CONVERSATION;
+                    message.id = 0;
+                    auto packet = enet_packet_create(&message, sizeof(message), 0);
+                    client->send(packet);
+                }
+                break;
+                case SDLK_F4:
+                {
+                    ch::message_id message;
+                    message.type = ch::message_type::START_CONVERSATION;
+                    message.id = 1;
+                    auto packet = enet_packet_create(&message, sizeof(message), 0);
+                    client->send(packet);
+                }
+                break;
+                case SDLK_F5:
+                {
+                    ch::message_quest_status message;
+                    message.type = ch::message_type::QUEST_STATUS;
+                    message.status = {0, 1};
+                    auto packet = enet_packet_create(&message, sizeof(message), 0);
+                    client->send(packet);
+                }
+                break;
+                case SDLK_F6:
+                {
+                    ch::message_quest_status message;
+                    message.type = ch::message_type::QUEST_STATUS;
+                    message.status = {0, 3};
+                    auto packet = enet_packet_create(&message, sizeof(message), 0);
+                    client->send(packet);
                 }
                 break;
                 }
             }
-        }
-
-        {
-            ENetEvent event;
-            while (enet_host_service(host, &event, 0) > 0)
+            break;
+            case SDL_QUIT:
             {
-                switch (event.type)
-                {
-                case ENET_EVENT_TYPE_RECEIVE:
-                {
-                    const auto type = reinterpret_cast<ch::message *>(event.packet->data)->type;
-
-                    switch (type)
-                    {
-                    case ch::message_type::CLIENT_JOINED:
-                    {
-                        const auto message = reinterpret_cast<ch::message_id *>(event.packet->data);
-
-                        std::cout << "[Client] Client " << message->id << " connected" << std::endl;
-
-                        clients.at(message->id).id = message->id;
-                    }
-                    break;
-                    case ch::message_type::CLIENT_DISCONNECTED:
-                    {
-                        const auto message = reinterpret_cast<ch::message_id *>(event.packet->data);
-
-                        std::cout << "[Client] Client " << message->id << " disconnected" << std::endl;
-
-                        clients.at(message->id).id = ch::server::max_clients;
-                    }
-                    break;
-                    case ch::message_type::QUEST_STATUS:
-                    {
-                        const auto message = reinterpret_cast<ch::message_quest_status *>(event.packet->data);
-
-                        std::cout << "[Client] Client " << message->id << " has advanced quest " << message->status.quest_index << " to stage " << message->status.stage_index << std::endl;
-
-                        clients.at(message->id).player.set_quest_status(message->status);
-                    }
-                    break;
-                    case ch::message_type::GAME_STATE:
-                    {
-                        const auto message = reinterpret_cast<ch::message_game_state *>(event.packet->data);
-
-                        for (std::size_t i = 0; i < message->clients.size(); i++)
-                        {
-                            clients.at(i).id = message->clients.at(i).id;
-
-                            clients.at(i).player.map_index = message->clients.at(i).player.map_index;
-
-                            clients.at(i).player.pos_x = message->clients.at(i).player.pos_x;
-                            clients.at(i).player.pos_y = message->clients.at(i).player.pos_y;
-
-                            clients.at(i).player.direction = message->clients.at(i).player.direction;
-                            clients.at(i).player.animation = message->clients.at(i).player.animation;
-                            clients.at(i).player.frame_index = message->clients.at(i).player.frame_index;
-
-                            if (message->clients.at(i).player.in_conversation)
-                            {
-                                clients.at(i).player.conversation_root = world.conversations.at(message->clients.at(i).player.conversation_root_index);
-                                clients.at(i).player.conversation_node = clients.at(i).player.conversation_root->find_by_node_index(message->clients.at(i).player.conversation_node_index);
-                            }
-                            else
-                            {
-                                clients.at(i).player.conversation_root = nullptr;
-                                clients.at(i).player.conversation_node = nullptr;
-                            }
-                        }
-                    }
-                    break;
-                    default:
-                    {
-                        std::cout << "[Client] Unknown message type " << static_cast<int>(type) << std::endl;
-                    }
-                    break;
-                    }
-
-                    enet_packet_destroy(event.packet);
-                }
-                break;
-                }
+                quit = true;
+            }
+            break;
             }
         }
 
         if (map_index != player.map_index)
         {
             map_index = player.map_index;
-            map.change(&world.maps.at(map_index));
+            active_map.change(&world.maps.at(map_index));
         }
 
-        input.dx = 0;
-        input.dy = 0;
+        {
+            ch::input input;
+            input.dx = 0;
+            input.dy = 0;
 
-        if (keys[SDL_SCANCODE_W])
-        {
-            input.dy = -1;
-        }
-        if (keys[SDL_SCANCODE_A])
-        {
-            input.dx = -1;
-        }
-        if (keys[SDL_SCANCODE_S])
-        {
-            input.dy = 1;
-        }
-        if (keys[SDL_SCANCODE_D])
-        {
-            input.dx = 1;
-        }
+            if (keys[SDL_SCANCODE_W])
+            {
+                input.dy = -1;
+            }
+            if (keys[SDL_SCANCODE_A])
+            {
+                input.dx = -1;
+            }
+            if (keys[SDL_SCANCODE_S])
+            {
+                input.dy = 1;
+            }
+            if (keys[SDL_SCANCODE_D])
+            {
+                input.dx = 1;
+            }
 
-        ch::message_input message;
-        message.type = ch::message_type::INPUT;
-        message.input = input;
-        auto packet = enet_packet_create(&message, sizeof(message), 0);
-        enet_peer_send(peer, 0, packet);
+            ch::message_input message;
+            message.type = ch::message_type::INPUT;
+            message.input = input;
+            auto packet = enet_packet_create(&message, sizeof(message), 0);
+            client->send(packet);
+        }
 
         if (server)
         {
             server->update(delta_time);
         }
 
+        const auto &map = world.maps.at(map_index);
         const auto view_width = window_width / sprite_scale;
         const auto view_height = window_height / sprite_scale;
         auto view_x = static_cast<std::int64_t>(player.pos_x - view_width / 2);
         auto view_y = static_cast<std::int64_t>(player.pos_y - view_height / 2);
-        if (view_x + view_width > map.map->width * map.map->tile_width)
+        if (view_x + view_width > map.width * map.tile_width)
         {
-            view_x = (map.map->width * map.map->tile_width) - view_width;
+            view_x = (map.width * map.tile_width) - view_width;
         }
         if (view_x < 0)
         {
             view_x = 0;
         }
-        if (view_y + view_height > map.map->height * map.map->tile_height)
+        if (view_y + view_height > map.height * map.tile_height)
         {
-            view_y = (map.map->height * map.map->tile_height) - view_height;
+            view_y = (map.height * map.tile_height) - view_height;
         }
         if (view_y < 0)
         {
@@ -564,28 +420,28 @@ int main(int, char *[])
 
         SDL_RenderClear(renderer);
 
-        for (std::int64_t y = view_y / map.map->tile_height; y <= static_cast<std::int64_t>((view_y + view_height) / map.map->tile_height); y++)
+        for (std::int64_t y = view_y / map.tile_height; y <= static_cast<std::int64_t>((view_y + view_height) / map.tile_height); y++)
         {
-            for (std::int64_t x = view_x / map.map->tile_width; x <= static_cast<std::int64_t>((view_x + view_width) / map.map->tile_width); x++)
+            for (std::int64_t x = view_x / map.tile_width; x <= static_cast<std::int64_t>((view_x + view_width) / map.tile_width); x++)
             {
-                for (const auto &layer : map.map->layers)
+                for (const auto &layer : map.layers)
                 {
                     const auto tile = layer.get_tile(x, y);
                     if (tile)
                     {
-                        const auto &map_tileset = map.map->get_map_tileset(tile->gid);
+                        const auto &map_tileset = map.get_map_tileset(tile->gid);
 
                         const SDL_Rect srcrect = {
-                            static_cast<int>(((tile->gid - map_tileset.first_gid) % map_tileset.tileset->columns) * map.map->tile_width),
-                            static_cast<int>(((tile->gid - map_tileset.first_gid) / map_tileset.tileset->columns) * map.map->tile_height),
-                            static_cast<int>(map.map->tile_width),
-                            static_cast<int>(map.map->tile_height)};
+                            static_cast<int>(((tile->gid - map_tileset.first_gid) % map_tileset.tileset->columns) * map.tile_width),
+                            static_cast<int>(((tile->gid - map_tileset.first_gid) / map_tileset.tileset->columns) * map.tile_height),
+                            static_cast<int>(map.tile_width),
+                            static_cast<int>(map.tile_height)};
 
                         const SDL_Rect dstrect = {
-                            static_cast<int>(((x * map.map->tile_width) - view_x) * sprite_scale),
-                            static_cast<int>(((y * map.map->tile_height) - view_y) * sprite_scale),
-                            static_cast<int>(map.map->tile_width * sprite_scale),
-                            static_cast<int>(map.map->tile_height * sprite_scale)};
+                            static_cast<int>(((x * map.tile_width) - view_x) * sprite_scale),
+                            static_cast<int>(((y * map.tile_height) - view_y) * sprite_scale),
+                            static_cast<int>(map.tile_width * sprite_scale),
+                            static_cast<int>(map.tile_height * sprite_scale)};
 
                         double angle = 0;
                         if (tile->d_flip)
@@ -609,7 +465,7 @@ int main(int, char *[])
 
                         SDL_RenderCopyEx(
                             renderer,
-                            map.sprites.at(map_tileset.index),
+                            active_map.sprites.at(map_tileset.index),
                             &srcrect,
                             &dstrect,
                             angle,
@@ -620,27 +476,27 @@ int main(int, char *[])
             }
         }
 
-        for (const auto &_client : clients)
+        for (const auto &connection : client->connections)
         {
-            if (_client.id != ch::server::max_clients && _client.player.map_index == map_index)
+            if (connection.id != ch::server::max_connections && connection.player.map_index == map_index)
             {
                 SDL_Texture *sprites = nullptr;
                 SDL_Rect srcrect;
-                switch (_client.player.animation)
+                switch (connection.player.animation)
                 {
                 case ch::animation::IDLE:
                     sprites = player_idle_sprites;
-                    srcrect.x = static_cast<int>(_client.player.direction) * 16;
+                    srcrect.x = static_cast<int>(connection.player.direction) * 16;
                     srcrect.y = 0;
                     break;
                 case ch::animation::WALKING:
                     sprites = player_walk_sprites;
-                    srcrect.x = static_cast<int>(_client.player.direction) * 16;
-                    srcrect.y = (_client.player.frame_index % 4) * 16;
+                    srcrect.x = static_cast<int>(connection.player.direction) * 16;
+                    srcrect.y = (connection.player.frame_index % 4) * 16;
                     break;
                 case ch::animation::ATTACKING:
                     sprites = player_attack_sprites;
-                    srcrect.x = static_cast<int>(_client.player.direction) * 16;
+                    srcrect.x = static_cast<int>(connection.player.direction) * 16;
                     srcrect.y = 0;
                     break;
                 }
@@ -648,14 +504,14 @@ int main(int, char *[])
                 srcrect.h = 16;
 
                 const SDL_Rect dstrect = {
-                    static_cast<int>((_client.player.pos_x - view_x) * sprite_scale),
-                    static_cast<int>((_client.player.pos_y - view_y) * sprite_scale),
+                    static_cast<int>((connection.player.pos_x - view_x) * sprite_scale),
+                    static_cast<int>((connection.player.pos_y - view_y) * sprite_scale),
                     static_cast<int>(16 * sprite_scale),
                     static_cast<int>(16 * sprite_scale)};
 
                 SDL_RenderCopy(renderer, sprites, &srcrect, &dstrect);
 
-                draw_text(renderer, font, dstrect.x + 24, dstrect.y - (24 * 2), window_width, {255, 255, 255}, "%zu", _client.id);
+                draw_text(renderer, font, dstrect.x + 24, dstrect.y - (24 * 2), window_width, {255, 255, 255}, "%zu", connection.id);
             }
         }
 
@@ -707,39 +563,7 @@ int main(int, char *[])
         }
     }
 
-    map.deactivate();
-
-    {
-        enet_peer_disconnect(peer, 0);
-
-        auto disconnected = false;
-
-        ENetEvent event;
-        while (enet_host_service(host, &event, 3000) > 0)
-        {
-            if (event.type == ENET_EVENT_TYPE_RECEIVE)
-            {
-                enet_packet_destroy(event.packet);
-            }
-            else if (event.type == ENET_EVENT_TYPE_DISCONNECT)
-            {
-                std::cout << "[Client] Disconnected" << std::endl;
-
-                disconnected = true;
-
-                break;
-            }
-        }
-
-        if (!disconnected)
-        {
-            std::cout << "[Client] Server did not confirm disconnect" << std::endl;
-
-            enet_peer_reset(peer);
-        }
-    }
-
-    enet_host_destroy(host);
+    delete client;
 
     if (server)
     {

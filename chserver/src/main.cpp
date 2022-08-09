@@ -27,6 +27,7 @@ int main(int, char *[])
     atexit(enet_deinitialize);
 
     ch::world world("assets/world.world", "assets/quests.json", "assets/conversations.json");
+
     ch::server server(server_port, world);
 
     auto quit = false;

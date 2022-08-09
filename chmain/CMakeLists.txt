@@ -6,8 +6,8 @@ set(CMAKE_CXX_STANDARD 20)
 find_package(unofficial-enet CONFIG REQUIRED)
 find_package(SDL2 CONFIG REQUIRED)
 find_package(SDL2-image CONFIG REQUIRED)
-find_package(SDL2-mixer CONFIG REQUIRED)
-find_package(SDL2-ttf CONFIG REQUIRED)
+find_package(SDL2_mixer CONFIG REQUIRED)
+find_package(SDL2_ttf CONFIG REQUIRED)
 
 add_executable(${PROJECT_NAME}
     src/main.cpp
@@ -19,6 +19,6 @@ target_link_libraries(${PROJECT_NAME}
         unofficial::enet::enet
         SDL2::SDL2 SDL2::SDL2main
         SDL2::SDL2_image
-        SDL2::SDL2_mixer
-        SDL2::SDL2_ttf
+        $<IF:$<TARGET_EXISTS:SDL2_mixer::SDL2_mixer>,SDL2_mixer::SDL2_mixer,SDL2_mixer::SDL2_mixer-static>
+        $<IF:$<TARGET_EXISTS:SDL2_ttf::SDL2_ttf>,SDL2_ttf::SDL2_ttf,SDL2_ttf::SDL2_ttf-static>
 )
