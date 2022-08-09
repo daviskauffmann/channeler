@@ -3,10 +3,13 @@
 #include <ch/conversation.hpp>
 #include <ch/message.hpp>
 #include <ch/world.hpp>
-#include <iostream>
+#include <spdlog/spdlog.h>
 
 ch::server::server(const std::uint16_t port, ch::world &world)
-    : world(world)
+    : port(port),
+      world(world) {}
+
+bool ch::server::start()
 {
     connections.fill(
         {.id = max_connections});
@@ -15,17 +18,28 @@ ch::server::server(const std::uint16_t port, ch::world &world)
     address.host = ENET_HOST_ANY;
     address.port = port;
     host = enet_host_create(&address, max_connections, 2, 0, 0);
+    if (!host)
+    {
+        spdlog::error("[Server] Failed to create server host");
 
-    std::cout << "[Server] Listening on port " << port << std::endl;
+        return false;
+    }
+
+    spdlog::info("[Server] Started on port {}", port);
+
     listen_thread = std::thread(&ch::server::listen, this);
+
+    return true;
 }
 
-ch::server::~server()
+bool ch::server::stop()
 {
     listening = false;
     listen_thread.join();
 
     enet_host_destroy(host);
+
+    return true;
 }
 
 std::size_t ch::server::get_free_connection_id() const
@@ -100,12 +114,12 @@ void ch::server::listen()
             {
             case ENET_EVENT_TYPE_CONNECT:
             {
-                std::cout << "[Server] Player connected " << event.peer->address.host << ":" << event.peer->address.port << std::endl;
+                spdlog::info("[Server] Player connected {}:{}", event.peer->address.host, event.peer->address.port);
 
                 const auto new_connection_id = get_free_connection_id();
                 if (new_connection_id != max_connections)
                 {
-                    std::cout << "[Server] Assigning ID " << new_connection_id << std::endl;
+                    spdlog::info("[Server] Assigning ID {}", new_connection_id);
 
                     {
                         ch::message_id message;
@@ -133,7 +147,7 @@ void ch::server::listen()
                         new_connection.id = new_connection_id;
                         new_connection.player.on_quest_status_set = [this, new_connection](const ch::quest_status &status)
                         {
-                            std::cout << "[Server] Player " << new_connection.id << " has advanced quest " << status.quest_index << " to stage " << status.stage_index << std::endl;
+                            spdlog::info("[Server] Player {} has advanced quest {} to stage {}", new_connection.id, status.quest_index, status.stage_index);
 
                             ch::message_quest_status message;
                             message.type = ch::message_type::QUEST_STATUS;
@@ -155,6 +169,8 @@ void ch::server::listen()
                 }
                 else
                 {
+                    spdlog::warn("[Server] Player tried to join, but server is full");
+
                     ch::message message;
                     message.type = ch::message_type::SERVER_FULL;
                     auto packet = enet_packet_create(&message, sizeof(message), ENET_PACKET_FLAG_RELIABLE);
@@ -179,7 +195,7 @@ void ch::server::listen()
                 break;
                 case ch::message_type::ATTACK:
                 {
-                    std::cout << "[Server] Player " << connection->id << " attacking" << std::endl;
+                    spdlog::info("[Server] Player {} attacking", connection->id);
 
                     connection->player.attack();
                 }
@@ -188,7 +204,7 @@ void ch::server::listen()
                 {
                     const auto message = reinterpret_cast<ch::message_id *>(event.packet->data);
 
-                    std::cout << "[Server] Player " << connection->id << " changing map to " << message->id << std::endl;
+                    spdlog::info("[Server] Player {} changing map to {}", connection->id, message->id);
 
                     connection->player.map_index = message->id;
                 }
@@ -197,14 +213,14 @@ void ch::server::listen()
                 {
                     const auto message = reinterpret_cast<ch::message_id *>(event.packet->data);
 
-                    std::cout << "[Server] Player " << connection->id << " starting conversation " << message->id << std::endl;
+                    spdlog::info("[Server] Player {} starting conversation {}", connection->id, message->id);
 
                     connection->player.start_conversation(world, message->id);
                 }
                 break;
                 case ch::message_type::ADVANCE_CONVERSATION:
                 {
-                    std::cout << "[Server] Player " << connection->id << " advancing conversation" << std::endl;
+                    spdlog::info("[Server] Player {} advancing conversation", connection->id);
 
                     connection->player.advance_conversation();
                 }
@@ -213,14 +229,14 @@ void ch::server::listen()
                 {
                     const auto message = reinterpret_cast<ch::message_id *>(event.packet->data);
 
-                    std::cout << "[Server] Player " << connection->id << " choosing conversation response " << message->id << std::endl;
+                    spdlog::info("[Server] Player {} choosing conversation response {}", connection->id, message->id);
 
                     connection->player.choose_conversation_response(message->id);
                 }
                 break;
                 case ch::message_type::END_CONVERSATION:
                 {
-                    std::cout << "[Server] Player " << connection->id << " ending conversation" << std::endl;
+                    spdlog::info("[Server] Player {} ending conversation", connection->id);
 
                     connection->player.end_conversation();
                 }
@@ -229,14 +245,14 @@ void ch::server::listen()
                 {
                     const auto message = reinterpret_cast<ch::message_quest_status *>(event.packet->data);
 
-                    std::cout << "[Server] Player " << connection->id << " requesting to change quest " << message->status.quest_index << " to stage " << message->status.stage_index << std::endl;
+                    spdlog::info("[Server] Player {} requesting to change quest {} to stage {}", connection->id, message->status.quest_index, message->status.stage_index);
 
                     connection->player.set_quest_status(message->status);
                 }
                 break;
                 default:
                 {
-                    std::cout << "[Server] Unknown message type " << static_cast<int>(type) << std::endl;
+                    spdlog::error("[Server] Unknown message type {}", static_cast<int>(type));
                 }
                 break;
                 }
@@ -248,7 +264,7 @@ void ch::server::listen()
             {
                 const auto connection = static_cast<ch::connection *>(event.peer->data);
 
-                std::cout << "[Server] Player " << connection->id << " disconnected" << std::endl;
+                spdlog::info("[Server] Player {} disconnected", connection->id);
 
                 {
                     ch::message_id message;

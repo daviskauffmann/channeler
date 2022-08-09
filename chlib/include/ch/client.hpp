@@ -16,15 +16,18 @@ namespace ch
         std::size_t connection_id;
         bool listening = true;
 
-        client(ch::world &world);
-        ~client();
+        client(const char *hostname, std::uint16_t port, ch::world &world);
 
-        bool connect(const char *hostname, std::uint16_t port);
+        bool connect();
+        bool disconnect();
+
         void send(ENetPacket *packet);
 
         ch::player &get_player();
 
     private:
+        const char *hostname;
+        std::uint16_t port;
         ch::world &world;
         ENetHost *host;
         ENetPeer *peer;

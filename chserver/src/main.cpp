@@ -5,7 +5,7 @@
 #include <ch/server.hpp>
 #include <ch/world.hpp>
 #include <enet/enet.h>
-#include <iostream>
+#include <spdlog/spdlog.h>
 
 constexpr std::uint16_t server_port = 8492;
 
@@ -16,12 +16,16 @@ int main(int, char *[])
 {
     if (SDL_Init(SDL_INIT_EVENTS) != 0)
     {
+        spdlog::error("Failed to initialize SDL: {}", SDL_GetError());
+
         return 1;
     }
     atexit(SDL_Quit);
 
     if (enet_initialize() != 0)
     {
+        spdlog::error("Failed to initialize ENet");
+
         return 1;
     }
     atexit(enet_deinitialize);
@@ -29,6 +33,12 @@ int main(int, char *[])
     ch::world world("assets/world.world", "assets/quests.json", "assets/conversations.json");
 
     ch::server server(server_port, world);
+    if (!server.start())
+    {
+        spdlog::error("Failed to start server");
+
+        return 1;
+    }
 
     auto quit = false;
     while (!quit)
@@ -59,6 +69,8 @@ int main(int, char *[])
             SDL_Delay(frame_delay - frame_time);
         }
     }
+
+    server.stop();
 
     return 0;
 }

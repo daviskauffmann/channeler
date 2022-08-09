@@ -3,63 +3,34 @@
 #include <ch/conversation.hpp>
 #include <ch/message.hpp>
 #include <ch/world.hpp>
-#include <iostream>
+#include <spdlog/spdlog.h>
 
-ch::client::client(ch::world &world)
-    : world(world)
+ch::client::client(const char *hostname, std::uint16_t port, ch::world &world)
+    : hostname(hostname),
+      port(port),
+      world(world) {}
+
+bool ch::client::connect()
 {
     connections.fill(
         {.id = ch::server::max_connections});
 
     host = enet_host_create(nullptr, 1, 2, 0, 0);
-}
-
-ch::client::~client()
-{
-    listening = false;
-    listen_thread.join();
-
+    if (!host)
     {
-        enet_peer_disconnect(peer, 0);
+        spdlog::error("[Client] Failed to create client host");
 
-        auto disconnected = false;
-
-        ENetEvent event;
-        while (enet_host_service(host, &event, 3000) > 0)
-        {
-            if (event.type == ENET_EVENT_TYPE_RECEIVE)
-            {
-                enet_packet_destroy(event.packet);
-            }
-            else if (event.type == ENET_EVENT_TYPE_DISCONNECT)
-            {
-                std::cout << "[Client] Disconnected" << std::endl;
-
-                disconnected = true;
-
-                break;
-            }
-        }
-
-        if (!disconnected)
-        {
-            std::cout << "[Client] Server did not confirm disconnect" << std::endl;
-
-            enet_peer_reset(peer);
-        }
+        return false;
     }
 
-    enet_host_destroy(host);
-}
-
-bool ch::client::connect(const char *const hostname, const std::uint16_t port)
-{
     ENetAddress address;
     enet_address_set_host(&address, hostname);
     address.port = port;
     peer = enet_host_connect(host, &address, 2, 0);
     if (!peer)
     {
+        spdlog::error("[Client] Failed to connect to server host");
+
         return false;
     }
 
@@ -70,7 +41,7 @@ bool ch::client::connect(const char *const hostname, const std::uint16_t port)
     {
         if (event.type == ENET_EVENT_TYPE_CONNECT)
         {
-            std::cout << "[Client] Connected to " << hostname << ":" << port << std::endl;
+            spdlog::info("[Client] Connected to server {}:{}", hostname, port);
         }
         else if (event.type == ENET_EVENT_TYPE_RECEIVE)
         {
@@ -80,40 +51,79 @@ bool ch::client::connect(const char *const hostname, const std::uint16_t port)
             {
                 const auto message = reinterpret_cast<ch::message_id *>(event.packet->data);
 
-                std::cout << "[Client] Assigned ID " << message->id << std::endl;
+                spdlog::info("[Client] Assigned ID {}", message->id);
 
                 connected = true;
                 connection_id = message->id;
                 connections.at(connection_id).id = connection_id;
-
-                break;
             }
             else if (type == ch::message_type::SERVER_FULL)
             {
-                std::cout << "[Client] Server full" << std::endl;
+                spdlog::error("[Client] Server full");
             }
             else
             {
-                std::cout << "[Client] Unknown server response" << std::endl;
+                spdlog::error("[Client] Unknown server response");
             }
 
             enet_packet_destroy(event.packet);
+
+            break;
         }
     }
 
     if (!connected)
     {
-        std::cout << "[Client] Could not connect to server" << std::endl;
+        spdlog::error("[Client] Failed to connect to server");
 
         enet_peer_reset(peer);
 
         return false;
     }
 
-    std::cout << "[Client] Successfully joined server" << std::endl;
+    spdlog::info("[Client] Successfully joined server");
+
     listen_thread = std::thread(&ch::client::listen, this);
 
     return true;
+}
+
+bool ch::client::disconnect()
+{
+    listening = false;
+    listen_thread.join();
+
+    enet_peer_disconnect(peer, 0);
+
+    auto disconnected = false;
+
+    ENetEvent event;
+    while (enet_host_service(host, &event, 3000) > 0)
+    {
+        if (event.type == ENET_EVENT_TYPE_RECEIVE)
+        {
+            enet_packet_destroy(event.packet);
+        }
+        else if (event.type == ENET_EVENT_TYPE_DISCONNECT)
+        {
+            spdlog::info("[Client] Successfully disconnected");
+
+            disconnected = true;
+
+            break;
+        }
+    }
+
+    if (!disconnected)
+    {
+        spdlog::error("[Client] Server did not confirm disconnect");
+
+        enet_peer_reset(peer);
+    }
+
+    enet_host_destroy(host);
+
+    return disconnected;
 }
 
 void ch::client::send(ENetPacket *packet)
@@ -146,7 +156,7 @@ void ch::client::listen()
                 {
                     const auto message = reinterpret_cast<ch::message_id *>(event.packet->data);
 
-                    std::cout << "[Client] Player " << message->id << " connected" << std::endl;
+                    spdlog::info("[Client] Player {} connected", message->id);
 
                     connections.at(message->id).id = message->id;
                 }
@@ -155,7 +165,7 @@ void ch::client::listen()
                 {
                     const auto message = reinterpret_cast<ch::message_id *>(event.packet->data);
 
-                    std::cout << "[Client] Player " << message->id << " disconnected" << std::endl;
+                    spdlog::info("[Client] Player {} disconnected", message->id);
 
                     connections.at(message->id).id = ch::server::max_connections;
                 }
@@ -164,7 +174,7 @@ void ch::client::listen()
                 {
                     const auto message = reinterpret_cast<ch::message_quest_status *>(event.packet->data);
 
-                    std::cout << "[Client] Player " << message->id << " has advanced quest " << message->status.quest_index << " to stage " << message->status.stage_index << std::endl;
+                    spdlog::info("[Client] Player {} has advanced quest {} to state {}", message->id, message->status.quest_index, message->status.stage_index);
 
                     connections.at(message->id).player.set_quest_status(message->status);
                 }
@@ -201,7 +211,7 @@ void ch::client::listen()
                 break;
                 default:
                 {
-                    std::cout << "[Client] Unknown message type " << static_cast<int>(type) << std::endl;
+                    spdlog::error("[Client] Unknown message type {}", static_cast<int>(type));
                 }
                 break;
                 }

@@ -13,6 +13,7 @@
 #include <ch/world.hpp>
 #include <enet/enet.h>
 #include <iostream>
+#include <spdlog/spdlog.h>
 #include <stdarg.h>
 
 constexpr const char *window_title = "Channeler";
@@ -81,7 +82,7 @@ void draw_text(
 {
     va_list args;
     va_start(args, fmt);
-    auto size = vsnprintf(NULL, 0, fmt, args) + 1;
+    auto size = vsnprintf(nullptr, 0, fmt, args) + 1;
     auto text = static_cast<char *>(malloc(size));
     vsprintf_s(text, size, fmt, args);
     va_end(args);
@@ -106,6 +107,8 @@ int main(int, char *[])
 {
     if (SDL_Init(SDL_INIT_AUDIO | SDL_INIT_VIDEO) != 0)
     {
+        spdlog::error("Failed to initialize SDL: {}", SDL_GetError());
+
         return 1;
     }
     atexit(SDL_Quit);
@@ -113,6 +116,8 @@ int main(int, char *[])
     constexpr int img_flags = IMG_INIT_PNG;
     if (IMG_Init(img_flags) != img_flags)
     {
+        spdlog::error("Failed to initialize SDL_image: {}", IMG_GetError());
+
         return 1;
     }
     atexit(IMG_Quit);
@@ -120,24 +125,32 @@ int main(int, char *[])
     constexpr int mix_flags = 0;
     if (Mix_Init(mix_flags) != mix_flags)
     {
+        spdlog::error("Failed to initialize SDL_mixer: {}", Mix_GetError());
+
         return 1;
     }
     atexit(Mix_Quit);
 
     if (TTF_Init() != 0)
     {
+        spdlog::error("Failed to initialize SDL_ttf: {}", TTF_GetError());
+
         return 1;
     }
     atexit(TTF_Quit);
 
     if (Mix_OpenAudio(MIX_DEFAULT_FREQUENCY, MIX_DEFAULT_FORMAT, MIX_DEFAULT_CHANNELS, 4096) != 0)
     {
+        spdlog::error("Failed to open audio: {}", Mix_GetError());
+
         return 1;
     }
     atexit(Mix_CloseAudio);
 
     if (enet_initialize() != 0)
     {
+        spdlog::error("Failed to initialize ENet");
+
         return 1;
     }
     atexit(enet_deinitialize);
@@ -157,6 +170,12 @@ int main(int, char *[])
         std::cout << "Hosting server" << std::endl;
 
         server = new ch::server(server_port, world);
+        if (!server->start())
+        {
+            spdlog::error("Failed to start server");
+
+            return 1;
+        }
     }
     else if (response == 2)
     {
@@ -172,6 +191,8 @@ int main(int, char *[])
     SDL_Renderer *renderer;
     if (SDL_CreateWindowAndRenderer(window_width, window_height, 0, &window, &renderer) != 0)
     {
+        spdlog::error("Failed to create window and renderer: {}", SDL_GetError());
+
         return 1;
     }
     SDL_SetWindowTitle(window, window_title);
@@ -182,13 +203,15 @@ int main(int, char *[])
     draw_text(renderer, font, 0, 0, window_width, {255, 255, 255}, "Connecting to server...");
     SDL_RenderPresent(renderer);
 
-    auto *client = new ch::client(world);
-    if (!client->connect(server_host, server_port))
+    auto *client = new ch::client(server_host, server_port, world);
+    if (!client->connect())
     {
+        spdlog::error("Failed to start client");
+
         return 1;
     }
 
-    auto &player = client->get_player();
+    auto &player = client->connections.at(client->connection_id).player;
 
     ch::active_map active_map(renderer);
     std::size_t map_index = 0; // TODO: get initial map from server when connecting
@@ -563,10 +586,12 @@ int main(int, char *[])
         }
     }
 
+    client->disconnect();
     delete client;
 
     if (server)
     {
+        server->stop();
         delete server;
     }
 

@@ -4,6 +4,7 @@ project(chlib)
 set(CMAKE_CXX_STANDARD 20)
 
 find_package(nlohmann_json CONFIG REQUIRED)
+find_package(spdlog CONFIG REQUIRED)
 
 add_library(${PROJECT_NAME}
     src/client.cpp
@@ -23,4 +24,5 @@ target_include_directories(${PROJECT_NAME}
 target_link_libraries(${PROJECT_NAME}
     PRIVATE
         nlohmann_json nlohmann_json::nlohmann_json
+        spdlog::spdlog
 )
