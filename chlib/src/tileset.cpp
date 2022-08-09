@@ -2,9 +2,12 @@
 
 #include <fstream>
 #include <nlohmann/json.hpp>
+#include <spdlog/spdlog.h>
 
 ch::tileset::tileset(const std::string &filename)
 {
+    spdlog::info("Loading tileset {}", filename);
+
     const auto tileset_json = nlohmann::json::parse(std::ifstream(filename));
 
     columns = tileset_json.at("columns");

@@ -56,6 +56,8 @@ namespace ch
                 std::back_inserter(sprites),
                 [this](const ch::map_tileset &map_tileset)
                 {
+                    spdlog::info("Loading image {}", map_tileset.tileset->sprites_filename);
+
                     return IMG_LoadTexture(renderer, map_tileset.tileset->sprites_filename.c_str());
                 });
         }

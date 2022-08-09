@@ -5,6 +5,7 @@
 #include <ch/tileset.hpp>
 #include <fstream>
 #include <nlohmann/json.hpp>
+#include <spdlog/spdlog.h>
 
 ch::world::world(
     const std::string &world_filename,
@@ -12,6 +13,8 @@ ch::world::world(
     const std::string &conversations_filename)
 {
     {
+        spdlog::info("Loading world {}", world_filename);
+
         const auto world_json = nlohmann::json::parse(std::ifstream(world_filename));
 
         for (const auto &map_json : world_json.at("maps"))
@@ -23,6 +26,8 @@ ch::world::world(
     }
 
     {
+        spdlog::info("Loading quests {}", quests_filename);
+
         const auto quests_json = nlohmann::json::parse(std::ifstream(quests_filename));
 
         for (const auto &quest_json : quests_json)
@@ -45,6 +50,8 @@ ch::world::world(
     }
 
     {
+        spdlog::info("Loading conversations {}", conversations_filename);
+
         const auto conversations_json = nlohmann::json::parse(std::ifstream(conversations_filename));
 
         std::size_t root_index = 0;

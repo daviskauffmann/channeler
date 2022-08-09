@@ -4,6 +4,7 @@
 #include <ch/world.hpp>
 #include <fstream>
 #include <nlohmann/json.hpp>
+#include <spdlog/spdlog.h>
 
 const ch::tile *ch::layer::get_tile(const std::size_t x, const std::size_t y) const
 {
@@ -27,6 +28,8 @@ const ch::tile_data &ch::map_tileset::get_tile_data(const std::size_t gid) const
 ch::map::map(const std::string &filename, ch::world &world)
     : filename(filename)
 {
+    spdlog::info("Loading map {}", filename);
+
     const auto map_json = nlohmann::json::parse(std::ifstream(filename));
 
     width = map_json.at("width");
