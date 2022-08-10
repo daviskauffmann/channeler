@@ -4,6 +4,8 @@
 #include "../scene.hpp"
 #include <SDL2/SDL_ttf.h>
 #include <cstddef>
+#include <cstdint>
+#include <memory>
 
 namespace ch
 {
@@ -28,10 +30,10 @@ namespace ch
 
     private:
         TTF_Font *font;
-        ch::world *world;
-        ch::server *server = nullptr;
-        ch::client *client;
-        ch::active_map *active_map;
+        std::unique_ptr<ch::world> world;
+        std::unique_ptr<ch::server> server;
+        std::unique_ptr<ch::client> client;
+        std::unique_ptr<ch::active_map> active_map;
         std::size_t map_index;
         SDL_Texture *player_idle_sprites;
         SDL_Texture *player_walk_sprites;

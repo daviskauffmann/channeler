@@ -72,20 +72,20 @@ ch::game_scene::game_scene(SDL_Renderer *const renderer, const char *const hostn
 {
     font = TTF_OpenFont("assets/NinjaAdventure/HUD/Font/NormalFont.ttf", 18);
 
-    world = new ch::world("assets/world.world", "assets/quests.json", "assets/conversations.json");
+    world = std::make_unique<ch::world>("assets/world.world", "assets/quests.json", "assets/conversations.json");
 
     if (is_host)
     {
-        server = new ch::server(port, *world);
+        server = std::make_unique<ch::server>(port, *world);
     }
 
     SDL_RenderClear(renderer);
     draw_text(renderer, font, 0, 0, window_width, {255, 255, 255}, "Connecting to server...");
     SDL_RenderPresent(renderer);
 
-    client = new ch::client(hostname, port, *world);
+    client = std::make_unique<ch::client>(hostname, port, *world);
 
-    active_map = new ch::active_map(renderer);
+    active_map = std::make_unique<ch::active_map>(renderer);
     map_index = 0; // TODO: get initial map from server when connecting
     active_map->change(&world->maps.at(map_index));
 
@@ -96,15 +96,6 @@ ch::game_scene::game_scene(SDL_Renderer *const renderer, const char *const hostn
 
 ch::game_scene::~game_scene()
 {
-    delete client;
-
-    if (server)
-    {
-        delete server;
-    }
-
-    delete world;
-
     TTF_CloseFont(font);
 }
 

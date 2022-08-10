@@ -2,12 +2,7 @@
 #define CLIENT_HPP
 
 #include "server.hpp"
-
-struct _ENetHost;
-typedef _ENetHost ENetHost;
-
-struct _ENetPeer;
-typedef _ENetPeer ENetPeer;
+#include <memory>
 
 struct _ENetPacket;
 typedef _ENetPacket ENetPacket;
@@ -15,6 +10,8 @@ typedef _ENetPacket ENetPacket;
 namespace ch
 {
     struct input;
+    class host;
+    class peer;
     class player;
 
     class client
@@ -34,8 +31,8 @@ namespace ch
 
     private:
         ch::world &world;
-        ENetHost *host;
-        ENetPeer *peer;
+        std::unique_ptr<ch::host> host;
+        std::unique_ptr<ch::peer> peer;
     };
 }
 

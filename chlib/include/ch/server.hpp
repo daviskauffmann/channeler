@@ -4,13 +4,12 @@
 #include "input.hpp"
 #include "player.hpp"
 #include <array>
+#include <memory>
 #include <thread>
-
-struct _ENetHost;
-typedef _ENetHost ENetHost;
 
 namespace ch
 {
+    class host;
     class world;
 
     struct connection
@@ -37,7 +36,7 @@ namespace ch
 
     private:
         ch::world &world;
-        ENetHost *host;
+        std::unique_ptr<ch::host> host;
         std::thread listen_thread;
 
         void listen();
