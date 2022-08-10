@@ -83,16 +83,11 @@ bool ch::client::connect()
 
     spdlog::info("[Client] Successfully joined server");
 
-    listen_thread = std::thread(&ch::client::listen, this);
-
     return true;
 }
 
 bool ch::client::disconnect()
 {
-    listening = false;
-    listen_thread.join();
-
     enet_peer_disconnect(peer, 0);
 
     auto disconnected = false;
@@ -126,6 +121,92 @@ bool ch::client::disconnect()
     return disconnected;
 }
 
+void ch::client::update()
+{
+    ENetEvent event;
+    while (enet_host_service(host, &event, 0) > 0)
+    {
+        switch (event.type)
+        {
+        case ENET_EVENT_TYPE_RECEIVE:
+        {
+            const auto type = reinterpret_cast<ch::message *>(event.packet->data)->type;
+
+            switch (type)
+            {
+            case ch::message_type::PLAYER_JOINED:
+            {
+                const auto message = reinterpret_cast<ch::message_id *>(event.packet->data);
+
+                spdlog::info("[Client] Player {} connected", message->id);
+
+                connections.at(message->id).id = message->id;
+            }
+            break;
+            case ch::message_type::PLAYER_DISCONNECTED:
+            {
+                const auto message = reinterpret_cast<ch::message_id *>(event.packet->data);
+
+                spdlog::info("[Client] Player {} disconnected", message->id);
+
+                connections.at(message->id).id = ch::server::max_connections;
+            }
+            break;
+            case ch::message_type::QUEST_STATUS:
+            {
+                const auto message = reinterpret_cast<ch::message_quest_status *>(event.packet->data);
+
+                spdlog::info("[Client] Player {} has advanced quest {} to state {}", message->id, message->status.quest_index, message->status.stage_index);
+
+                connections.at(message->id).player.set_quest_status(message->status);
+            }
+            break;
+            case ch::message_type::GAME_STATE:
+            {
+                const auto message = reinterpret_cast<ch::message_game_state *>(event.packet->data);
+
+                for (std::size_t i = 0; i < message->connections.size(); i++)
+                {
+                    connections.at(i).id = message->connections.at(i).id;
+
+                    connections.at(i).player.map_index = message->connections.at(i).player.map_index;
+
+                    connections.at(i).player.pos_x = message->connections.at(i).player.pos_x;
+                    connections.at(i).player.pos_y = message->connections.at(i).player.pos_y;
+
+                    connections.at(i).player.direction = message->connections.at(i).player.direction;
+                    connections.at(i).player.animation = message->connections.at(i).player.animation;
+                    connections.at(i).player.frame_index = message->connections.at(i).player.frame_index;
+
+                    if (message->connections.at(i).player.in_conversation)
+                    {
+                        connections.at(i).player.conversation_root = world.conversations.at(message->connections.at(i).player.conversation_root_index);
+                        connections.at(i).player.conversation_node = connections.at(i).player.conversation_root->find_by_node_index(message->connections.at(i).player.conversation_node_index);
+                    }
+                    else
+                    {
+                        connections.at(i).player.conversation_root = nullptr;
+                        connections.at(i).player.conversation_node = nullptr;
+                    }
+                }
+            }
+            break;
+            default:
+            {
+                spdlog::error("[Client] Unknown message type {}", static_cast<int>(type));
+            }
+            break;
+            }
+
+            enet_packet_destroy(event.packet);
+        }
+        break;
+        }
+    }
+
+    // TODO: client side prediction?
+}
+
 void ch::client::send(ENetPacket *packet)
 {
     // TODO: handle errors?
@@ -135,91 +216,4 @@ void ch::client::send(ENetPacket *packet)
 ch::player &ch::client::get_player()
 {
     return connections.at(connection_id).player;
-}
-
-void ch::client::listen()
-{
-    while (listening)
-    {
-        ENetEvent event;
-        while (enet_host_service(host, &event, 0) > 0)
-        {
-            switch (event.type)
-            {
-            case ENET_EVENT_TYPE_RECEIVE:
-            {
-                const auto type = reinterpret_cast<ch::message *>(event.packet->data)->type;
-
-                switch (type)
-                {
-                case ch::message_type::PLAYER_JOINED:
-                {
-                    const auto message = reinterpret_cast<ch::message_id *>(event.packet->data);
-
-                    spdlog::info("[Client] Player {} connected", message->id);
-
-                    connections.at(message->id).id = message->id;
-                }
-                break;
-                case ch::message_type::PLAYER_DISCONNECTED:
-                {
-                    const auto message = reinterpret_cast<ch::message_id *>(event.packet->data);
-
-                    spdlog::info("[Client] Player {} disconnected", message->id);
-
-                    connections.at(message->id).id = ch::server::max_connections;
-                }
-                break;
-                case ch::message_type::QUEST_STATUS:
-                {
-                    const auto message = reinterpret_cast<ch::message_quest_status *>(event.packet->data);
-
-                    spdlog::info("[Client] Player {} has advanced quest {} to state {}", message->id, message->status.quest_index, message->status.stage_index);
-
-                    connections.at(message->id).player.set_quest_status(message->status);
-                }
-                break;
-                case ch::message_type::GAME_STATE:
-                {
-                    const auto message = reinterpret_cast<ch::message_game_state *>(event.packet->data);
-
-                    for (std::size_t i = 0; i < message->connections.size(); i++)
-                    {
-                        connections.at(i).id = message->connections.at(i).id;
-
-                        connections.at(i).player.map_index = message->connections.at(i).player.map_index;
-
-                        connections.at(i).player.pos_x = message->connections.at(i).player.pos_x;
-                        connections.at(i).player.pos_y = message->connections.at(i).player.pos_y;
-
-                        connections.at(i).player.direction = message->connections.at(i).player.direction;
-                        connections.at(i).player.animation = message->connections.at(i).player.animation;
-                        connections.at(i).player.frame_index = message->connections.at(i).player.frame_index;
-
-                        if (message->connections.at(i).player.in_conversation)
-                        {
-                            connections.at(i).player.conversation_root = world.conversations.at(message->connections.at(i).player.conversation_root_index);
-                            connections.at(i).player.conversation_node = connections.at(i).player.conversation_root->find_by_node_index(message->connections.at(i).player.conversation_node_index);
-                        }
-                        else
-                        {
-                            connections.at(i).player.conversation_root = nullptr;
-                            connections.at(i).player.conversation_node = nullptr;
-                        }
-                    }
-                }
-                break;
-                default:
-                {
-                    spdlog::error("[Client] Unknown message type {}", static_cast<int>(type));
-                }
-                break;
-                }
-
-                enet_packet_destroy(event.packet);
-            }
-            break;
-            }
-        }
-    }
 }

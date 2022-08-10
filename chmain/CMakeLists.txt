@@ -11,6 +11,9 @@ find_package(SDL2_ttf CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
 
 add_executable(${PROJECT_NAME}
+    src/scenes/game_scene.cpp
+    src/scenes/menu_scene.cpp
+    src/draw_text.cpp
     src/main.cpp
 )
 

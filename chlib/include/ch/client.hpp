@@ -14,12 +14,13 @@ namespace ch
     public:
         std::array<ch::connection, ch::server::max_connections> connections;
         std::size_t connection_id;
-        bool listening = true;
 
         client(const char *hostname, std::uint16_t port, ch::world &world);
 
         bool connect();
         bool disconnect();
+
+        void update();
 
         void send(ENetPacket *packet);
 
@@ -31,9 +32,6 @@ namespace ch
         ch::world &world;
         ENetHost *host;
         ENetPeer *peer;
-        std::thread listen_thread;
-
-        void listen();
     };
 }
 
