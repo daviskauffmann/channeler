@@ -3,14 +3,11 @@
 #include <ch/conversation.hpp>
 #include <ch/message.hpp>
 #include <ch/world.hpp>
+#include <enet/enet.h>
 #include <spdlog/spdlog.h>
 
 ch::client::client(const char *hostname, std::uint16_t port, ch::world &world)
-    : hostname(hostname),
-      port(port),
-      world(world) {}
-
-bool ch::client::connect()
+    : world(world)
 {
     connections.fill(
         {.id = ch::server::max_connections});
@@ -18,9 +15,7 @@ bool ch::client::connect()
     host = enet_host_create(nullptr, 1, 2, 0, 0);
     if (!host)
     {
-        spdlog::error("[Client] Failed to create client host");
-
-        return false;
+        throw std::exception("Failed to create ENet host");
     }
 
     ENetAddress address;
@@ -29,12 +24,13 @@ bool ch::client::connect()
     peer = enet_host_connect(host, &address, 2, 0);
     if (!peer)
     {
-        spdlog::error("[Client] Failed to connect to server host");
+        enet_host_destroy(host);
 
-        return false;
+        throw std::exception("Failed to create ENet peer");
     }
 
     bool connected = false;
+    std::string failure_reason = "Host timeout";
 
     ENetEvent event;
     while (enet_host_service(host, &event, 3000) > 0)
@@ -59,11 +55,11 @@ bool ch::client::connect()
             }
             else if (type == ch::message_type::SERVER_FULL)
             {
-                spdlog::error("[Client] Server full");
+                failure_reason = "Server full";
             }
             else
             {
-                spdlog::error("[Client] Unknown server response");
+                failure_reason = "Unknown server response";
             }
 
             enet_packet_destroy(event.packet);
@@ -74,19 +70,18 @@ bool ch::client::connect()
 
     if (!connected)
     {
-        spdlog::error("[Client] Failed to connect to server");
+        spdlog::error("[Client] Failed to connect to server: {}", failure_reason);
 
         enet_peer_reset(peer);
+        enet_host_destroy(host);
 
-        return false;
+        throw std::exception(failure_reason.c_str());
     }
 
     spdlog::info("[Client] Successfully joined server");
-
-    return true;
 }
 
-bool ch::client::disconnect()
+ch::client::~client()
 {
     enet_peer_disconnect(peer, 0);
 
@@ -117,8 +112,6 @@ bool ch::client::disconnect()
     }
 
     enet_host_destroy(host);
-
-    return disconnected;
 }
 
 void ch::client::update()

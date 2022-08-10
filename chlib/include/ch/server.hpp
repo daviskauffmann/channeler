@@ -4,8 +4,10 @@
 #include "input.hpp"
 #include "player.hpp"
 #include <array>
-#include <enet/enet.h>
 #include <thread>
+
+struct _ENetHost;
+typedef _ENetHost ENetHost;
 
 namespace ch
 {
@@ -27,16 +29,13 @@ namespace ch
         bool listening = true;
 
         server(std::uint16_t port, ch::world &world);
-
-        bool start();
-        bool stop();
+        ~server();
 
         std::size_t get_free_connection_id() const;
 
         void update(float delta_time);
 
     private:
-        std::uint16_t port;
         ch::world &world;
         ENetHost *host;
         std::thread listen_thread;

@@ -11,6 +11,8 @@
 #include <ch/server.hpp>
 #include <ch/tileset.hpp>
 #include <ch/world.hpp>
+#include <enet/enet.h>
+#include <exception>
 #include <iostream>
 #include <spdlog/spdlog.h>
 
@@ -75,12 +77,6 @@ ch::game_scene::game_scene(SDL_Renderer *const renderer, const char *const hostn
     if (is_host)
     {
         server = new ch::server(port, *world);
-        if (!server->start())
-        {
-            spdlog::error("Failed to start server");
-
-            return;
-        }
     }
 
     SDL_RenderClear(renderer);
@@ -88,12 +84,6 @@ ch::game_scene::game_scene(SDL_Renderer *const renderer, const char *const hostn
     SDL_RenderPresent(renderer);
 
     client = new ch::client(hostname, port, *world);
-    if (!client->connect())
-    {
-        spdlog::error("Failed to start client");
-
-        return;
-    }
 
     active_map = new ch::active_map(renderer);
     map_index = 0; // TODO: get initial map from server when connecting
@@ -106,12 +96,10 @@ ch::game_scene::game_scene(SDL_Renderer *const renderer, const char *const hostn
 
 ch::game_scene::~game_scene()
 {
-    client->disconnect();
     delete client;
 
     if (server)
     {
-        server->stop();
         delete server;
     }
 

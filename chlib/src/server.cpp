@@ -3,13 +3,11 @@
 #include <ch/conversation.hpp>
 #include <ch/message.hpp>
 #include <ch/world.hpp>
+#include <enet/enet.h>
 #include <spdlog/spdlog.h>
 
 ch::server::server(const std::uint16_t port, ch::world &world)
-    : port(port),
-      world(world) {}
-
-bool ch::server::start()
+    : world(world)
 {
     connections.fill(
         {.id = max_connections});
@@ -20,26 +18,22 @@ bool ch::server::start()
     host = enet_host_create(&address, max_connections, 2, 0, 0);
     if (!host)
     {
-        spdlog::error("[Server] Failed to create server host");
-
-        return false;
+        throw std::exception("Failed to create ENet host");
     }
 
     spdlog::info("[Server] Started on port {}", port);
 
     listen_thread = std::thread(&ch::server::listen, this);
-
-    return true;
 }
 
-bool ch::server::stop()
+ch::server::~server()
 {
     listening = false;
     listen_thread.join();
 
     enet_host_destroy(host);
 
-    return true;
+    spdlog::info("[Server] Successfully stopped");
 }
 
 std::size_t ch::server::get_free_connection_id() const

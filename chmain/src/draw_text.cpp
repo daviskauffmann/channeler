@@ -1,6 +1,6 @@
 #include "draw_text.hpp"
 
-#include <stdarg.h>
+#include <cstdarg>
 
 void draw_text(
     SDL_Renderer *renderer,
