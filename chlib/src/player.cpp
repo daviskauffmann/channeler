@@ -62,11 +62,11 @@ void ch::player::update(const ch::input &input, const ch::map &map, const float 
         acc_y /= acc_len;
     }
 
-    const auto speed = 1000.0f;
+    constexpr auto speed = 1000.0f;
     acc_x *= speed;
     acc_y *= speed;
 
-    const auto drag = 20.0f;
+    constexpr auto drag = 20.0f;
     acc_x -= vel_x * drag;
     acc_y -= vel_y * drag;
 

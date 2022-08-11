@@ -32,13 +32,13 @@ ch::world::world(
 
         for (const auto &quest_json : quests_json)
         {
-            struct ch::quest quest;
+            ch::quest quest;
 
             quest.name = quest_json.at("name");
 
             for (const auto &stage_json : quest_json.at("stages"))
             {
-                struct ch::quest_stage stage;
+                ch::quest_stage stage;
 
                 stage.description = stage_json.at("description");
 

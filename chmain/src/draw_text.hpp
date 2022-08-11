@@ -11,7 +11,7 @@ void draw_text(
     const std::size_t x,
     const std::size_t y,
     const std::size_t w,
-    SDL_Color fg,
-    const char *const fmt, ...);
+    const SDL_Color &fg,
+    const char *fmt, ...);
 
 #endif

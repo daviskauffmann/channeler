@@ -1,6 +1,4 @@
-#include "draw_text.hpp"
 #include "scene.hpp"
-#include "scenes/game_scene.hpp"
 #include "scenes/menu_scene.hpp"
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>

@@ -283,8 +283,8 @@ ch::scene *ch::game_scene::update(
     client->update();
 
     const auto &map = world->maps.at(map_index);
-    const auto view_width = window_width / sprite_scale;
-    const auto view_height = window_height / sprite_scale;
+    constexpr auto view_width = window_width / sprite_scale;
+    constexpr auto view_height = window_height / sprite_scale;
     auto view_x = static_cast<std::int64_t>(player.pos_x - view_width / 2);
     auto view_y = static_cast<std::int64_t>(player.pos_y - view_height / 2);
     if (view_x + view_width > map.width * map.tile_width)
@@ -401,7 +401,7 @@ ch::scene *ch::game_scene::update(
 
     if (quest_log_open)
     {
-        const SDL_Rect rect = {12, 12, window_width - 24, window_height - 24};
+        constexpr SDL_Rect rect = {12, 12, window_width - 24, window_height - 24};
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 200);
         SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
         SDL_RenderFillRect(renderer, &rect);
@@ -419,7 +419,7 @@ ch::scene *ch::game_scene::update(
 
     if (player.conversation_node)
     {
-        const SDL_Rect rect = {12, window_height - 100 - 12, window_width - 24, 100};
+        constexpr SDL_Rect rect = {12, window_height - 100 - 12, window_width - 24, 100};
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, 200);
         SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
         SDL_RenderFillRect(renderer, &rect);
