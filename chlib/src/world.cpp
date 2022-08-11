@@ -58,32 +58,19 @@ ch::world::world(
         for (const auto &conversation_json : conversations_json)
         {
             std::size_t node_index = 0;
-            conversations.push_back(new ch::conversation(conversation_json, root_index++, &node_index));
+            conversations.push_back(std::make_unique<ch::conversation>(conversation_json, root_index++, &node_index));
         }
     }
 }
 
-ch::world::~world()
-{
-    for (const auto &conversation : conversations)
-    {
-        delete conversation;
-    }
-
-    for (const auto &[filename, tileset] : tilesets)
-    {
-        delete tileset;
-    }
-}
-
-ch::tileset *ch::world::load_tileset(const std::string &filename)
+const ch::tileset *ch::world::load_tileset(const std::string &filename)
 {
     if (tilesets.find(filename) == tilesets.end())
     {
-        tilesets.insert({filename, new ch::tileset(filename)});
+        tilesets.insert({filename, std::make_unique<ch::tileset>(filename)});
     }
 
-    return tilesets.at(filename);
+    return tilesets.at(filename).get();
 }
 
 std::size_t ch::world::get_map_index(const std::string &filename) const

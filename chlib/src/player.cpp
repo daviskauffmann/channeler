@@ -106,7 +106,7 @@ void ch::player::attack()
 
 void ch::player::start_conversation(const ch::world &world, const std::size_t root_index)
 {
-    conversation_root = conversation_node = world.conversations.at(root_index);
+    conversation_root = conversation_node = world.conversations.at(root_index).get();
     advance_conversation();
 }
 
@@ -125,11 +125,11 @@ void ch::player::advance_conversation()
 
         if (!conversation_node->has_response_nodes())
         {
-            for (auto child : conversation_node->children)
+            for (const auto &child : conversation_node->children)
             {
                 if (child->check_conditions(*this))
                 {
-                    conversation_node = child;
+                    conversation_node = child.get();
 
                     if (conversation_node->effect.quest_status)
                     {
@@ -146,14 +146,14 @@ void ch::player::advance_conversation()
 void ch::player::choose_conversation_response(const std::size_t choice_index)
 {
     std::size_t valid_choice_index = 0;
-    for (auto child : conversation_node->children)
+    for (const auto &child : conversation_node->children)
     {
         if (child->type == ch::conversation_type::RESPONSE && child->check_conditions(*this))
         {
             valid_choice_index++;
             if (valid_choice_index == choice_index)
             {
-                conversation_node = child;
+                conversation_node = child.get();
                 advance_conversation();
                 break;
             }

@@ -52,8 +52,8 @@ namespace ch
         float animation_timer = 0;
         std::size_t frame_index = 0;
 
-        ch::conversation *conversation_root = nullptr;
-        ch::conversation *conversation_node = nullptr;
+        const ch::conversation *conversation_root = nullptr;
+        const ch::conversation *conversation_node = nullptr;
 
         std::vector<ch::quest_status> quest_statuses;
         std::function<void(const ch::quest_status &)> on_quest_status_set;

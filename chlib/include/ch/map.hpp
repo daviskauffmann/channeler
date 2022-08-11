@@ -32,7 +32,7 @@ namespace ch
         std::size_t index;
 
         std::size_t first_gid;
-        ch::tileset *tileset;
+        const ch::tileset *tileset;
 
         const ch::tile_data &get_tile_data(std::size_t gid) const;
     };

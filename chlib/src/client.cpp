@@ -156,7 +156,7 @@ void ch::client::update()
 
                     if (message->connections.at(i).player.in_conversation)
                     {
-                        connections.at(i).player.conversation_root = world.conversations.at(message->connections.at(i).player.conversation_root_index);
+                        connections.at(i).player.conversation_root = world.conversations.at(message->connections.at(i).player.conversation_root_index).get();
                         connections.at(i).player.conversation_node = connections.at(i).player.conversation_root->find_by_node_index(message->connections.at(i).player.conversation_node_index);
                     }
                     else

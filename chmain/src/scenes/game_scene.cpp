@@ -430,7 +430,7 @@ ch::scene *ch::game_scene::update(
 
         for (std::size_t i = 0; i < player.conversation_node->children.size(); i++)
         {
-            const auto child = player.conversation_node->children.at(i);
+            const auto &child = player.conversation_node->children.at(i);
             if (child->type == ch::conversation_type::RESPONSE && child->check_conditions(player))
             {
                 draw_text(renderer, font, 24, (window_height - 100) + 24 * (i + 1), window_width, {255, 255, 255}, "%zu) %s", i + 1, child->text.c_str());
