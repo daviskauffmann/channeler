@@ -76,9 +76,9 @@ ch::scene *ch::menu_scene::update(
     const int,
     const float)
 {
-    draw_text(renderer, font, 0, 18 * 0, 200, {255, 255, 255}, "Press 1 to host");
-    draw_text(renderer, font, 0, 18 * 1, 200, {255, 255, 255}, "Press 2 to join");
-    draw_text(renderer, font, 0, 18 * 2, 200, {255, 255, 255}, "Press ESC to exit");
+    draw_text(renderer, font, 0, 18 * 0, 0, {255, 255, 255}, "Press 1 to host");
+    draw_text(renderer, font, 0, 18 * 1, 0, {255, 255, 255}, "Press 2 to join");
+    draw_text(renderer, font, 0, 18 * 2, 0, {255, 255, 255}, "Press ESC to exit");
 
     return this;
 }
