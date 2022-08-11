@@ -395,7 +395,7 @@ ch::scene *ch::game_scene::update(
 
             SDL_RenderCopy(renderer, sprites, &srcrect, &dstrect);
 
-            draw_text(renderer, font, dstrect.x + 24, dstrect.y - (24 * 2), window_width, {255, 255, 255}, "%zu", connection.id);
+            draw_text(renderer, font, dstrect.x + 24, dstrect.y - (24 * 2), window_width, {255, 255, 255}, "{}", connection.id);
         }
     }
 
@@ -413,7 +413,7 @@ ch::scene *ch::game_scene::update(
             const auto &status = player.quest_statuses.at(i);
             const auto &quest = world->quests.at(status.quest_index);
             const auto &stage = quest.stages.at(status.stage_index);
-            draw_text(renderer, font, 24, 24 * (i + 1), window_width - 24, {255, 255, 255}, "%s: %s", quest.name.c_str(), stage.description.c_str());
+            draw_text(renderer, font, 24, 24 * (i + 1), window_width - 24, {255, 255, 255}, "{}: {}", quest.name.c_str(), stage.description.c_str());
         }
     }
 
@@ -426,14 +426,14 @@ ch::scene *ch::game_scene::update(
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
         SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
 
-        draw_text(renderer, font, 24, window_height - 100, window_width, {255, 255, 255}, "%s", player.conversation_node->text.c_str());
+        draw_text(renderer, font, 24, window_height - 100, window_width, {255, 255, 255}, "{}", player.conversation_node->text.c_str());
 
         for (std::size_t i = 0; i < player.conversation_node->children.size(); i++)
         {
             const auto &child = player.conversation_node->children.at(i);
             if (child->type == ch::conversation_type::RESPONSE && child->check_conditions(player))
             {
-                draw_text(renderer, font, 24, (window_height - 100) + 24 * (i + 1), window_width, {255, 255, 255}, "%zu) %s", i + 1, child->text.c_str());
+                draw_text(renderer, font, 24, (window_height - 100) + 24 * (i + 1), window_width, {255, 255, 255}, "{}) {}", i + 1, child->text.c_str());
             }
         }
     }

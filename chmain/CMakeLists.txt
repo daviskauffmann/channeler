@@ -4,6 +4,7 @@ project(chmain)
 set(CMAKE_CXX_STANDARD 20)
 
 find_package(unofficial-enet CONFIG REQUIRED)
+find_package(fmt CONFIG REQUIRED)
 find_package(SDL2 CONFIG REQUIRED)
 find_package(SDL2-image CONFIG REQUIRED)
 find_package(SDL2_mixer CONFIG REQUIRED)
@@ -13,7 +14,6 @@ find_package(spdlog CONFIG REQUIRED)
 add_executable(${PROJECT_NAME}
     src/scenes/game_scene.cpp
     src/scenes/menu_scene.cpp
-    src/draw_text.cpp
     src/main.cpp
 )
 
@@ -21,6 +21,7 @@ target_link_libraries(${PROJECT_NAME}
     PRIVATE
         chlib
         unofficial::enet::enet
+        fmt::fmt
         SDL2::SDL2 SDL2::SDL2main
         SDL2::SDL2_image
         $<IF:$<TARGET_EXISTS:SDL2_mixer::SDL2_mixer>,SDL2_mixer::SDL2_mixer,SDL2_mixer::SDL2_mixer-static>
