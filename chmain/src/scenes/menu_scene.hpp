@@ -2,6 +2,7 @@
 #define MENU_SCENE_HPP
 
 #include "../scene.hpp"
+#include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
 
 namespace ch
@@ -9,7 +10,7 @@ namespace ch
     class menu_scene : public ch::scene
     {
     public:
-        menu_scene(SDL_Renderer *renderer);
+        explicit menu_scene(SDL_Renderer *renderer);
         ~menu_scene() override;
 
         ch::scene *handle_event(const SDL_Event &event) override;
@@ -22,6 +23,7 @@ namespace ch
 
     private:
         TTF_Font *font;
+        SDL_Texture *choice_box;
     };
 }
 

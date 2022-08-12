@@ -32,20 +32,7 @@ ch::world::world(
 
         for (const auto &quest_json : quests_json)
         {
-            ch::quest quest;
-
-            quest.name = quest_json.at("name");
-
-            for (const auto &stage_json : quest_json.at("stages"))
-            {
-                ch::quest_stage stage;
-
-                stage.description = stage_json.at("description");
-
-                quest.stages.push_back(stage);
-            }
-
-            quests.push_back(quest);
+            quests.push_back({quest_json});
         }
     }
 
@@ -58,14 +45,14 @@ ch::world::world(
         for (const auto &conversation_json : conversations_json)
         {
             std::size_t node_index = 0;
-            conversations.push_back(std::make_unique<ch::conversation>(conversation_json, root_index++, &node_index));
+            conversations.push_back({conversation_json, root_index++, &node_index});
         }
     }
 }
 
 const ch::tileset *ch::world::load_tileset(const std::string &filename)
 {
-    if (tilesets.find(filename) == tilesets.end())
+    if (!tilesets.contains(filename))
     {
         tilesets.insert({filename, std::make_unique<ch::tileset>(filename)});
     }

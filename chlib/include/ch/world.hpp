@@ -16,7 +16,7 @@ namespace ch
     public:
         std::vector<ch::map> maps;
         std::vector<ch::quest> quests;
-        std::vector<std::unique_ptr<ch::conversation>> conversations;
+        std::vector<ch::conversation> conversations;
 
         world(
             const std::string &world_filename,

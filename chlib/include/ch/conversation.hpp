@@ -26,9 +26,8 @@ namespace ch
         std::unique_ptr<ch::quest_status> quest_status;
     };
 
-    class conversation
+    struct conversation
     {
-    public:
         const std::size_t root_index;
         const std::size_t node_index;
 
@@ -39,7 +38,7 @@ namespace ch
         std::string text = "";
         std::string jump_id = "";
 
-        std::vector<std::unique_ptr<ch::conversation>> children;
+        std::vector<ch::conversation> children;
 
         conversation(const nlohmann::json &conversation_json, std::size_t root_index, std::size_t *node_index);
 

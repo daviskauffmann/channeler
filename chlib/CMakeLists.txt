@@ -13,6 +13,7 @@ add_library(${PROJECT_NAME}
     src/map.cpp
     src/peer.cpp
     src/player.cpp
+    src/quest.cpp
     src/server.cpp
     src/tileset.cpp
     src/world.cpp

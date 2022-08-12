@@ -9,10 +9,10 @@ typedef _ENetPacket ENetPacket;
 
 namespace ch
 {
-    struct input;
     class host;
+    struct input;
     class peer;
-    class player;
+    struct player;
 
     class client
     {

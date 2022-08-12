@@ -6,9 +6,9 @@
 
 namespace ch
 {
-    class conversation;
+    struct conversation;
     struct input;
-    class map;
+    struct map;
     class world;
 
     enum class direction
@@ -32,9 +32,8 @@ namespace ch
         std::size_t stage_index;
     };
 
-    class player
+    struct player
     {
-    public:
         std::size_t map_index = 0;
 
         float pos_x = 100;

@@ -46,11 +46,6 @@ std::size_t ch::server::get_free_connection_id() const
 
 void ch::server::update(const float delta_time)
 {
-    for (std::size_t i = 0; i < world.maps.size(); i++)
-    {
-        world.maps.at(i).update(delta_time);
-    }
-
     for (auto &connection : connections)
     {
         if (connection.id != max_connections)

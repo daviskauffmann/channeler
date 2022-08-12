@@ -68,7 +68,7 @@ ch::conversation::conversation(const nlohmann::json &conversation_json, const st
         for (const auto &child_json : conversation_json.at("children"))
         {
             (*node_index)++;
-            children.push_back(std::make_unique<ch::conversation>(child_json, root_index, node_index));
+            children.push_back({child_json, root_index, node_index});
         }
     }
 }
@@ -78,9 +78,9 @@ bool ch::conversation::has_response_nodes() const
     return std::any_of(
         children.begin(),
         children.end(),
-        [](const std::unique_ptr<ch::conversation> &child)
+        [](const ch::conversation &child)
         {
-            return child->type == ch::conversation_type::RESPONSE;
+            return child.type == ch::conversation_type::RESPONSE;
         });
 }
 
@@ -106,10 +106,10 @@ const ch::conversation *ch::conversation::find_by_node_index(const std::size_t i
 
     for (const auto &child : children)
     {
-        const auto result = child->find_by_node_index(index);
-        if (result)
+        const auto child_ptr = child.find_by_node_index(index);
+        if (child_ptr)
         {
-            return result;
+            return child_ptr;
         }
     }
 
@@ -125,10 +125,10 @@ const ch::conversation *ch::conversation::find_by_id(const std::string &id_to_fi
 
     for (const auto &child : children)
     {
-        const auto result = child->find_by_id(id_to_find);
-        if (result)
+        const auto child_ptr = child.find_by_id(id_to_find);
+        if (child_ptr)
         {
-            return result;
+            return child_ptr;
         }
     }
 

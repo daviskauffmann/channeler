@@ -11,9 +11,8 @@ namespace ch
         bool solid;
     };
 
-    class tileset
+    struct tileset
     {
-    public:
         std::size_t columns;
         std::string sprites_filename;
         std::vector<ch::tile_data> tile_data;

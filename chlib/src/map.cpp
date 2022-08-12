@@ -6,6 +6,28 @@
 #include <nlohmann/json.hpp>
 #include <spdlog/spdlog.h>
 
+ch::layer::layer(const nlohmann::json &layer_json)
+{
+    width = layer_json.at("width");
+    height = layer_json.at("height");
+
+    for (const auto &tile_json : layer_json.at("data"))
+    {
+        const std::int64_t gid = tile_json;
+        constexpr std::uint32_t h_flip_flag = 0x80000000;
+        constexpr std::uint32_t v_flip_flag = 0x40000000;
+        constexpr std::uint32_t d_flip_flag = 0x20000000;
+
+        ch::tile tile;
+        tile.gid = gid & ~(h_flip_flag | v_flip_flag | d_flip_flag);
+        tile.h_flip = gid & h_flip_flag;
+        tile.v_flip = gid & v_flip_flag;
+        tile.d_flip = gid & d_flip_flag;
+
+        tiles.push_back(tile);
+    }
+}
+
 const ch::tile *ch::layer::get_tile(const std::size_t x, const std::size_t y) const
 {
     if (x < width && y < height)
@@ -18,6 +40,15 @@ const ch::tile *ch::layer::get_tile(const std::size_t x, const std::size_t y) co
     }
 
     return nullptr;
+}
+
+ch::map_tileset::map_tileset(const nlohmann::json &map_tileset_json, std::size_t index, ch::world &world)
+    : index(index)
+{
+    first_gid = map_tileset_json.at("firstgid");
+
+    const std::string source_string = map_tileset_json.at("source");
+    tileset = world.load_tileset("assets/" + source_string.substr(0, source_string.find_last_of(".")) + ".json");
 }
 
 const ch::tile_data &ch::map_tileset::get_tile_data(const std::size_t gid) const
@@ -41,48 +72,18 @@ ch::map::map(const std::string &filename, ch::world &world)
     {
         if (layer_json.at("type") == "tilelayer")
         {
-            ch::layer layer;
-
-            layer.width = layer_json.at("width");
-            layer.height = layer_json.at("height");
-
-            for (const auto &tile_json : layer_json.at("data"))
-            {
-                const std::int64_t gid = tile_json;
-                const std::uint32_t H_FLIP_FLAG = 0x80000000;
-                const std::uint32_t V_FLIP_FLAG = 0x40000000;
-                const std::uint32_t D_FLIP_FLAG = 0x20000000;
-
-                ch::tile tile;
-                tile.gid = gid & ~(H_FLIP_FLAG | V_FLIP_FLAG | D_FLIP_FLAG);
-                tile.h_flip = gid & H_FLIP_FLAG;
-                tile.v_flip = gid & V_FLIP_FLAG;
-                tile.d_flip = gid & D_FLIP_FLAG;
-                layer.tiles.push_back(tile);
-            }
-
-            layers.push_back(layer);
+            layers.push_back({layer_json});
+        }
+        else if (layer_json.at("type") == "objectgroup")
+        {
         }
     }
 
     std::size_t index = 0;
-    for (const auto &tileset_json : map_json.at("tilesets"))
+    for (const auto &map_tileset_json : map_json.at("tilesets"))
     {
-        ch::map_tileset map_tileset;
-
-        map_tileset.index = index++;
-
-        map_tileset.first_gid = tileset_json.at("firstgid");
-
-        const std::string source_string = tileset_json.at("source");
-        map_tileset.tileset = world.load_tileset("assets/" + source_string.substr(0, source_string.find_last_of(".")) + ".json");
-
-        map_tilesets.push_back(map_tileset);
+        map_tilesets.push_back({map_tileset_json, index++, world});
     }
-}
-
-void ch::map::update(float)
-{
 }
 
 const ch::map_tileset &ch::map::get_map_tileset(const size_t gid) const

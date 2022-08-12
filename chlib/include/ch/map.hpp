@@ -1,21 +1,22 @@
 #ifndef CH_MAP_HPP
 #define CH_MAP_HPP
 
+#include <nlohmann/json.hpp>
 #include <string>
 #include <vector>
 
 namespace ch
 {
     class world;
-    class tileset;
+    struct tileset;
     struct tile_data;
 
     struct tile
     {
-        std::size_t gid;
-        bool h_flip;
-        bool v_flip;
-        bool d_flip;
+        std::size_t gid = 0;
+        bool h_flip = false;
+        bool v_flip = false;
+        bool d_flip = false;
     };
 
     struct layer
@@ -23,6 +24,8 @@ namespace ch
         std::size_t width;
         std::size_t height;
         std::vector<ch::tile> tiles;
+
+        layer(const nlohmann::json &layer_json);
 
         const ch::tile *get_tile(std::size_t x, std::size_t y) const;
     };
@@ -34,13 +37,14 @@ namespace ch
         std::size_t first_gid;
         const ch::tileset *tileset;
 
+        map_tileset(const nlohmann::json &map_tileset_json, std::size_t index, ch::world &world);
+
         const ch::tile_data &get_tile_data(std::size_t gid) const;
     };
 
-    class map
+    struct map
     {
-    public:
-        std::string filename;
+        const std::string filename;
 
         std::size_t width;
         std::size_t height;
@@ -50,8 +54,6 @@ namespace ch
         std::vector<ch::map_tileset> map_tilesets;
 
         map(const std::string &filename, ch::world &world);
-
-        void update(float delta_time);
 
         const ch::map_tileset &get_map_tileset(std::size_t gid) const;
 
