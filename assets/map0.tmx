@@ -1,11 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<map version="1.5" tiledversion="1.7.2" orientation="orthogonal" renderorder="right-down" width="20" height="20" tilewidth="16" tileheight="16" infinite="0" nextlayerid="7" nextobjectid="2">
+<map version="1.5" tiledversion="1.7.2" orientation="orthogonal" renderorder="right-down" width="20" height="20" tilewidth="16" tileheight="16" infinite="0" nextlayerid="7" nextobjectid="8">
  <editorsettings>
   <export target="map0.json" format="json"/>
  </editorsettings>
  <tileset firstgid="1" source="TilesetField.tsx"/>
  <tileset firstgid="31" source="TilesetNature.tsx"/>
  <tileset firstgid="367" source="TilesetWater.tsx"/>
+ <tileset firstgid="843" source="Potions.tsx"/>
  <layer id="1" name="Tile Layer 1" width="20" height="20">
   <data encoding="csv">
 16,17,17,17,17,17,17,17,17,17,17,17,17,17,17,17,17,17,17,18,

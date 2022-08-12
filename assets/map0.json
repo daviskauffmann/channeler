@@ -38,7 +38,7 @@
          "y":0
         }],
  "nextlayerid":7,
- "nextobjectid":2,
+ "nextobjectid":8,
  "orientation":"orthogonal",
  "renderorder":"right-down",
  "tiledversion":"1.7.2",
@@ -55,6 +55,10 @@
         {
          "firstgid":367,
          "source":"TilesetWater.tsx"
+        }, 
+        {
+         "firstgid":843,
+         "source":"Potions.tsx"
         }],
  "tilewidth":16,
  "type":"map",

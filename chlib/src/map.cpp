@@ -8,23 +8,47 @@
 
 ch::layer::layer(const nlohmann::json &layer_json)
 {
-    width = layer_json.at("width");
-    height = layer_json.at("height");
-
-    for (const auto &datum_json : layer_json.at("data"))
+    if (layer_json.contains("width"))
     {
-        const std::int64_t gid = datum_json;
-        constexpr std::uint32_t h_flip_flag = 0x80000000;
-        constexpr std::uint32_t v_flip_flag = 0x40000000;
-        constexpr std::uint32_t d_flip_flag = 0x20000000;
+        width = layer_json.at("width");
+    }
 
-        ch::datum datum;
-        datum.gid = gid & ~(h_flip_flag | v_flip_flag | d_flip_flag);
-        datum.h_flip = gid & h_flip_flag;
-        datum.v_flip = gid & v_flip_flag;
-        datum.d_flip = gid & d_flip_flag;
+    if (layer_json.contains("height"))
+    {
+        height = layer_json.at("height");
+    }
 
-        data.push_back(datum);
+    if (layer_json.contains("data"))
+    {
+        for (const auto &datum_json : layer_json.at("data"))
+        {
+            const std::int64_t gid = datum_json;
+            constexpr std::uint32_t h_flip_flag = 0x80000000;
+            constexpr std::uint32_t v_flip_flag = 0x40000000;
+            constexpr std::uint32_t d_flip_flag = 0x20000000;
+
+            ch::datum datum;
+            datum.gid = gid & ~(h_flip_flag | v_flip_flag | d_flip_flag);
+            datum.h_flip = gid & h_flip_flag;
+            datum.v_flip = gid & v_flip_flag;
+            datum.d_flip = gid & d_flip_flag;
+
+            data.push_back(datum);
+        }
+    }
+
+    if (layer_json.contains("objects"))
+    {
+        for (const auto &object_json : layer_json.at("objects"))
+        {
+            ch::object object;
+            object.gid = object_json.at("gid");
+            object.x = object_json.at("x");
+            object.y = object_json.at("y");
+            object.rotation = object_json.at("rotation");
+
+            objects.push_back(object);
+        }
     }
 }
 
@@ -70,13 +94,7 @@ ch::map::map(const std::string &filename, ch::world &world)
 
     for (const auto &layer_json : map_json.at("layers"))
     {
-        if (layer_json.at("type") == "tilelayer")
-        {
-            layers.push_back({layer_json});
-        }
-        else if (layer_json.at("type") == "objectgroup")
-        {
-        }
+        layers.push_back({layer_json});
     }
 
     std::size_t index = 0;

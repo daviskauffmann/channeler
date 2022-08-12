@@ -13,17 +13,26 @@ namespace ch
 
     struct datum
     {
-        std::size_t gid = 0;
-        bool h_flip = false;
-        bool v_flip = false;
-        bool d_flip = false;
+        std::size_t gid;
+        bool h_flip;
+        bool v_flip;
+        bool d_flip;
+    };
+
+    struct object
+    {
+        std::size_t gid;
+        float x;
+        float y;
+        float rotation;
     };
 
     struct layer
     {
-        std::size_t width;
-        std::size_t height;
+        std::size_t width = 0;
+        std::size_t height = 0;
         std::vector<ch::datum> data;
+        std::vector<ch::object> objects;
 
         layer(const nlohmann::json &layer_json);
 

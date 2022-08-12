@@ -24,45 +24,58 @@ constexpr std::size_t sprite_scale = 2;
 
 namespace ch
 {
+    struct loaded_tileset
+    {
+        SDL_Texture *image = nullptr;
+        std::vector<SDL_Texture *> tile_images;
+
+        loaded_tileset(SDL_Renderer *const renderer, const ch::map_tileset &map_tileset)
+        {
+            if (!map_tileset.tileset->image.empty())
+            {
+                spdlog::info("Loading tileset image {}", map_tileset.tileset->image);
+                image = IMG_LoadTexture(renderer, map_tileset.tileset->image.c_str());
+            }
+
+            for (const auto &tile : map_tileset.tileset->tiles)
+            {
+                if (!tile.image.empty())
+                {
+                    spdlog::info("Loading tile image {}", tile.image);
+                    tile_images.push_back(IMG_LoadTexture(renderer, tile.image.c_str()));
+                }
+            }
+        }
+
+        ~loaded_tileset()
+        {
+            for (const auto tile_image : tile_images)
+            {
+                SDL_DestroyTexture(tile_image);
+            }
+
+            if (image)
+            {
+                SDL_DestroyTexture(image);
+            }
+        }
+    };
+
     class active_map
     {
     public:
-        SDL_Renderer *renderer;
-        std::vector<SDL_Texture *> sprites;
+        std::vector<std::unique_ptr<ch::loaded_tileset>> loaded_tilesets;
 
-        explicit active_map(SDL_Renderer *const renderer)
-            : renderer(renderer)
+        active_map(SDL_Renderer *const renderer, const ch::map &map)
         {
-        }
-
-        ~active_map()
-        {
-            deactivate();
-        }
-
-        void change(const ch::map &map)
-        {
-            deactivate();
-
             std::transform(
                 map.tilesets.begin(),
                 map.tilesets.end(),
-                std::back_inserter(sprites),
-                [this](const ch::map_tileset &map_tileset)
+                std::back_inserter(loaded_tilesets),
+                [renderer](const ch::map_tileset &map_tileset)
                 {
-                    spdlog::info("Loading image {}", map_tileset.tileset->image);
-
-                    return IMG_LoadTexture(renderer, map_tileset.tileset->image.c_str());
+                    return std::make_unique<ch::loaded_tileset>(renderer, map_tileset);
                 });
-        }
-
-        void deactivate()
-        {
-            for (auto &sprite : sprites)
-            {
-                SDL_DestroyTexture(sprite);
-            }
-            sprites.clear();
         }
     };
 };
@@ -85,9 +98,8 @@ ch::game_scene::game_scene(SDL_Renderer *const renderer, const char *const hostn
 
     client = std::make_unique<ch::client>(hostname, port, *world);
 
-    active_map = std::make_unique<ch::active_map>(renderer);
     map_index = 0; // TODO: get initial map from server when connecting
-    active_map->change(world->maps.at(map_index));
+    active_map = std::make_unique<ch::active_map>(renderer, world->maps.at(map_index));
 
     player_idle_sprites = IMG_LoadTexture(renderer, "assets/NinjaAdventure/Actor/Characters/BlueNinja/SeparateAnim/Idle.png");
     player_walk_sprites = IMG_LoadTexture(renderer, "assets/NinjaAdventure/Actor/Characters/BlueNinja/SeparateAnim/Walk.png");
@@ -272,7 +284,7 @@ ch::scene *ch::game_scene::update(
     if (map_index != player.map_index)
     {
         map_index = player.map_index;
-        active_map->change(world->maps.at(map_index));
+        active_map = std::make_unique<ch::active_map>(renderer, world->maps.at(map_index));
     }
 
     {
@@ -345,17 +357,39 @@ ch::scene *ch::game_scene::update(
                     const auto &map_tileset = map.get_tileset(datum->gid);
                     const auto tileset = map_tileset.tileset;
 
-                    const SDL_Rect srcrect = {
-                        static_cast<int>(((datum->gid - map_tileset.first_gid) % tileset->columns) * map.tile_width),
-                        static_cast<int>(((datum->gid - map_tileset.first_gid) / tileset->columns) * map.tile_height),
-                        static_cast<int>(map.tile_width),
-                        static_cast<int>(map.tile_height)};
+                    SDL_Texture *texture;
+                    SDL_Rect srcrect;
+                    SDL_Rect dstrect;
+                    if (tileset->image.empty())
+                    {
+                        const auto &tile = map_tileset.get_tile(datum->gid);
 
-                    const SDL_Rect dstrect = {
-                        static_cast<int>(((x * map.tile_width) - view_x) * sprite_scale),
-                        static_cast<int>(((y * map.tile_height) - view_y) * sprite_scale),
-                        static_cast<int>(map.tile_width * sprite_scale),
-                        static_cast<int>(map.tile_height * sprite_scale)};
+                        texture = active_map->loaded_tilesets.at(map_tileset.index)->tile_images.at(tile.index);
+                        srcrect = {
+                            0,
+                            0,
+                            static_cast<int>(tile.width),
+                            static_cast<int>(tile.height)};
+                        dstrect = {
+                            static_cast<int>(((x * map.tile_width) - view_x) * sprite_scale),
+                            static_cast<int>(((y * map.tile_height) - view_y) * sprite_scale),
+                            static_cast<int>(tile.width * sprite_scale),
+                            static_cast<int>(tile.height * sprite_scale)};
+                    }
+                    else
+                    {
+                        texture = active_map->loaded_tilesets.at(map_tileset.index)->image;
+                        srcrect = {
+                            static_cast<int>(((datum->gid - map_tileset.first_gid) % tileset->columns) * map.tile_width),
+                            static_cast<int>(((datum->gid - map_tileset.first_gid) / tileset->columns) * map.tile_height),
+                            static_cast<int>(map.tile_width),
+                            static_cast<int>(map.tile_height)};
+                        dstrect = {
+                            static_cast<int>(((x * map.tile_width) - view_x) * sprite_scale),
+                            static_cast<int>(((y * map.tile_height) - view_y) * sprite_scale),
+                            static_cast<int>(map.tile_width * sprite_scale),
+                            static_cast<int>(map.tile_height * sprite_scale)};
+                    }
 
                     double angle = 0;
                     if (datum->d_flip)
@@ -379,7 +413,7 @@ ch::scene *ch::game_scene::update(
 
                     SDL_RenderCopyEx(
                         renderer,
-                        active_map->sprites.at(map_tileset.index),
+                        texture,
                         &srcrect,
                         &dstrect,
                         angle,
@@ -390,26 +424,81 @@ ch::scene *ch::game_scene::update(
         }
     }
 
+    // TODO: respect layer order with tile layers
+    for (const auto &layer : map.layers)
+    {
+        for (const auto &object : layer.objects)
+        {
+            const auto &map_tileset = map.get_tileset(object.gid);
+            const auto tileset = map_tileset.tileset;
+
+            SDL_Rect srcrect;
+            SDL_Rect dstrect;
+            SDL_Texture *texture;
+            if (tileset->image.empty())
+            {
+                const auto &tile = map_tileset.get_tile(object.gid);
+
+                srcrect = {
+                    0,
+                    0,
+                    static_cast<int>(tile.width),
+                    static_cast<int>(tile.height)};
+                dstrect = {
+                    static_cast<int>((object.x - view_x) * sprite_scale),
+                    static_cast<int>((object.y - view_y) * sprite_scale),
+                    static_cast<int>(tile.width * sprite_scale),
+                    static_cast<int>(tile.height * sprite_scale)};
+                texture = active_map->loaded_tilesets.at(map_tileset.index)->tile_images.at(tile.index);
+            }
+            else
+            {
+                srcrect = {
+                    static_cast<int>(((object.gid - map_tileset.first_gid) % tileset->columns) * map.tile_width),
+                    static_cast<int>(((object.gid - map_tileset.first_gid) / tileset->columns) * map.tile_height),
+                    static_cast<int>(map.tile_width),
+                    static_cast<int>(map.tile_height)};
+                dstrect = {
+                    static_cast<int>((object.x - view_x) * sprite_scale),
+                    static_cast<int>((object.y - view_y) * sprite_scale),
+                    static_cast<int>(map.tile_width * sprite_scale),
+                    static_cast<int>(map.tile_height * sprite_scale)};
+                texture = active_map->loaded_tilesets.at(map_tileset.index)->image;
+            }
+
+            double angle = object.rotation;
+
+            SDL_RenderCopyEx(
+                renderer,
+                texture,
+                &srcrect,
+                &dstrect,
+                angle,
+                nullptr,
+                SDL_FLIP_NONE);
+        }
+    }
+
     for (const auto &connection : client->connections)
     {
         if (connection.id != ch::server::max_connections && connection.player.map_index == map_index)
         {
-            SDL_Texture *sprites = nullptr;
+            SDL_Texture *texture = nullptr;
             SDL_Rect srcrect;
             switch (connection.player.animation)
             {
             case ch::animation::IDLE:
-                sprites = player_idle_sprites;
+                texture = player_idle_sprites;
                 srcrect.x = static_cast<int>(connection.player.direction) * 16;
                 srcrect.y = 0;
                 break;
             case ch::animation::WALKING:
-                sprites = player_walk_sprites;
+                texture = player_walk_sprites;
                 srcrect.x = static_cast<int>(connection.player.direction) * 16;
                 srcrect.y = (connection.player.frame_index % 4) * 16;
                 break;
             case ch::animation::ATTACKING:
-                sprites = player_attack_sprites;
+                texture = player_attack_sprites;
                 srcrect.x = static_cast<int>(connection.player.direction) * 16;
                 srcrect.y = 0;
                 break;
@@ -423,7 +512,7 @@ ch::scene *ch::game_scene::update(
                 static_cast<int>(16 * sprite_scale),
                 static_cast<int>(16 * sprite_scale)};
 
-            SDL_RenderCopy(renderer, sprites, &srcrect, &dstrect);
+            SDL_RenderCopy(renderer, texture, &srcrect, &dstrect);
 
             draw_text(renderer, font, dstrect.x + 24, dstrect.y - (24 * 2), window_width, {255, 255, 255}, "{}", connection.id);
         }
