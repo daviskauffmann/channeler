@@ -50,14 +50,14 @@ ch::world::world(
     }
 }
 
-const ch::tileset *ch::world::load_tileset(const std::string &filename)
+std::shared_ptr<ch::tileset> ch::world::load_tileset(const std::string &filename)
 {
     if (!tilesets.contains(filename))
     {
         tilesets.insert({filename, std::make_unique<ch::tileset>(filename)});
     }
 
-    return tilesets.at(filename).get();
+    return tilesets.at(filename);
 }
 
 std::size_t ch::world::get_map_index(const std::string &filename) const

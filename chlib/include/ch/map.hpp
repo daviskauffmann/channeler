@@ -1,6 +1,8 @@
 #ifndef CH_MAP_HPP
 #define CH_MAP_HPP
 
+#include "tileset.hpp"
+#include <memory>
 #include <nlohmann/json.hpp>
 #include <string>
 #include <vector>
@@ -8,8 +10,6 @@
 namespace ch
 {
     class world;
-    struct tileset;
-    struct tile;
 
     struct datum
     {
@@ -35,7 +35,7 @@ namespace ch
         std::size_t index;
 
         std::size_t first_gid;
-        const ch::tileset *tileset;
+        std::shared_ptr<ch::tileset> tileset;
 
         map_tileset(const nlohmann::json &tileset_json, std::size_t index, ch::world &world);
 

@@ -40,13 +40,13 @@ namespace ch
             deactivate();
         }
 
-        void change(ch::map *map)
+        void change(const ch::map &map)
         {
             deactivate();
 
             std::transform(
-                map->tilesets.begin(),
-                map->tilesets.end(),
+                map.tilesets.begin(),
+                map.tilesets.end(),
                 std::back_inserter(sprites),
                 [this](const ch::map_tileset &map_tileset)
                 {
@@ -87,7 +87,7 @@ ch::game_scene::game_scene(SDL_Renderer *const renderer, const char *const hostn
 
     active_map = std::make_unique<ch::active_map>(renderer);
     map_index = 0; // TODO: get initial map from server when connecting
-    active_map->change(&world->maps.at(map_index));
+    active_map->change(world->maps.at(map_index));
 
     player_idle_sprites = IMG_LoadTexture(renderer, "assets/NinjaAdventure/Actor/Characters/BlueNinja/SeparateAnim/Idle.png");
     player_walk_sprites = IMG_LoadTexture(renderer, "assets/NinjaAdventure/Actor/Characters/BlueNinja/SeparateAnim/Walk.png");
@@ -272,7 +272,7 @@ ch::scene *ch::game_scene::update(
     if (map_index != player.map_index)
     {
         map_index = player.map_index;
-        active_map->change(&world->maps.at(map_index));
+        active_map->change(world->maps.at(map_index));
     }
 
     {

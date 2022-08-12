@@ -23,12 +23,12 @@ namespace ch
             const std::string &quests_filename,
             const std::string &conversations_filename);
 
-        const ch::tileset *load_tileset(const std::string &filename);
+        std::shared_ptr<ch::tileset> load_tileset(const std::string &filename);
 
         std::size_t get_map_index(const std::string &filename) const;
 
     private:
-        std::unordered_map<std::string, std::unique_ptr<ch::tileset>> tilesets;
+        std::unordered_map<std::string, std::shared_ptr<ch::tileset>> tilesets;
     };
 }
 
