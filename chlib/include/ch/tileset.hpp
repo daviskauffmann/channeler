@@ -6,7 +6,7 @@
 
 namespace ch
 {
-    struct tile_data
+    struct tile
     {
         bool solid;
     };
@@ -14,8 +14,8 @@ namespace ch
     struct tileset
     {
         std::size_t columns;
-        std::string sprites_filename;
-        std::vector<ch::tile_data> tile_data;
+        std::string image;
+        std::vector<ch::tile> tiles;
 
         tileset(const std::string &filename);
     };

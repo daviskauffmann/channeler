@@ -33,6 +33,7 @@ int main(int, char *[])
     ch::world world("assets/world.world", "assets/quests.json", "assets/conversations.json");
 
     ch::server server(server_port, world);
+    server.start();
 
     auto quit = false;
     while (!quit)
@@ -63,6 +64,8 @@ int main(int, char *[])
             SDL_Delay(frame_delay - frame_time);
         }
     }
+
+    server.stop();
 
     return 0;
 }

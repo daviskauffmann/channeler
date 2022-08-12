@@ -45,14 +45,14 @@ namespace ch
             deactivate();
 
             std::transform(
-                map->map_tilesets.begin(),
-                map->map_tilesets.end(),
+                map->tilesets.begin(),
+                map->tilesets.end(),
                 std::back_inserter(sprites),
                 [this](const ch::map_tileset &map_tileset)
                 {
-                    spdlog::info("Loading image {}", map_tileset.tileset->sprites_filename);
+                    spdlog::info("Loading image {}", map_tileset.tileset->image);
 
-                    return IMG_LoadTexture(renderer, map_tileset.tileset->sprites_filename.c_str());
+                    return IMG_LoadTexture(renderer, map_tileset.tileset->image.c_str());
                 });
         }
 
@@ -96,11 +96,26 @@ ch::game_scene::game_scene(SDL_Renderer *const renderer, const char *const hostn
 
 ch::game_scene::~game_scene()
 {
+    if (client->is_connected())
+    {
+        client->disconnect();
+    }
+
+    if (server && server->is_listening())
+    {
+        server->stop();
+    }
+
     TTF_CloseFont(font);
 }
 
 ch::scene *ch::game_scene::handle_event(const SDL_Event &event)
 {
+    if (!client->is_connected())
+    {
+        return this;
+    }
+
     const auto &player = client->get_player();
 
     switch (event.type)
@@ -238,6 +253,20 @@ ch::scene *ch::game_scene::update(
     const int,
     const float delta_time)
 {
+    if (server && !server->is_listening() && !server->start())
+    {
+        auto scene = new ch::menu_scene(renderer);
+        delete this;
+        return scene;
+    }
+
+    if (!client->is_connected() && !client->connect())
+    {
+        auto scene = new ch::menu_scene(renderer);
+        delete this;
+        return scene;
+    }
+
     const auto &player = client->get_player();
 
     if (map_index != player.map_index)
@@ -280,7 +309,7 @@ ch::scene *ch::game_scene::update(
         server->update(delta_time);
     }
 
-    client->update();
+    client->update(delta_time);
 
     const auto &map = world->maps.at(map_index);
     constexpr auto view_width = window_width / sprite_scale;
@@ -310,14 +339,15 @@ ch::scene *ch::game_scene::update(
         {
             for (const auto &layer : map.layers)
             {
-                const auto tile = layer.get_tile(x, y);
-                if (tile)
+                const auto datum = layer.get_datum(x, y);
+                if (datum)
                 {
-                    const auto &map_tileset = map.get_map_tileset(tile->gid);
+                    const auto &map_tileset = map.get_tileset(datum->gid);
+                    const auto tileset = map_tileset.tileset;
 
                     const SDL_Rect srcrect = {
-                        static_cast<int>(((tile->gid - map_tileset.first_gid) % map_tileset.tileset->columns) * map.tile_width),
-                        static_cast<int>(((tile->gid - map_tileset.first_gid) / map_tileset.tileset->columns) * map.tile_height),
+                        static_cast<int>(((datum->gid - map_tileset.first_gid) % tileset->columns) * map.tile_width),
+                        static_cast<int>(((datum->gid - map_tileset.first_gid) / tileset->columns) * map.tile_height),
                         static_cast<int>(map.tile_width),
                         static_cast<int>(map.tile_height)};
 
@@ -328,20 +358,20 @@ ch::scene *ch::game_scene::update(
                         static_cast<int>(map.tile_height * sprite_scale)};
 
                     double angle = 0;
-                    if (tile->d_flip)
+                    if (datum->d_flip)
                     {
-                        if (tile->h_flip)
+                        if (datum->h_flip)
                         {
                             angle = 90;
                         }
-                        if (tile->v_flip)
+                        if (datum->v_flip)
                         {
                             angle = 270;
                         }
                     }
                     else
                     {
-                        if (tile->h_flip && tile->v_flip)
+                        if (datum->h_flip && datum->v_flip)
                         {
                             angle = 180;
                         }

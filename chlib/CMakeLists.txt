@@ -9,9 +9,7 @@ find_package(spdlog CONFIG REQUIRED)
 add_library(${PROJECT_NAME}
     src/client.cpp
     src/conversation.cpp
-    src/host.cpp
     src/map.cpp
-    src/peer.cpp
     src/player.cpp
     src/quest.cpp
     src/server.cpp

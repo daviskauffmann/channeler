@@ -1,47 +1,57 @@
 #include <ch/server.hpp>
 
 #include <ch/conversation.hpp>
-#include <ch/host.hpp>
 #include <ch/message.hpp>
 #include <ch/world.hpp>
 #include <enet/enet.h>
 #include <spdlog/spdlog.h>
 
 ch::server::server(const std::uint16_t port, ch::world &world)
-    : world(world)
+    : port(port),
+      world(world)
 {
     connections.fill(
         {.id = max_connections});
+}
 
+bool ch::server::is_listening() const
+{
+    return listening;
+}
+
+bool ch::server::start()
+{
     ENetAddress address;
     address.host = ENET_HOST_ANY;
     address.port = port;
-    host = std::make_unique<ch::host>(&address, max_connections, 2, 0, 0);
+    host = enet_host_create(&address, max_connections, 2, 0, 0);
+    if (!host)
+    {
+        spdlog::error("[Server] Failed to create host");
+
+        return false;
+    }
+
+    listening = true;
+    listen_thread = std::thread(&ch::server::listen, this);
 
     spdlog::info("[Server] Started on port {}", port);
 
-    listen_thread = std::thread(&ch::server::listen, this);
+    return true;
 }
 
-ch::server::~server()
+bool ch::server::stop()
 {
     listening = false;
     listen_thread.join();
+    listen_thread = {};
+
+    enet_host_destroy(host);
+    host = nullptr;
 
     spdlog::info("[Server] Successfully stopped");
-}
 
-std::size_t ch::server::get_free_connection_id() const
-{
-    for (std::size_t i = 0; i < max_connections; i++)
-    {
-        if (connections.at(i).id == max_connections)
-        {
-            return i;
-        }
-    }
-
-    return max_connections;
+    return true;
 }
 
 void ch::server::update(const float delta_time)
@@ -83,8 +93,21 @@ void ch::server::update(const float delta_time)
         }
 
         auto packet = enet_packet_create(&message, sizeof(message), 0);
-        enet_host_broadcast(host->enet_host, 0, packet);
+        enet_host_broadcast(host, 0, packet);
     }
+}
+
+std::size_t ch::server::get_free_connection_id() const
+{
+    for (std::size_t i = 0; i < max_connections; i++)
+    {
+        if (connections.at(i).id == max_connections)
+        {
+            return i;
+        }
+    }
+
+    return max_connections;
 }
 
 void ch::server::listen()
@@ -92,7 +115,7 @@ void ch::server::listen()
     while (listening)
     {
         ENetEvent event;
-        while (enet_host_service(host->enet_host, &event, 0) > 0)
+        while (enet_host_service(host, &event, 0) > 0)
         {
             switch (event.type)
             {
@@ -138,7 +161,7 @@ void ch::server::listen()
                             message.id = new_connection.id;
                             message.status = status;
                             auto packet = enet_packet_create(&message, sizeof(message), ENET_PACKET_FLAG_RELIABLE);
-                            enet_host_broadcast(host->enet_host, 0, packet);
+                            enet_host_broadcast(host, 0, packet);
                         };
                         event.peer->data = &new_connection;
                     }
@@ -148,7 +171,7 @@ void ch::server::listen()
                         message.type = ch::message_type::PLAYER_JOINED;
                         message.id = new_connection_id;
                         auto packet = enet_packet_create(&message, sizeof(message), ENET_PACKET_FLAG_RELIABLE);
-                        enet_host_broadcast(host->enet_host, 0, packet);
+                        enet_host_broadcast(host, 0, packet);
                     }
                 }
                 else
@@ -255,7 +278,7 @@ void ch::server::listen()
                     message.type = ch::message_type::PLAYER_DISCONNECTED;
                     message.id = connection->id;
                     auto packet = enet_packet_create(&message, sizeof(message), ENET_PACKET_FLAG_RELIABLE);
-                    enet_host_broadcast(host->enet_host, 0, packet);
+                    enet_host_broadcast(host, 0, packet);
                 }
 
                 {

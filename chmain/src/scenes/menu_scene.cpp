@@ -9,7 +9,7 @@ constexpr const char *server_hostname = "127.0.0.1";
 constexpr std::uint16_t server_port = 8492;
 
 template <typename... Args>
-bool button(
+auto button(
     SDL_Renderer *const renderer,
     SDL_Texture *const texture,
     TTF_Font *font,
@@ -70,30 +70,16 @@ ch::scene *ch::menu_scene::handle_event(const SDL_Event &event)
         break;
         case SDLK_1:
         {
-            try
-            {
-                const auto scene = new ch::game_scene(renderer, server_hostname, server_port, true);
-                delete this;
-                return scene;
-            }
-            catch (const std::exception &e)
-            {
-                spdlog::error(e.what());
-            }
+            const auto scene = new ch::game_scene(renderer, server_hostname, server_port, true);
+            delete this;
+            return scene;
         }
         break;
         case SDLK_2:
         {
-            try
-            {
-                const auto scene = new ch::game_scene(renderer, server_hostname, server_port, false);
-                delete this;
-                return scene;
-            }
-            catch (const std::exception &e)
-            {
-                spdlog::error(e.what());
-            }
+            const auto scene = new ch::game_scene(renderer, server_hostname, server_port, false);
+            delete this;
+            return scene;
         }
         break;
         }

@@ -8,7 +8,7 @@
 #include <string>
 
 template <typename... Args>
-void draw_text(
+auto draw_text(
     SDL_Renderer *const renderer,
     TTF_Font *const font,
     const std::size_t x,

@@ -11,49 +11,49 @@ ch::layer::layer(const nlohmann::json &layer_json)
     width = layer_json.at("width");
     height = layer_json.at("height");
 
-    for (const auto &tile_json : layer_json.at("data"))
+    for (const auto &datum_json : layer_json.at("data"))
     {
-        const std::int64_t gid = tile_json;
+        const std::int64_t gid = datum_json;
         constexpr std::uint32_t h_flip_flag = 0x80000000;
         constexpr std::uint32_t v_flip_flag = 0x40000000;
         constexpr std::uint32_t d_flip_flag = 0x20000000;
 
-        ch::tile tile;
-        tile.gid = gid & ~(h_flip_flag | v_flip_flag | d_flip_flag);
-        tile.h_flip = gid & h_flip_flag;
-        tile.v_flip = gid & v_flip_flag;
-        tile.d_flip = gid & d_flip_flag;
+        ch::datum datum;
+        datum.gid = gid & ~(h_flip_flag | v_flip_flag | d_flip_flag);
+        datum.h_flip = gid & h_flip_flag;
+        datum.v_flip = gid & v_flip_flag;
+        datum.d_flip = gid & d_flip_flag;
 
-        tiles.push_back(tile);
+        data.push_back(datum);
     }
 }
 
-const ch::tile *ch::layer::get_tile(const std::size_t x, const std::size_t y) const
+const ch::datum *ch::layer::get_datum(const std::size_t x, const std::size_t y) const
 {
     if (x < width && y < height)
     {
-        const auto tile = &tiles.at(x + y * width);
-        if (tile->gid)
+        const auto datum = &data.at(x + y * width);
+        if (datum->gid)
         {
-            return tile;
+            return datum;
         }
     }
 
     return nullptr;
 }
 
-ch::map_tileset::map_tileset(const nlohmann::json &map_tileset_json, std::size_t index, ch::world &world)
+ch::map_tileset::map_tileset(const nlohmann::json &tileset_json, std::size_t index, ch::world &world)
     : index(index)
 {
-    first_gid = map_tileset_json.at("firstgid");
+    first_gid = tileset_json.at("firstgid");
 
-    const std::string source_string = map_tileset_json.at("source");
+    const std::string source_string = tileset_json.at("source");
     tileset = world.load_tileset("assets/" + source_string.substr(0, source_string.find_last_of(".")) + ".json");
 }
 
-const ch::tile_data &ch::map_tileset::get_tile_data(const std::size_t gid) const
+const ch::tile &ch::map_tileset::get_tile(const std::size_t gid) const
 {
-    return tileset->tile_data.at(gid - first_gid);
+    return tileset->tiles.at(gid - first_gid);
 }
 
 ch::map::map(const std::string &filename, ch::world &world)
@@ -80,35 +80,35 @@ ch::map::map(const std::string &filename, ch::world &world)
     }
 
     std::size_t index = 0;
-    for (const auto &map_tileset_json : map_json.at("tilesets"))
+    for (const auto &tileset_json : map_json.at("tilesets"))
     {
-        map_tilesets.push_back({map_tileset_json, index++, world});
+        tilesets.push_back({tileset_json, index++, world});
     }
 }
 
-const ch::map_tileset &ch::map::get_map_tileset(const size_t gid) const
+const ch::map_tileset &ch::map::get_tileset(const size_t gid) const
 {
     std::size_t index = 0;
-    for (std::size_t i = 0; i < map_tilesets.size(); i++)
+    for (std::size_t i = 0; i < tilesets.size(); i++)
     {
-        if (map_tilesets.at(i).first_gid <= gid)
+        if (tilesets.at(i).first_gid <= gid)
         {
             index = i;
         }
     }
-    return map_tilesets.at(index);
+    return tilesets.at(index);
 }
 
 bool ch::map::is_solid(const std::size_t x, const std::size_t y) const
 {
     for (const auto &layer : layers)
     {
-        const auto tile = layer.get_tile(x, y);
-        if (tile)
+        const auto datum = layer.get_datum(x, y);
+        if (datum)
         {
-            const auto &map_tileset = get_map_tileset(tile->gid);
-            const auto &tile_data = map_tileset.get_tile_data(tile->gid);
-            if (tile_data.solid)
+            const auto &map_tileset = get_tileset(datum->gid);
+            const auto &tile = map_tileset.get_tile(datum->gid);
+            if (tile.solid)
             {
                 return true;
             }

@@ -13,20 +13,20 @@ ch::tileset::tileset(const std::string &filename)
     columns = tileset_json.at("columns");
 
     const std::string image_string = tileset_json.at("image");
-    sprites_filename = "assets/" + image_string;
+    image = "assets/" + image_string;
 
     for (const auto &tile_json : tileset_json.at("tiles"))
     {
-        ch::tile_data tile_datum;
+        ch::tile tile;
 
         for (const auto &property_json : tile_json.at("properties"))
         {
             if (property_json.at("name") == "solid")
             {
-                tile_datum.solid = property_json.at("value");
+                tile.solid = property_json.at("value");
             }
         }
 
-        tile_data.push_back(tile_datum);
+        tiles.push_back(tile);
     }
 }

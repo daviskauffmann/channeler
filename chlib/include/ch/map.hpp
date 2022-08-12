@@ -9,9 +9,9 @@ namespace ch
 {
     class world;
     struct tileset;
-    struct tile_data;
+    struct tile;
 
-    struct tile
+    struct datum
     {
         std::size_t gid = 0;
         bool h_flip = false;
@@ -23,11 +23,11 @@ namespace ch
     {
         std::size_t width;
         std::size_t height;
-        std::vector<ch::tile> tiles;
+        std::vector<ch::datum> data;
 
         layer(const nlohmann::json &layer_json);
 
-        const ch::tile *get_tile(std::size_t x, std::size_t y) const;
+        const ch::datum *get_datum(std::size_t x, std::size_t y) const;
     };
 
     struct map_tileset
@@ -37,9 +37,9 @@ namespace ch
         std::size_t first_gid;
         const ch::tileset *tileset;
 
-        map_tileset(const nlohmann::json &map_tileset_json, std::size_t index, ch::world &world);
+        map_tileset(const nlohmann::json &tileset_json, std::size_t index, ch::world &world);
 
-        const ch::tile_data &get_tile_data(std::size_t gid) const;
+        const ch::tile &get_tile(std::size_t gid) const;
     };
 
     struct map
@@ -51,11 +51,11 @@ namespace ch
         std::size_t tile_width;
         std::size_t tile_height;
         std::vector<ch::layer> layers;
-        std::vector<ch::map_tileset> map_tilesets;
+        std::vector<ch::map_tileset> tilesets;
 
         map(const std::string &filename, ch::world &world);
 
-        const ch::map_tileset &get_map_tileset(std::size_t gid) const;
+        const ch::map_tileset &get_tileset(std::size_t gid) const;
 
         bool is_solid(std::size_t x, std::size_t y) const;
     };
