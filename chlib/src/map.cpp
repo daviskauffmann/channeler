@@ -42,7 +42,7 @@ const ch::datum *ch::layer::get_datum(const std::size_t x, const std::size_t y) 
     return nullptr;
 }
 
-ch::map_tileset::map_tileset(const nlohmann::json &tileset_json, std::size_t index, ch::world &world)
+ch::map_tileset::map_tileset(const nlohmann::json &tileset_json, const std::size_t index, ch::world &world)
     : index(index)
 {
     first_gid = tileset_json.at("firstgid");

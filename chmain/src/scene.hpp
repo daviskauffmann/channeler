@@ -15,7 +15,7 @@ namespace ch
         scene(const scene &other) = delete;
         scene &operator=(scene &&other) = delete;
         scene &operator=(const scene &other) = delete;
-        virtual ~scene() {}
+        virtual ~scene() = default;
 
         virtual ch::scene *handle_event(const SDL_Event &event) = 0;
         virtual ch::scene *update(
