@@ -13,8 +13,8 @@ namespace ch
         explicit menu_scene(SDL_Renderer *renderer);
         ~menu_scene() override;
 
-        ch::scene *handle_event(const SDL_Event &event) override;
-        ch::scene *update(
+        void handle_event(const SDL_Event &event) override;
+        void update(
             const std::uint8_t *keys,
             std::uint32_t mouse,
             int mouse_x,

@@ -2,18 +2,15 @@
 #define CLIENT_HPP
 
 #include "server.hpp"
-
-struct _ENetHost;
-typedef _ENetHost ENetHost;
-
-struct _ENetPeer;
-typedef _ENetPeer ENetPeer;
+#include <memory>
 
 struct _ENetPacket;
 typedef _ENetPacket ENetPacket;
 
 namespace ch
 {
+    class host;
+    class peer;
     struct player;
 
     class client
@@ -22,11 +19,7 @@ namespace ch
         std::array<ch::connection, ch::server::max_connections> connections;
 
         client(const char *hostname, std::uint16_t port, ch::world &world);
-
-        bool is_connected() const;
-
-        bool connect();
-        bool disconnect();
+        ~client();
 
         void update(float delta_time);
 
@@ -35,13 +28,10 @@ namespace ch
         const ch::player &get_player() const;
 
     private:
-        const char *const hostname;
-        const std::uint16_t port;
         ch::world &world;
-        ENetHost *host = nullptr;
-        ENetPeer *peer = nullptr;
-        bool connected = false;
-        std::size_t connection_id = ch::server::max_connections;
+        std::unique_ptr<ch::host> host;
+        std::unique_ptr<ch::peer> peer;
+        std::size_t connection_id;
     };
 }
 

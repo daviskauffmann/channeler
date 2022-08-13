@@ -84,6 +84,9 @@ ch::game_scene::game_scene(SDL_Renderer *const renderer, const char *const hostn
     : scene(renderer)
 {
     font = TTF_OpenFont("assets/NinjaAdventure/HUD/Font/NormalFont.ttf", 18);
+    player_idle_sprites = IMG_LoadTexture(renderer, "assets/NinjaAdventure/Actor/Characters/BlueNinja/SeparateAnim/Idle.png");
+    player_walk_sprites = IMG_LoadTexture(renderer, "assets/NinjaAdventure/Actor/Characters/BlueNinja/SeparateAnim/Walk.png");
+    player_attack_sprites = IMG_LoadTexture(renderer, "assets/NinjaAdventure/Actor/Characters/BlueNinja/SeparateAnim/Attack.png");
 
     world = std::make_unique<ch::world>("assets/world.world", "assets/quests.json", "assets/conversations.json");
 
@@ -100,34 +103,18 @@ ch::game_scene::game_scene(SDL_Renderer *const renderer, const char *const hostn
 
     map_index = 0; // TODO: get initial map from server when connecting
     active_map = std::make_unique<ch::active_map>(world->maps.at(map_index), renderer);
-
-    player_idle_sprites = IMG_LoadTexture(renderer, "assets/NinjaAdventure/Actor/Characters/BlueNinja/SeparateAnim/Idle.png");
-    player_walk_sprites = IMG_LoadTexture(renderer, "assets/NinjaAdventure/Actor/Characters/BlueNinja/SeparateAnim/Walk.png");
-    player_attack_sprites = IMG_LoadTexture(renderer, "assets/NinjaAdventure/Actor/Characters/BlueNinja/SeparateAnim/Attack.png");
 }
 
 ch::game_scene::~game_scene()
 {
-    if (client->is_connected())
-    {
-        client->disconnect();
-    }
-
-    if (server && server->is_listening())
-    {
-        server->stop();
-    }
-
+    SDL_DestroyTexture(player_attack_sprites);
+    SDL_DestroyTexture(player_walk_sprites);
+    SDL_DestroyTexture(player_idle_sprites);
     TTF_CloseFont(font);
 }
 
-ch::scene *ch::game_scene::handle_event(const SDL_Event &event)
+void ch::game_scene::handle_event(const SDL_Event &event)
 {
-    if (!client->is_connected())
-    {
-        return this;
-    }
-
     const auto &player = client->get_player();
 
     switch (event.type)
@@ -245,40 +232,22 @@ ch::scene *ch::game_scene::handle_event(const SDL_Event &event)
         break;
         case SDLK_F10:
         {
-            auto scene = new ch::menu_scene(renderer);
-            delete this;
-            return scene;
+            return change_scene<ch::menu_scene>(renderer);
         }
         break;
         }
     }
     break;
     }
-
-    return this;
 }
 
-ch::scene *ch::game_scene::update(
+void ch::game_scene::update(
     const std::uint8_t *const keys,
     const std::uint32_t,
     const int,
     const int,
     const float delta_time)
 {
-    if (server && !server->is_listening() && !server->start())
-    {
-        auto scene = new ch::menu_scene(renderer);
-        delete this;
-        return scene;
-    }
-
-    if (!client->is_connected() && !client->connect())
-    {
-        auto scene = new ch::menu_scene(renderer);
-        delete this;
-        return scene;
-    }
-
     const auto &player = client->get_player();
 
     if (map_index != player.map_index)
@@ -558,6 +527,4 @@ ch::scene *ch::game_scene::update(
             }
         }
     }
-
-    return this;
 }

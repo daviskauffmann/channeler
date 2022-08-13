@@ -1,53 +1,31 @@
 #include <ch/client.hpp>
 
 #include <ch/conversation.hpp>
+#include <ch/host.hpp>
 #include <ch/message.hpp>
+#include <ch/peer.hpp>
 #include <ch/world.hpp>
 #include <enet/enet.h>
 #include <spdlog/spdlog.h>
 
 ch::client::client(const char *const hostname, const std::uint16_t port, ch::world &world)
-    : hostname(hostname),
-      port(port),
-      world(world)
+    : world(world)
 {
     connections.fill(
         {.id = ch::server::max_connections});
-}
 
-bool ch::client::is_connected() const
-{
-    return connected;
-}
-
-bool ch::client::connect()
-{
-    host = enet_host_create(nullptr, 1, 2, 0, 0);
-    if (!host)
-    {
-        spdlog::error("[Client] Failed to create host");
-
-        return false;
-    }
+    host = std::make_unique<ch::host>(nullptr, 1, 2, 0, 0);
 
     ENetAddress address;
     enet_address_set_host(&address, hostname);
     address.port = port;
-    peer = enet_host_connect(host, &address, 2, 0);
-    if (!peer)
-    {
-        spdlog::error("[Client] Failed to create peer");
+    peer = std::make_unique<ch::peer>(host->enet_host, &address, 2, 0);
 
-        enet_host_destroy(host);
-        host = nullptr;
-
-        return false;
-    }
-
+    bool connected = false;
     std::string failure_reason = "Host timeout";
 
     ENetEvent event;
-    while (enet_host_service(host, &event, 3000) > 0)
+    while (enet_host_service(host->enet_host, &event, 3000) > 0)
     {
         if (event.type == ENET_EVENT_TYPE_CONNECT)
         {
@@ -84,24 +62,18 @@ bool ch::client::connect()
 
     if (!connected)
     {
-        spdlog::error("[Client] Failed to connect to server: {}", failure_reason);
-
-        enet_peer_reset(peer);
-        peer = nullptr;
-
-        enet_host_destroy(host);
-        host = nullptr;
+        throw std::exception(fmt::format("Failed to connect to server: {}", failure_reason).c_str());
     }
-
-    return connected;
 }
 
-bool ch::client::disconnect()
+ch::client::~client()
 {
-    enet_peer_disconnect(peer, 0);
+    bool disconnected = false;
+
+    enet_peer_disconnect(peer->enet_peer, 0);
 
     ENetEvent event;
-    while (enet_host_service(host, &event, 3000) > 0)
+    while (enet_host_service(host->enet_host, &event, 3000) > 0)
     {
         if (event.type == ENET_EVENT_TYPE_RECEIVE)
         {
@@ -111,32 +83,24 @@ bool ch::client::disconnect()
         {
             spdlog::info("[Client] Successfully disconnected");
 
-            connected = false;
-            connection_id = ch::server::max_connections;
+            disconnected = true;
 
             break;
         }
     }
 
-    if (connected)
+    if (!disconnected)
     {
         spdlog::error("[Client] Server did not confirm disconnect");
 
-        enet_peer_reset(peer);
+        enet_peer_reset(peer->enet_peer);
     }
-
-    peer = nullptr;
-
-    enet_host_destroy(host);
-    host = nullptr;
-
-    return !connected;
 }
 
 void ch::client::update(const float)
 {
     ENetEvent event;
-    while (enet_host_service(host, &event, 0) > 0)
+    while (enet_host_service(host->enet_host, &event, 0) > 0)
     {
         switch (event.type)
         {
@@ -222,7 +186,7 @@ void ch::client::update(const float)
 void ch::client::send(ENetPacket *packet) const
 {
     // TODO: handle errors?
-    enet_peer_send(peer, 0, packet);
+    enet_peer_send(peer->enet_peer, 0, packet);
 }
 
 const ch::player &ch::client::get_player() const

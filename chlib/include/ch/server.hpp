@@ -4,13 +4,12 @@
 #include "input.hpp"
 #include "player.hpp"
 #include <array>
+#include <memory>
 #include <thread>
-
-struct _ENetHost;
-typedef _ENetHost ENetHost;
 
 namespace ch
 {
+    class host;
     class world;
 
     struct connection
@@ -28,19 +27,14 @@ namespace ch
         std::array<ch::connection, max_connections> connections;
 
         server(std::uint16_t port, ch::world &world);
-
-        bool is_listening() const;
-
-        bool start();
-        bool stop();
+        ~server();
 
         void update(float delta_time);
 
     private:
-        const std::uint16_t port;
         ch::world &world;
-        ENetHost *host = nullptr;
-        bool listening = false;
+        std::unique_ptr<ch::host> host;
+        bool listening;
         std::thread listen_thread;
 
         void listen();

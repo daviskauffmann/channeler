@@ -107,15 +107,13 @@ ch::map::map(const std::string &filename, ch::world &world)
 
 const ch::map_tileset &ch::map::get_tileset(const size_t gid) const
 {
-    std::size_t index = 0;
-    for (std::size_t i = 0; i < tilesets.size(); i++)
-    {
-        if (tilesets.at(i).first_gid <= gid)
+    return *std::max_element(
+        tilesets.begin(),
+        tilesets.end(),
+        [gid](const ch::map_tileset &a, const ch::map_tileset &b)
         {
-            index = i;
-        }
-    }
-    return tilesets.at(index);
+            return a.first_gid < b.first_gid && b.first_gid <= gid;
+        });
 }
 
 bool ch::map::is_solid(const std::size_t x, const std::size_t y) const

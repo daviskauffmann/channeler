@@ -54,7 +54,7 @@ ch::menu_scene::~menu_scene()
     SDL_DestroyTexture(choice_box);
 }
 
-ch::scene *ch::menu_scene::handle_event(const SDL_Event &event)
+void ch::menu_scene::handle_event(const SDL_Event &event)
 {
     switch (event.type)
     {
@@ -63,34 +63,18 @@ ch::scene *ch::menu_scene::handle_event(const SDL_Event &event)
         switch (event.key.keysym.sym)
         {
         case SDLK_ESCAPE:
-        {
-            delete this;
-            return nullptr;
-        }
-        break;
+            return delete_scene();
         case SDLK_1:
-        {
-            const auto scene = new ch::game_scene(renderer, server_hostname, server_port, true);
-            delete this;
-            return scene;
-        }
-        break;
+            return change_scene<ch::game_scene>(renderer, server_hostname, server_port, true);
         case SDLK_2:
-        {
-            const auto scene = new ch::game_scene(renderer, server_hostname, server_port, false);
-            delete this;
-            return scene;
-        }
-        break;
+            return change_scene<ch::game_scene>(renderer, server_hostname, server_port, false);
         }
     }
     break;
     }
-
-    return this;
 }
 
-ch::scene *ch::menu_scene::update(
+void ch::menu_scene::update(
     const std::uint8_t *const,
     const std::uint32_t mouse,
     const int mouse_x,
@@ -115,6 +99,4 @@ ch::scene *ch::menu_scene::update(
     {
         spdlog::info("Button 3 Clicked");
     }
-
-    return this;
 }

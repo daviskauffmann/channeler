@@ -76,7 +76,7 @@ int main(int, char *[])
     }
     SDL_SetWindowTitle(window, window_title);
 
-    ch::scene *scene = new ch::menu_scene(renderer);
+    ch::scene::change_scene<ch::menu_scene>(renderer);
 
     auto quit = false;
     while (!quit)
@@ -126,10 +126,10 @@ int main(int, char *[])
             break;
             }
 
-            if (scene)
+            if (ch::scene::current_scene)
             {
-                scene = scene->handle_event(event);
-                if (!scene)
+                ch::scene::current_scene->handle_event(event);
+                if (!ch::scene::current_scene)
                 {
                     quit = true;
                 }
@@ -138,10 +138,10 @@ int main(int, char *[])
 
         SDL_RenderClear(renderer);
 
-        if (scene)
+        if (ch::scene::current_scene)
         {
-            scene = scene->update(keys, mouse, mouse_x, mouse_y, delta_time);
-            if (!scene)
+            ch::scene::current_scene->update(keys, mouse, mouse_x, mouse_y, delta_time);
+            if (!ch::scene::current_scene)
             {
                 quit = true;
             }
@@ -156,9 +156,9 @@ int main(int, char *[])
         }
     }
 
-    if (scene)
+    if (ch::scene::current_scene)
     {
-        delete scene;
+        ch::scene::delete_scene();
     }
 
     SDL_DestroyRenderer(renderer);
