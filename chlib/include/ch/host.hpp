@@ -1,5 +1,5 @@
-#ifndef HOST_HPP
-#define HOST_HPP
+#ifndef CH_HOST_HPP
+#define CH_HOST_HPP
 
 #include <cstddef>
 #include <cstdint>

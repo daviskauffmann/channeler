@@ -33,6 +33,10 @@ ch::server::~server()
     spdlog::info("[Server] Successfully stopped");
 }
 
+void ch::server::handle_event(const SDL_Event &)
+{
+}
+
 void ch::server::update(const float delta_time)
 {
     for (auto &connection : connections)

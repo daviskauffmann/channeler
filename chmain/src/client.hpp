@@ -1,7 +1,8 @@
-#ifndef CLIENT_HPP
-#define CLIENT_HPP
+#ifndef CH_CLIENT_HPP
+#define CH_CLIENT_HPP
 
-#include "server.hpp"
+#include <SDL2/SDL.h>
+#include <ch/server.hpp>
 #include <memory>
 
 struct _ENetPacket;
@@ -21,6 +22,7 @@ namespace ch
         client(const char *hostname, std::uint16_t port, ch::world &world);
         ~client();
 
+        void handle_event(const SDL_Event &event);
         void update(float delta_time);
 
         void send(ENetPacket *packet) const;

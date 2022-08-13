@@ -1,5 +1,5 @@
-#ifndef PEER_HPP
-#define PEER_HPP
+#ifndef CH_PEER_HPP
+#define CH_PEER_HPP
 
 #include <cstddef>
 #include <cstdint>

@@ -3,6 +3,7 @@
 
 #include "input.hpp"
 #include "player.hpp"
+#include <SDL2/SDL.h>
 #include <array>
 #include <memory>
 #include <thread>
@@ -29,6 +30,7 @@ namespace ch
         server(std::uint16_t port, ch::world &world);
         ~server();
 
+        void handle_event(const SDL_Event &event);
         void update(float delta_time);
 
     private:

@@ -1,10 +1,12 @@
 #include "game_scene.hpp"
 
-#include "../draw_text.hpp"
+#include "../client.hpp"
+#include "../display.hpp"
+#include "../font.hpp"
+#include "../texture.hpp"
 #include "menu_scene.hpp"
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
-#include <ch/client.hpp>
 #include <ch/conversation.hpp>
 #include <ch/map.hpp>
 #include <ch/message.hpp>
@@ -16,25 +18,19 @@
 #include <iostream>
 #include <spdlog/spdlog.h>
 
-// TODO: remove!!
-constexpr std::size_t window_width = 640;
-constexpr std::size_t window_height = 480;
-
-constexpr std::size_t sprite_scale = 2;
-
 namespace ch
 {
     struct loaded_tileset
     {
-        SDL_Texture *image = nullptr;
-        std::vector<SDL_Texture *> tile_images;
+        std::unique_ptr<ch::texture> image;
+        std::vector<std::unique_ptr<ch::texture>> tile_images;
 
         loaded_tileset(const ch::map_tileset &map_tileset, SDL_Renderer *const renderer)
         {
             if (!map_tileset.tileset->image.empty())
             {
                 spdlog::info("Loading tileset image {}", map_tileset.tileset->image);
-                image = IMG_LoadTexture(renderer, map_tileset.tileset->image.c_str());
+                image = std::make_unique<ch::texture>(renderer, map_tileset.tileset->image.c_str());
             }
 
             for (const auto &tile : map_tileset.tileset->tiles)
@@ -42,21 +38,8 @@ namespace ch
                 if (!tile.image.empty())
                 {
                     spdlog::info("Loading tile image {}", tile.image);
-                    tile_images.push_back(IMG_LoadTexture(renderer, tile.image.c_str()));
+                    tile_images.push_back(std::make_unique<ch::texture>(renderer, tile.image.c_str()));
                 }
-            }
-        }
-
-        ~loaded_tileset()
-        {
-            for (const auto tile_image : tile_images)
-            {
-                SDL_DestroyTexture(tile_image);
-            }
-
-            if (image)
-            {
-                SDL_DestroyTexture(image);
             }
         }
     };
@@ -80,13 +63,13 @@ namespace ch
     };
 };
 
-ch::game_scene::game_scene(SDL_Renderer *const renderer, const char *const hostname, const std::uint16_t port, const bool is_host)
-    : scene(renderer)
+ch::game_scene::game_scene(const ch::display &display, const char *const hostname, const std::uint16_t port, const bool is_host)
+    : scene(display)
 {
-    font = TTF_OpenFont("assets/NinjaAdventure/HUD/Font/NormalFont.ttf", 18);
-    player_idle_sprites = IMG_LoadTexture(renderer, "assets/NinjaAdventure/Actor/Characters/BlueNinja/SeparateAnim/Idle.png");
-    player_walk_sprites = IMG_LoadTexture(renderer, "assets/NinjaAdventure/Actor/Characters/BlueNinja/SeparateAnim/Walk.png");
-    player_attack_sprites = IMG_LoadTexture(renderer, "assets/NinjaAdventure/Actor/Characters/BlueNinja/SeparateAnim/Attack.png");
+    font = std::make_unique<ch::font>("assets/NinjaAdventure/HUD/Font/NormalFont.ttf", 18);
+    player_idle_sprites = std::make_unique<ch::texture>(display.get_renderer(), "assets/NinjaAdventure/Actor/Characters/BlueNinja/SeparateAnim/Idle.png");
+    player_walk_sprites = std::make_unique<ch::texture>(display.get_renderer(), "assets/NinjaAdventure/Actor/Characters/BlueNinja/SeparateAnim/Walk.png");
+    player_attack_sprites = std::make_unique<ch::texture>(display.get_renderer(), "assets/NinjaAdventure/Actor/Characters/BlueNinja/SeparateAnim/Attack.png");
 
     world = std::make_unique<ch::world>("assets/world.world", "assets/quests.json", "assets/conversations.json");
 
@@ -95,22 +78,14 @@ ch::game_scene::game_scene(SDL_Renderer *const renderer, const char *const hostn
         server = std::make_unique<ch::server>(port, *world);
     }
 
-    SDL_RenderClear(renderer);
-    draw_text(renderer, font, 0, 0, window_width, {255, 255, 255}, "Connecting to server...");
-    SDL_RenderPresent(renderer);
+    display.clear();
+    font->render(display.get_renderer(), 0, 0, 0, {255, 255, 255}, "Connecting to server...");
+    display.present();
 
     client = std::make_unique<ch::client>(hostname, port, *world);
 
     map_index = 0; // TODO: get initial map from server when connecting
-    active_map = std::make_unique<ch::active_map>(world->maps.at(map_index), renderer);
-}
-
-ch::game_scene::~game_scene()
-{
-    SDL_DestroyTexture(player_attack_sprites);
-    SDL_DestroyTexture(player_walk_sprites);
-    SDL_DestroyTexture(player_idle_sprites);
-    TTF_CloseFont(font);
+    active_map = std::make_unique<ch::active_map>(world->maps.at(map_index), display.get_renderer());
 }
 
 void ch::game_scene::handle_event(const SDL_Event &event)
@@ -232,28 +207,35 @@ void ch::game_scene::handle_event(const SDL_Event &event)
         break;
         case SDLK_F10:
         {
-            return change_scene<ch::menu_scene>(renderer);
+            return change_scene<ch::menu_scene>(std::ref(display));
         }
         break;
         }
     }
     break;
     }
+
+    if (server)
+    {
+        server->handle_event(event);
+    }
+
+    client->handle_event(event);
 }
 
 void ch::game_scene::update(
-    const std::uint8_t *const keys,
-    const std::uint32_t,
-    const int,
-    const int,
-    const float delta_time)
+    float delta_time,
+    const std::uint8_t *keys,
+    std::uint32_t,
+    int,
+    int)
 {
     const auto &player = client->get_player();
 
     if (map_index != player.map_index)
     {
         map_index = player.map_index;
-        active_map = std::make_unique<ch::active_map>(world->maps.at(map_index), renderer);
+        active_map = std::make_unique<ch::active_map>(world->maps.at(map_index), display.get_renderer());
     }
 
     {
@@ -293,8 +275,9 @@ void ch::game_scene::update(
     client->update(delta_time);
 
     const auto &map = world->maps.at(map_index);
-    constexpr auto view_width = window_width / sprite_scale;
-    constexpr auto view_height = window_height / sprite_scale;
+    constexpr std::size_t sprite_scale = 2;
+    const auto view_width = display.get_width() / sprite_scale;
+    const auto view_height = display.get_height() / sprite_scale;
     auto view_x = static_cast<std::int64_t>(player.pos_x - view_width / 2);
     auto view_y = static_cast<std::int64_t>(player.pos_y - view_height / 2);
     if (view_x + view_width > map.width * map.tile_width)
@@ -328,14 +311,14 @@ void ch::game_scene::update(
                         const auto &map_tileset = map.get_tileset(datum->gid);
                         const auto tileset = map_tileset.tileset;
 
-                        SDL_Texture *texture;
+                        ch::texture *texture;
                         SDL_Rect srcrect;
                         SDL_Rect dstrect;
                         if (tileset->image.empty())
                         {
                             const auto &tile = map_tileset.get_tile(datum->gid);
 
-                            texture = active_map->loaded_tilesets.at(map_tileset.index)->tile_images.at(tile.index);
+                            texture = active_map->loaded_tilesets.at(map_tileset.index)->tile_images.at(tile.index).get();
                             srcrect = {
                                 0,
                                 0,
@@ -349,7 +332,7 @@ void ch::game_scene::update(
                         }
                         else
                         {
-                            texture = active_map->loaded_tilesets.at(map_tileset.index)->image;
+                            texture = active_map->loaded_tilesets.at(map_tileset.index)->image.get();
                             srcrect = {
                                 static_cast<int>(((datum->gid - map_tileset.first_gid) % tileset->columns) * map.tile_width),
                                 static_cast<int>(((datum->gid - map_tileset.first_gid) / tileset->columns) * map.tile_height),
@@ -382,9 +365,8 @@ void ch::game_scene::update(
                             }
                         }
 
-                        SDL_RenderCopyEx(
-                            renderer,
-                            texture,
+                        texture->render_ex(
+                            display.get_renderer(),
                             &srcrect,
                             &dstrect,
                             angle,
@@ -402,13 +384,14 @@ void ch::game_scene::update(
                 const auto &map_tileset = map.get_tileset(object.gid);
                 const auto tileset = map_tileset.tileset;
 
+                ch::texture *texture;
                 SDL_Rect srcrect;
                 SDL_Rect dstrect;
-                SDL_Texture *texture;
                 if (tileset->image.empty())
                 {
                     const auto &tile = map_tileset.get_tile(object.gid);
 
+                    texture = active_map->loaded_tilesets.at(map_tileset.index)->tile_images.at(tile.index).get();
                     srcrect = {
                         0,
                         0,
@@ -419,10 +402,10 @@ void ch::game_scene::update(
                         static_cast<int>((object.y - view_y) * sprite_scale),
                         static_cast<int>(tile.width * sprite_scale),
                         static_cast<int>(tile.height * sprite_scale)};
-                    texture = active_map->loaded_tilesets.at(map_tileset.index)->tile_images.at(tile.index);
                 }
                 else
                 {
+                    texture = active_map->loaded_tilesets.at(map_tileset.index)->image.get();
                     srcrect = {
                         static_cast<int>(((object.gid - map_tileset.first_gid) % tileset->columns) * map.tile_width),
                         static_cast<int>(((object.gid - map_tileset.first_gid) / tileset->columns) * map.tile_height),
@@ -433,14 +416,12 @@ void ch::game_scene::update(
                         static_cast<int>((object.y - view_y) * sprite_scale),
                         static_cast<int>(map.tile_width * sprite_scale),
                         static_cast<int>(map.tile_height * sprite_scale)};
-                    texture = active_map->loaded_tilesets.at(map_tileset.index)->image;
                 }
 
                 double angle = object.rotation;
 
-                SDL_RenderCopyEx(
-                    renderer,
-                    texture,
+                texture->render_ex(
+                    display.get_renderer(),
                     &srcrect,
                     &dstrect,
                     angle,
@@ -454,24 +435,27 @@ void ch::game_scene::update(
     {
         if (connection.id != ch::server::max_connections && connection.player.map_index == map_index)
         {
-            SDL_Texture *texture = nullptr;
+            ch::texture *texture;
             SDL_Rect srcrect;
             switch (connection.player.animation)
             {
             case ch::animation::IDLE:
-                texture = player_idle_sprites;
+                texture = player_idle_sprites.get();
                 srcrect.x = static_cast<int>(connection.player.direction) * 16;
                 srcrect.y = 0;
                 break;
             case ch::animation::WALKING:
-                texture = player_walk_sprites;
+                texture = player_walk_sprites.get();
                 srcrect.x = static_cast<int>(connection.player.direction) * 16;
                 srcrect.y = (connection.player.frame_index % 4) * 16;
                 break;
             case ch::animation::ATTACKING:
-                texture = player_attack_sprites;
+                texture = player_attack_sprites.get();
                 srcrect.x = static_cast<int>(connection.player.direction) * 16;
                 srcrect.y = 0;
+                break;
+            default:
+                texture = nullptr;
                 break;
             }
             srcrect.w = 16;
@@ -483,47 +467,55 @@ void ch::game_scene::update(
                 static_cast<int>(16 * sprite_scale),
                 static_cast<int>(16 * sprite_scale)};
 
-            SDL_RenderCopy(renderer, texture, &srcrect, &dstrect);
+            texture->render(display.get_renderer(), &srcrect, &dstrect);
 
-            draw_text(renderer, font, dstrect.x + 24, dstrect.y - (24 * 2), window_width, {255, 255, 255}, "{}", connection.id);
+            font->render(display.get_renderer(), dstrect.x + 24, dstrect.y - (24 * 2), display.get_width(), {255, 255, 255}, "{}", connection.id);
         }
     }
 
     if (quest_log_open)
     {
-        constexpr SDL_Rect rect = {12, 12, window_width - 24, window_height - 24};
-        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 200);
-        SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
-        SDL_RenderFillRect(renderer, &rect);
-        SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
-        SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
+        const SDL_Rect rect = {
+            12,
+            12,
+            static_cast<int>(display.get_width()) - 24,
+            static_cast<int>(display.get_height()) - 24};
+        SDL_SetRenderDrawColor(display.get_renderer(), 0, 0, 0, 200);
+        SDL_SetRenderDrawBlendMode(display.get_renderer(), SDL_BLENDMODE_BLEND);
+        SDL_RenderFillRect(display.get_renderer(), &rect);
+        SDL_SetRenderDrawColor(display.get_renderer(), 0, 0, 0, SDL_ALPHA_OPAQUE);
+        SDL_SetRenderDrawBlendMode(display.get_renderer(), SDL_BLENDMODE_NONE);
 
         for (std::size_t i = 0; i < player.quest_statuses.size(); i++)
         {
             const auto &status = player.quest_statuses.at(i);
             const auto &quest = world->quests.at(status.quest_index);
             const auto &stage = quest.stages.at(status.stage_index);
-            draw_text(renderer, font, 24, 24 * (i + 1), window_width - 24, {255, 255, 255}, "{}: {}", quest.name.c_str(), stage.description.c_str());
+            font->render(display.get_renderer(), 24, 24 * (i + 1), display.get_width() - 24, {255, 255, 255}, "{}: {}", quest.name, stage.description);
         }
     }
 
     if (player.conversation_node)
     {
-        constexpr SDL_Rect rect = {12, window_height - 100 - 12, window_width - 24, 100};
-        SDL_SetRenderDrawColor(renderer, 0, 0, 0, 200);
-        SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
-        SDL_RenderFillRect(renderer, &rect);
-        SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
-        SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
+        const SDL_Rect rect = {
+            12,
+            static_cast<int>(display.get_height()) - 100 - 12,
+            static_cast<int>(display.get_width()) - 24,
+            100};
+        SDL_SetRenderDrawColor(display.get_renderer(), 0, 0, 0, 200);
+        SDL_SetRenderDrawBlendMode(display.get_renderer(), SDL_BLENDMODE_BLEND);
+        SDL_RenderFillRect(display.get_renderer(), &rect);
+        SDL_SetRenderDrawColor(display.get_renderer(), 0, 0, 0, SDL_ALPHA_OPAQUE);
+        SDL_SetRenderDrawBlendMode(display.get_renderer(), SDL_BLENDMODE_NONE);
 
-        draw_text(renderer, font, 24, window_height - 100, window_width, {255, 255, 255}, "{}", player.conversation_node->text.c_str());
+        font->render(display.get_renderer(), 24, display.get_height() - 100, display.get_width(), {255, 255, 255}, "{}", player.conversation_node->text);
 
         for (std::size_t i = 0; i < player.conversation_node->children.size(); i++)
         {
             const auto &child = player.conversation_node->children.at(i);
             if (child.type == ch::conversation_type::RESPONSE && child.check_conditions(player))
             {
-                draw_text(renderer, font, 24, (window_height - 100) + 24 * (i + 1), window_width, {255, 255, 255}, "{}) {}", i + 1, child.text.c_str());
+                font->render(display.get_renderer(), 24, (display.get_height() - 100) + 24 * (i + 1), display.get_width(), {255, 255, 255}, "{}) {}", i + 1, child.text);
             }
         }
     }

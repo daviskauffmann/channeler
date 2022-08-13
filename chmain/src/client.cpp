@@ -1,9 +1,9 @@
-#include <ch/client.hpp>
+#include "client.hpp"
 
+#include "peer.hpp"
 #include <ch/conversation.hpp>
 #include <ch/host.hpp>
 #include <ch/message.hpp>
-#include <ch/peer.hpp>
 #include <ch/world.hpp>
 #include <enet/enet.h>
 #include <spdlog/spdlog.h>
@@ -96,6 +96,10 @@ ch::client::~client()
 
         enet_peer_reset(peer->enet_peer);
     }
+}
+
+void ch::client::handle_event(const SDL_Event &)
+{
 }
 
 void ch::client::update(const float)

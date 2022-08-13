@@ -1,5 +1,5 @@
-#ifndef SCENE_HPP
-#define SCENE_HPP
+#ifndef CH_SCENE_HPP
+#define CH_SCENE_HPP
 
 #include <SDL2/SDL.h>
 #include <cstdint>
@@ -8,6 +8,8 @@
 
 namespace ch
 {
+    class display;
+
     class scene
     {
     public:
@@ -22,7 +24,7 @@ namespace ch
                 delete current_scene;
                 current_scene = new_scene;
             }
-            catch (const std::runtime_error &e)
+            catch (const std::exception &e)
             {
                 spdlog::error("Failed to change scene: {}", e.what());
             }
@@ -30,8 +32,8 @@ namespace ch
 
         static void delete_scene();
 
-        scene(SDL_Renderer *renderer)
-            : renderer(renderer) {}
+        scene(const ch::display &display)
+            : display(display) {}
         scene(scene &&other) = delete;
         scene(const scene &other) = delete;
         scene &operator=(scene &&other) = delete;
@@ -40,14 +42,14 @@ namespace ch
 
         virtual void handle_event(const SDL_Event &event) = 0;
         virtual void update(
+            float delta_time,
             const std::uint8_t *keys,
             std::uint32_t mouse,
             int mouse_x,
-            int mouse_y,
-            float delta_time) = 0;
+            int mouse_y) = 0;
 
     protected:
-        SDL_Renderer *renderer;
+        const ch::display &display;
     };
 
 }

@@ -12,10 +12,19 @@ find_package(SDL2_ttf CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
 
 add_executable(${PROJECT_NAME}
+    src/audio.cpp
+    src/client.cpp
+    src/display.cpp
+    src/font.cpp
+    src/image.cpp
+    src/main.cpp
+    src/mixer.cpp
+    src/peer.cpp
+    src/scene.cpp
     src/scenes/game_scene.cpp
     src/scenes/menu_scene.cpp
-    src/main.cpp
-    src/scene.cpp
+    src/texture.cpp
+    src/ttf.cpp
 )
 
 target_link_libraries(${PROJECT_NAME}
