@@ -1,5 +1,6 @@
 #include <ch/map.hpp>
 
+#include <algorithm>
 #include <ch/tileset.hpp>
 #include <ch/world.hpp>
 #include <fstream>
@@ -119,19 +120,13 @@ const ch::map_tileset &ch::map::get_tileset(const size_t gid) const
 
 bool ch::map::is_solid(const std::size_t x, const std::size_t y) const
 {
-    for (const auto &layer : layers)
-    {
-        const auto datum = layer.get_datum(x, y);
-        if (datum)
+    const auto layer = std::find_if(
+        layers.begin(),
+        layers.end(),
+        [this, x, y](const ch::layer &layer)
         {
-            const auto &map_tileset = get_tileset(datum->gid);
-            const auto &tile = map_tileset.get_tile(datum->gid);
-            if (tile.solid)
-            {
-                return true;
-            }
-        }
-    }
-
-    return false;
+            const auto datum = layer.get_datum(x, y);
+            return datum && get_tileset(datum->gid).get_tile(datum->gid).solid;
+        });
+    return layer != layers.end();
 }

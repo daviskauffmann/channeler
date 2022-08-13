@@ -43,7 +43,6 @@ namespace ch
         bool listening = false;
         std::thread listen_thread;
 
-        std::size_t get_free_connection_id() const;
         void listen();
     };
 }

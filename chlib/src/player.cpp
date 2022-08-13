@@ -198,6 +198,7 @@ bool ch::player::check_quest_status(const ch::quest_status &status) const
         quest_statuses.end(),
         [status](const ch::quest_status &quest_status)
         {
-            return quest_status.quest_index == status.quest_index && quest_status.stage_index == status.stage_index;
+            return quest_status.quest_index == status.quest_index &&
+                   quest_status.stage_index == status.stage_index;
         });
 }

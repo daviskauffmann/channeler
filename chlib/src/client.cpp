@@ -219,13 +219,13 @@ void ch::client::update(const float)
     // TODO: client side prediction?
 }
 
-void ch::client::send(ENetPacket *packet)
+void ch::client::send(ENetPacket *packet) const
 {
     // TODO: handle errors?
     enet_peer_send(peer, 0, packet);
 }
 
-ch::player &ch::client::get_player()
+const ch::player &ch::client::get_player() const
 {
     return connections.at(connection_id).player;
 }

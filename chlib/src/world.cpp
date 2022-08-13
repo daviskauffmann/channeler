@@ -1,5 +1,6 @@
 #include <ch/world.hpp>
 
+#include <algorithm>
 #include <ch/conversation.hpp>
 #include <ch/map.hpp>
 #include <ch/tileset.hpp>
@@ -62,12 +63,13 @@ std::shared_ptr<ch::tileset> ch::world::load_tileset(const std::string &filename
 
 std::size_t ch::world::get_map_index(const std::string &filename) const
 {
-    for (std::size_t i = 0; i < maps.size(); i++)
-    {
-        if (maps.at(i).filename == filename)
-        {
-            return i;
-        }
-    }
-    return maps.size();
+    return std::distance(
+        maps.begin(),
+        std::find_if(
+            maps.begin(),
+            maps.end(),
+            [filename](const ch::map &map)
+            {
+                return map.filename == filename;
+            }));
 }

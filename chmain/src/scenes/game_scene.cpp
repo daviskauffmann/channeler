@@ -29,7 +29,7 @@ namespace ch
         SDL_Texture *image = nullptr;
         std::vector<SDL_Texture *> tile_images;
 
-        loaded_tileset(SDL_Renderer *const renderer, const ch::map_tileset &map_tileset)
+        loaded_tileset(const ch::map_tileset &map_tileset, SDL_Renderer *const renderer)
         {
             if (!map_tileset.tileset->image.empty())
             {
@@ -66,7 +66,7 @@ namespace ch
     public:
         std::vector<std::unique_ptr<ch::loaded_tileset>> loaded_tilesets;
 
-        active_map(SDL_Renderer *const renderer, const ch::map &map)
+        active_map(const ch::map &map, SDL_Renderer *const renderer)
         {
             std::transform(
                 map.tilesets.begin(),
@@ -74,7 +74,7 @@ namespace ch
                 std::back_inserter(loaded_tilesets),
                 [renderer](const ch::map_tileset &map_tileset)
                 {
-                    return std::make_unique<ch::loaded_tileset>(renderer, map_tileset);
+                    return std::make_unique<ch::loaded_tileset>(map_tileset, renderer);
                 });
         }
     };
@@ -99,7 +99,7 @@ ch::game_scene::game_scene(SDL_Renderer *const renderer, const char *const hostn
     client = std::make_unique<ch::client>(hostname, port, *world);
 
     map_index = 0; // TODO: get initial map from server when connecting
-    active_map = std::make_unique<ch::active_map>(renderer, world->maps.at(map_index));
+    active_map = std::make_unique<ch::active_map>(world->maps.at(map_index), renderer);
 
     player_idle_sprites = IMG_LoadTexture(renderer, "assets/NinjaAdventure/Actor/Characters/BlueNinja/SeparateAnim/Idle.png");
     player_walk_sprites = IMG_LoadTexture(renderer, "assets/NinjaAdventure/Actor/Characters/BlueNinja/SeparateAnim/Walk.png");
@@ -284,7 +284,7 @@ ch::scene *ch::game_scene::update(
     if (map_index != player.map_index)
     {
         map_index = player.map_index;
-        active_map = std::make_unique<ch::active_map>(renderer, world->maps.at(map_index));
+        active_map = std::make_unique<ch::active_map>(world->maps.at(map_index), renderer);
     }
 
     {
@@ -345,137 +345,139 @@ ch::scene *ch::game_scene::update(
         view_y = 0;
     }
 
-    for (std::int64_t y = view_y / map.tile_height; y <= static_cast<std::int64_t>((view_y + view_height) / map.tile_height); y++)
+    for (const auto &layer : map.layers)
     {
-        for (std::int64_t x = view_x / map.tile_width; x <= static_cast<std::int64_t>((view_x + view_width) / map.tile_width); x++)
+        if (layer.data.size())
         {
-            for (const auto &layer : map.layers)
+            for (std::int64_t y = view_y / map.tile_height; y <= static_cast<std::int64_t>((view_y + view_height) / map.tile_height); y++)
             {
-                const auto datum = layer.get_datum(x, y);
-                if (datum)
+                for (std::int64_t x = view_x / map.tile_width; x <= static_cast<std::int64_t>((view_x + view_width) / map.tile_width); x++)
                 {
-                    const auto &map_tileset = map.get_tileset(datum->gid);
-                    const auto tileset = map_tileset.tileset;
-
-                    SDL_Texture *texture;
-                    SDL_Rect srcrect;
-                    SDL_Rect dstrect;
-                    if (tileset->image.empty())
+                    const auto datum = layer.get_datum(x, y);
+                    if (datum)
                     {
-                        const auto &tile = map_tileset.get_tile(datum->gid);
+                        const auto &map_tileset = map.get_tileset(datum->gid);
+                        const auto tileset = map_tileset.tileset;
 
-                        texture = active_map->loaded_tilesets.at(map_tileset.index)->tile_images.at(tile.index);
-                        srcrect = {
-                            0,
-                            0,
-                            static_cast<int>(tile.width),
-                            static_cast<int>(tile.height)};
-                        dstrect = {
-                            static_cast<int>(((x * map.tile_width) - view_x) * sprite_scale),
-                            static_cast<int>(((y * map.tile_height) - view_y) * sprite_scale),
-                            static_cast<int>(tile.width * sprite_scale),
-                            static_cast<int>(tile.height * sprite_scale)};
-                    }
-                    else
-                    {
-                        texture = active_map->loaded_tilesets.at(map_tileset.index)->image;
-                        srcrect = {
-                            static_cast<int>(((datum->gid - map_tileset.first_gid) % tileset->columns) * map.tile_width),
-                            static_cast<int>(((datum->gid - map_tileset.first_gid) / tileset->columns) * map.tile_height),
-                            static_cast<int>(map.tile_width),
-                            static_cast<int>(map.tile_height)};
-                        dstrect = {
-                            static_cast<int>(((x * map.tile_width) - view_x) * sprite_scale),
-                            static_cast<int>(((y * map.tile_height) - view_y) * sprite_scale),
-                            static_cast<int>(map.tile_width * sprite_scale),
-                            static_cast<int>(map.tile_height * sprite_scale)};
-                    }
-
-                    double angle = 0;
-                    if (datum->d_flip)
-                    {
-                        if (datum->h_flip)
+                        SDL_Texture *texture;
+                        SDL_Rect srcrect;
+                        SDL_Rect dstrect;
+                        if (tileset->image.empty())
                         {
-                            angle = 90;
-                        }
-                        if (datum->v_flip)
-                        {
-                            angle = 270;
-                        }
-                    }
-                    else
-                    {
-                        if (datum->h_flip && datum->v_flip)
-                        {
-                            angle = 180;
-                        }
-                    }
+                            const auto &tile = map_tileset.get_tile(datum->gid);
 
-                    SDL_RenderCopyEx(
-                        renderer,
-                        texture,
-                        &srcrect,
-                        &dstrect,
-                        angle,
-                        nullptr,
-                        SDL_FLIP_NONE);
+                            texture = active_map->loaded_tilesets.at(map_tileset.index)->tile_images.at(tile.index);
+                            srcrect = {
+                                0,
+                                0,
+                                static_cast<int>(tile.width),
+                                static_cast<int>(tile.height)};
+                            dstrect = {
+                                static_cast<int>(((x * map.tile_width) - view_x) * sprite_scale),
+                                static_cast<int>(((y * map.tile_height) - view_y) * sprite_scale),
+                                static_cast<int>(tile.width * sprite_scale),
+                                static_cast<int>(tile.height * sprite_scale)};
+                        }
+                        else
+                        {
+                            texture = active_map->loaded_tilesets.at(map_tileset.index)->image;
+                            srcrect = {
+                                static_cast<int>(((datum->gid - map_tileset.first_gid) % tileset->columns) * map.tile_width),
+                                static_cast<int>(((datum->gid - map_tileset.first_gid) / tileset->columns) * map.tile_height),
+                                static_cast<int>(map.tile_width),
+                                static_cast<int>(map.tile_height)};
+                            dstrect = {
+                                static_cast<int>(((x * map.tile_width) - view_x) * sprite_scale),
+                                static_cast<int>(((y * map.tile_height) - view_y) * sprite_scale),
+                                static_cast<int>(map.tile_width * sprite_scale),
+                                static_cast<int>(map.tile_height * sprite_scale)};
+                        }
+
+                        double angle = 0;
+                        if (datum->d_flip)
+                        {
+                            if (datum->h_flip)
+                            {
+                                angle = 90;
+                            }
+                            if (datum->v_flip)
+                            {
+                                angle = 270;
+                            }
+                        }
+                        else
+                        {
+                            if (datum->h_flip && datum->v_flip)
+                            {
+                                angle = 180;
+                            }
+                        }
+
+                        SDL_RenderCopyEx(
+                            renderer,
+                            texture,
+                            &srcrect,
+                            &dstrect,
+                            angle,
+                            nullptr,
+                            SDL_FLIP_NONE);
+                    }
                 }
             }
         }
-    }
 
-    // TODO: respect layer order with tile layers
-    for (const auto &layer : map.layers)
-    {
-        for (const auto &object : layer.objects)
+        if (layer.objects.size())
         {
-            const auto &map_tileset = map.get_tileset(object.gid);
-            const auto tileset = map_tileset.tileset;
-
-            SDL_Rect srcrect;
-            SDL_Rect dstrect;
-            SDL_Texture *texture;
-            if (tileset->image.empty())
+            for (const auto &object : layer.objects)
             {
-                const auto &tile = map_tileset.get_tile(object.gid);
+                const auto &map_tileset = map.get_tileset(object.gid);
+                const auto tileset = map_tileset.tileset;
 
-                srcrect = {
-                    0,
-                    0,
-                    static_cast<int>(tile.width),
-                    static_cast<int>(tile.height)};
-                dstrect = {
-                    static_cast<int>((object.x - view_x) * sprite_scale),
-                    static_cast<int>((object.y - view_y) * sprite_scale),
-                    static_cast<int>(tile.width * sprite_scale),
-                    static_cast<int>(tile.height * sprite_scale)};
-                texture = active_map->loaded_tilesets.at(map_tileset.index)->tile_images.at(tile.index);
+                SDL_Rect srcrect;
+                SDL_Rect dstrect;
+                SDL_Texture *texture;
+                if (tileset->image.empty())
+                {
+                    const auto &tile = map_tileset.get_tile(object.gid);
+
+                    srcrect = {
+                        0,
+                        0,
+                        static_cast<int>(tile.width),
+                        static_cast<int>(tile.height)};
+                    dstrect = {
+                        static_cast<int>((object.x - view_x) * sprite_scale),
+                        static_cast<int>((object.y - view_y) * sprite_scale),
+                        static_cast<int>(tile.width * sprite_scale),
+                        static_cast<int>(tile.height * sprite_scale)};
+                    texture = active_map->loaded_tilesets.at(map_tileset.index)->tile_images.at(tile.index);
+                }
+                else
+                {
+                    srcrect = {
+                        static_cast<int>(((object.gid - map_tileset.first_gid) % tileset->columns) * map.tile_width),
+                        static_cast<int>(((object.gid - map_tileset.first_gid) / tileset->columns) * map.tile_height),
+                        static_cast<int>(map.tile_width),
+                        static_cast<int>(map.tile_height)};
+                    dstrect = {
+                        static_cast<int>((object.x - view_x) * sprite_scale),
+                        static_cast<int>((object.y - view_y) * sprite_scale),
+                        static_cast<int>(map.tile_width * sprite_scale),
+                        static_cast<int>(map.tile_height * sprite_scale)};
+                    texture = active_map->loaded_tilesets.at(map_tileset.index)->image;
+                }
+
+                double angle = object.rotation;
+
+                SDL_RenderCopyEx(
+                    renderer,
+                    texture,
+                    &srcrect,
+                    &dstrect,
+                    angle,
+                    nullptr,
+                    SDL_FLIP_NONE);
             }
-            else
-            {
-                srcrect = {
-                    static_cast<int>(((object.gid - map_tileset.first_gid) % tileset->columns) * map.tile_width),
-                    static_cast<int>(((object.gid - map_tileset.first_gid) / tileset->columns) * map.tile_height),
-                    static_cast<int>(map.tile_width),
-                    static_cast<int>(map.tile_height)};
-                dstrect = {
-                    static_cast<int>((object.x - view_x) * sprite_scale),
-                    static_cast<int>((object.y - view_y) * sprite_scale),
-                    static_cast<int>(map.tile_width * sprite_scale),
-                    static_cast<int>(map.tile_height * sprite_scale)};
-                texture = active_map->loaded_tilesets.at(map_tileset.index)->image;
-            }
-
-            double angle = object.rotation;
-
-            SDL_RenderCopyEx(
-                renderer,
-                texture,
-                &srcrect,
-                &dstrect,
-                angle,
-                nullptr,
-                SDL_FLIP_NONE);
         }
     }
 

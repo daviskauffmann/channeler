@@ -30,9 +30,9 @@ namespace ch
 
         void update(float delta_time);
 
-        void send(ENetPacket *packet);
+        void send(ENetPacket *packet) const;
 
-        ch::player &get_player();
+        const ch::player &get_player() const;
 
     private:
         const char *const hostname;

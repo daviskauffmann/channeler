@@ -1,5 +1,6 @@
 #include <ch/server.hpp>
 
+#include <algorithm>
 #include <ch/conversation.hpp>
 #include <ch/message.hpp>
 #include <ch/world.hpp>
@@ -97,19 +98,6 @@ void ch::server::update(const float delta_time)
     }
 }
 
-std::size_t ch::server::get_free_connection_id() const
-{
-    for (std::size_t i = 0; i < max_connections; i++)
-    {
-        if (connections.at(i).id == max_connections)
-        {
-            return i;
-        }
-    }
-
-    return max_connections;
-}
-
 void ch::server::listen()
 {
     while (listening)
@@ -123,15 +111,35 @@ void ch::server::listen()
             {
                 spdlog::info("[Server] Player connected {}:{}", event.peer->address.host, event.peer->address.port);
 
-                const auto new_connection_id = get_free_connection_id();
-                if (new_connection_id != max_connections)
+                const auto new_connection = std::find_if(
+                    connections.begin(),
+                    connections.end(),
+                    [](const ch::connection &connection)
+                    {
+                        return connection.id == max_connections;
+                    });
+                if (new_connection != connections.end())
                 {
-                    spdlog::info("[Server] Assigning ID {}", new_connection_id);
+                    new_connection->id = std::distance(connections.begin(), new_connection);
+                    new_connection->player.on_quest_status_set = [this, new_connection](const ch::quest_status &status)
+                    {
+                        spdlog::info("[Server] Player {} has advanced quest {} to stage {}", new_connection->id, status.quest_index, status.stage_index);
+
+                        ch::message_quest_status message;
+                        message.type = ch::message_type::QUEST_STATUS;
+                        message.id = new_connection->id;
+                        message.status = status;
+                        auto packet = enet_packet_create(&message, sizeof(message), ENET_PACKET_FLAG_RELIABLE);
+                        enet_host_broadcast(host, 0, packet);
+                    };
+                    event.peer->data = &*new_connection;
+
+                    spdlog::info("[Server] Assigned ID {}", new_connection->id);
 
                     {
                         ch::message_id message;
                         message.type = ch::message_type::SERVER_JOINED;
-                        message.id = new_connection_id;
+                        message.id = new_connection->id;
                         auto packet = enet_packet_create(&message, sizeof(message), ENET_PACKET_FLAG_RELIABLE);
                         enet_peer_send(event.peer, 0, packet);
                     }
@@ -150,26 +158,9 @@ void ch::server::listen()
                     }
 
                     {
-                        auto &new_connection = connections.at(new_connection_id);
-                        new_connection.id = new_connection_id;
-                        new_connection.player.on_quest_status_set = [this, new_connection](const ch::quest_status &status)
-                        {
-                            spdlog::info("[Server] Player {} has advanced quest {} to stage {}", new_connection.id, status.quest_index, status.stage_index);
-
-                            ch::message_quest_status message;
-                            message.type = ch::message_type::QUEST_STATUS;
-                            message.id = new_connection.id;
-                            message.status = status;
-                            auto packet = enet_packet_create(&message, sizeof(message), ENET_PACKET_FLAG_RELIABLE);
-                            enet_host_broadcast(host, 0, packet);
-                        };
-                        event.peer->data = &new_connection;
-                    }
-
-                    {
                         ch::message_id message;
                         message.type = ch::message_type::PLAYER_JOINED;
-                        message.id = new_connection_id;
+                        message.id = new_connection->id;
                         auto packet = enet_packet_create(&message, sizeof(message), ENET_PACKET_FLAG_RELIABLE);
                         enet_host_broadcast(host, 0, packet);
                     }
