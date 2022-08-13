@@ -4,6 +4,7 @@
 #include <SDL2/SDL.h>
 #include <cstdint>
 #include <spdlog/spdlog.h>
+#include <stdexcept>
 
 namespace ch
 {
@@ -21,7 +22,7 @@ namespace ch
                 delete current_scene;
                 current_scene = new_scene;
             }
-            catch (const std::exception &e)
+            catch (const std::runtime_error &e)
             {
                 spdlog::error("Failed to change scene: {}", e.what());
             }

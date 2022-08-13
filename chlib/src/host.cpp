@@ -1,7 +1,7 @@
 #include <ch/host.hpp>
 
 #include <enet/enet.h>
-#include <exception>
+#include <stdexcept>
 
 ch::host::host(
     const ENetAddress *const address,
@@ -13,7 +13,7 @@ ch::host::host(
     enet_host = enet_host_create(address, peer_count, channel_limit, incoming_bandwidth, outgoing_bandwidth);
     if (!enet_host)
     {
-        throw std::exception("Failed to create ENet host");
+        throw std::runtime_error("Failed to create ENet host");
     }
 }
 

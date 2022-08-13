@@ -7,6 +7,7 @@
 #include <ch/world.hpp>
 #include <enet/enet.h>
 #include <spdlog/spdlog.h>
+#include <stdexcept>
 
 ch::client::client(const char *const hostname, const std::uint16_t port, ch::world &world)
     : world(world)
@@ -62,7 +63,7 @@ ch::client::client(const char *const hostname, const std::uint16_t port, ch::wor
 
     if (!connected)
     {
-        throw std::exception(fmt::format("Failed to connect to server: {}", failure_reason).c_str());
+        throw std::runtime_error(fmt::format("Failed to connect to server: {}", failure_reason).c_str());
     }
 }
 

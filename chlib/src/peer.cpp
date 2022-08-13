@@ -1,7 +1,7 @@
 #include <ch/peer.hpp>
 
 #include <enet/enet.h>
-#include <exception>
+#include <stdexcept>
 
 ch::peer::peer(
     ENetHost *const host,
@@ -12,7 +12,7 @@ ch::peer::peer(
     enet_peer = enet_host_connect(host, address, channel_count, data);
     if (!enet_peer)
     {
-        throw std::exception("Failed to create ENet peer");
+        throw std::runtime_error("Failed to create ENet peer");
     }
 }
 
