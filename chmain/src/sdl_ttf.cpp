@@ -1,9 +1,9 @@
-#include "ttf.hpp"
+#include "sdl_ttf.hpp"
 
 #include <SDL2/SDL_ttf.h>
 #include <stdexcept>
 
-ch::ttf::ttf()
+ch::sdl_ttf::sdl_ttf()
 {
     if (TTF_Init() != 0)
     {
@@ -11,7 +11,7 @@ ch::ttf::ttf()
     }
 }
 
-ch::ttf::~ttf()
+ch::sdl_ttf::~sdl_ttf()
 {
     TTF_Quit();
 }

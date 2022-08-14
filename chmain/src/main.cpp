@@ -4,9 +4,10 @@
 #include "scenes/menu_scene.hpp"
 #include "sdl_image.hpp"
 #include "sdl_mixer.hpp"
-#include "ttf.hpp"
+#include "sdl_ttf.hpp"
 #include <ch/enet.hpp>
 #include <ch/sdl.hpp>
+#include <memory>
 
 int main(int, char *[])
 {
@@ -14,15 +15,15 @@ int main(int, char *[])
 
     const ch::sdl_image sdl_image;
     const ch::sdl_mixer sdl_mixer;
-    const ch::ttf ttf;
+    const ch::sdl_ttf sdl_ttf;
     const ch::audio audio;
     const ch::enet enet;
 
-    const ch::display display(640, 480);
-    display.set_title("Channeler");
-    display.set_vsync(true);
+    const auto display = std::make_shared<ch::display>(640, 480);
+    display->set_title("Channeler");
+    display->set_vsync(true);
 
-    ch::scene::change_scene<ch::menu_scene>(std::ref(display));
+    ch::scene::change_scene<ch::menu_scene>(display);
 
     std::uint64_t current_time = 0;
     bool running = true;
@@ -47,7 +48,7 @@ int main(int, char *[])
             break;
             }
 
-            display.handle_event(event);
+            display->handle_event(event);
 
             if (ch::scene::current_scene)
             {
@@ -59,7 +60,7 @@ int main(int, char *[])
             }
         }
 
-        display.clear();
+        display->clear();
 
         if (ch::scene::current_scene)
         {
@@ -70,7 +71,7 @@ int main(int, char *[])
             }
         }
 
-        display.present();
+        display->present();
     }
 
     if (ch::scene::current_scene)

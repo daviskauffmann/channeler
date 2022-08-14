@@ -43,11 +43,11 @@ auto button(
     return (mouse & SDL_BUTTON_LEFT) && SDL_PointInRect(&mouse_point, &dstrect);
 }
 
-ch::menu_scene::menu_scene(const ch::display &display)
+ch::menu_scene::menu_scene(std::shared_ptr<ch::display> display)
     : scene(display)
 {
     font = std::make_unique<ch::font>("assets/NinjaAdventure/HUD/Font/NormalFont.ttf", 18);
-    button_texture = std::make_unique<ch::texture>(display.get_renderer(), "assets/NinjaAdventure/HUD/Dialog/ChoiceBox.png");
+    button_texture = std::make_unique<ch::texture>(display->get_renderer(), "assets/NinjaAdventure/HUD/Dialog/ChoiceBox.png");
 }
 
 void ch::menu_scene::handle_event(const SDL_Event &event)
@@ -77,21 +77,21 @@ void ch::menu_scene::update(
     int mouse_x,
     int mouse_y)
 {
-    font->render(display.get_renderer(), 0, 18 * 0, 0, {255, 255, 255}, "Press 1 to host");
-    font->render(display.get_renderer(), 0, 18 * 1, 0, {255, 255, 255}, "Press 2 to join");
-    font->render(display.get_renderer(), 0, 18 * 2, 0, {255, 255, 255}, "Press ESC to exit");
+    font->render(display->get_renderer(), 0, 18 * 0, 0, {255, 255, 255}, "Press 1 to host");
+    font->render(display->get_renderer(), 0, 18 * 1, 0, {255, 255, 255}, "Press 2 to join");
+    font->render(display->get_renderer(), 0, 18 * 2, 0, {255, 255, 255}, "Press ESC to exit");
 
-    if (button(display.get_renderer(), button_texture.get(), font.get(), 100, 100, mouse, mouse_x, mouse_y, "Button 1"))
+    if (button(display->get_renderer(), button_texture.get(), font.get(), 100, 100, mouse, mouse_x, mouse_y, "Button 1"))
     {
         spdlog::info("Button 1 Clicked");
     }
 
-    if (button(display.get_renderer(), button_texture.get(), font.get(), 100, 200, mouse, mouse_x, mouse_y, "Button 2"))
+    if (button(display->get_renderer(), button_texture.get(), font.get(), 100, 200, mouse, mouse_x, mouse_y, "Button 2"))
     {
         spdlog::info("Button 2 Clicked");
     }
 
-    if (button(display.get_renderer(), button_texture.get(), font.get(), 100, 300, mouse, mouse_x, mouse_y, "Button 3"))
+    if (button(display->get_renderer(), button_texture.get(), font.get(), 100, 300, mouse, mouse_x, mouse_y, "Button 3"))
     {
         spdlog::info("Button 3 Clicked");
     }

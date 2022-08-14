@@ -3,6 +3,7 @@
 
 #include <SDL2/SDL.h>
 #include <cstdint>
+#include <memory>
 #include <spdlog/spdlog.h>
 #include <stdexcept>
 
@@ -32,7 +33,7 @@ namespace ch
 
         static void delete_scene();
 
-        scene(const ch::display &display)
+        scene(std::shared_ptr<ch::display> display)
             : display(display) {}
         scene(scene &&other) = delete;
         scene(const scene &other) = delete;
@@ -49,7 +50,7 @@ namespace ch
             int mouse_y) = 0;
 
     protected:
-        const ch::display &display;
+        std::shared_ptr<ch::display> display;
     };
 
 }

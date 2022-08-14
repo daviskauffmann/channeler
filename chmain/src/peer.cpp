@@ -18,5 +18,28 @@ ch::peer::peer(
 
 ch::peer::~peer()
 {
-    enet_peer_reset(enet_peer);
+    if (!successfully_disconnected)
+    {
+        enet_peer_reset(enet_peer);
+    }
+}
+
+int ch::peer::send(ENetPacket *const packet) const
+{
+    return enet_peer_send(enet_peer, 0, packet);
+}
+
+void ch::peer::disconnect() const
+{
+    enet_peer_disconnect(enet_peer, 0);
+}
+
+bool ch::peer::is_successfully_disconnected() const
+{
+    return successfully_disconnected;
+}
+
+void ch::peer::set_successfully_disconnected()
+{
+    successfully_disconnected = true;
 }

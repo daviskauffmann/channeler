@@ -63,13 +63,13 @@ namespace ch
     };
 };
 
-ch::game_scene::game_scene(const ch::display &display, const char *const hostname, const std::uint16_t port, const bool is_host)
+ch::game_scene::game_scene(std::shared_ptr<ch::display> display, const char *const hostname, const std::uint16_t port, const bool is_host)
     : scene(display)
 {
     font = std::make_unique<ch::font>("assets/NinjaAdventure/HUD/Font/NormalFont.ttf", 18);
-    player_idle_sprites = std::make_unique<ch::texture>(display.get_renderer(), "assets/NinjaAdventure/Actor/Characters/BlueNinja/SeparateAnim/Idle.png");
-    player_walk_sprites = std::make_unique<ch::texture>(display.get_renderer(), "assets/NinjaAdventure/Actor/Characters/BlueNinja/SeparateAnim/Walk.png");
-    player_attack_sprites = std::make_unique<ch::texture>(display.get_renderer(), "assets/NinjaAdventure/Actor/Characters/BlueNinja/SeparateAnim/Attack.png");
+    player_idle_sprites = std::make_unique<ch::texture>(display->get_renderer(), "assets/NinjaAdventure/Actor/Characters/BlueNinja/SeparateAnim/Idle.png");
+    player_walk_sprites = std::make_unique<ch::texture>(display->get_renderer(), "assets/NinjaAdventure/Actor/Characters/BlueNinja/SeparateAnim/Walk.png");
+    player_attack_sprites = std::make_unique<ch::texture>(display->get_renderer(), "assets/NinjaAdventure/Actor/Characters/BlueNinja/SeparateAnim/Attack.png");
 
     world = std::make_unique<ch::world>("assets/world.world", "assets/quests.json", "assets/conversations.json");
 
@@ -78,14 +78,14 @@ ch::game_scene::game_scene(const ch::display &display, const char *const hostnam
         server = std::make_unique<ch::server>(port, *world);
     }
 
-    display.clear();
-    font->render(display.get_renderer(), 0, 0, 0, {255, 255, 255}, "Connecting to server...");
-    display.present();
+    display->clear();
+    font->render(display->get_renderer(), 0, 0, 0, {255, 255, 255}, "Connecting to server...");
+    display->present();
 
     client = std::make_unique<ch::client>(hostname, port, *world);
 
     map_index = 0; // TODO: get initial map from server when connecting
-    active_map = std::make_unique<ch::active_map>(world->maps.at(map_index), display.get_renderer());
+    active_map = std::make_unique<ch::active_map>(world->maps.at(map_index), display->get_renderer());
 }
 
 void ch::game_scene::handle_event(const SDL_Event &event)
@@ -104,7 +104,7 @@ void ch::game_scene::handle_event(const SDL_Event &event)
 
             ch::message message;
             message.type = ch::message_type::END_CONVERSATION;
-            auto packet = enet_packet_create(&message, sizeof(message), 0);
+            const auto packet =  enet_packet_create(&message, sizeof(message), 0);
             client->send(packet);
         }
         break;
@@ -114,14 +114,14 @@ void ch::game_scene::handle_event(const SDL_Event &event)
             {
                 ch::message message;
                 message.type = ch::message_type::ADVANCE_CONVERSATION;
-                auto packet = enet_packet_create(&message, sizeof(message), 0);
+                const auto packet =  enet_packet_create(&message, sizeof(message), 0);
                 client->send(packet);
             }
             else
             {
                 ch::message message;
                 message.type = ch::message_type::ATTACK;
-                auto packet = enet_packet_create(&message, sizeof(message), 0);
+                const auto packet =  enet_packet_create(&message, sizeof(message), 0);
                 client->send(packet);
             }
         }
@@ -141,7 +141,7 @@ void ch::game_scene::handle_event(const SDL_Event &event)
                 ch::message_id message;
                 message.type = ch::message_type::CHOOSE_CONVERSATION_RESPONSE;
                 message.id = event.key.keysym.sym - 48;
-                auto packet = enet_packet_create(&message, sizeof(message), 0);
+                const auto packet =  enet_packet_create(&message, sizeof(message), 0);
                 client->send(packet);
             }
         }
@@ -156,7 +156,7 @@ void ch::game_scene::handle_event(const SDL_Event &event)
             ch::message_id message;
             message.type = ch::message_type::CHANGE_MAP;
             message.id = 0;
-            auto packet = enet_packet_create(&message, sizeof(message), 0);
+            const auto packet =  enet_packet_create(&message, sizeof(message), 0);
             client->send(packet);
         }
         break;
@@ -165,7 +165,7 @@ void ch::game_scene::handle_event(const SDL_Event &event)
             ch::message_id message;
             message.type = ch::message_type::CHANGE_MAP;
             message.id = 1;
-            auto packet = enet_packet_create(&message, sizeof(message), 0);
+            const auto packet =  enet_packet_create(&message, sizeof(message), 0);
             client->send(packet);
         }
         break;
@@ -174,7 +174,7 @@ void ch::game_scene::handle_event(const SDL_Event &event)
             ch::message_id message;
             message.type = ch::message_type::START_CONVERSATION;
             message.id = 0;
-            auto packet = enet_packet_create(&message, sizeof(message), 0);
+            const auto packet =  enet_packet_create(&message, sizeof(message), 0);
             client->send(packet);
         }
         break;
@@ -183,7 +183,7 @@ void ch::game_scene::handle_event(const SDL_Event &event)
             ch::message_id message;
             message.type = ch::message_type::START_CONVERSATION;
             message.id = 1;
-            auto packet = enet_packet_create(&message, sizeof(message), 0);
+            const auto packet =  enet_packet_create(&message, sizeof(message), 0);
             client->send(packet);
         }
         break;
@@ -192,7 +192,7 @@ void ch::game_scene::handle_event(const SDL_Event &event)
             ch::message_quest_status message;
             message.type = ch::message_type::QUEST_STATUS;
             message.status = {0, 1};
-            auto packet = enet_packet_create(&message, sizeof(message), 0);
+            const auto packet =  enet_packet_create(&message, sizeof(message), 0);
             client->send(packet);
         }
         break;
@@ -201,7 +201,7 @@ void ch::game_scene::handle_event(const SDL_Event &event)
             ch::message_quest_status message;
             message.type = ch::message_type::QUEST_STATUS;
             message.status = {0, 3};
-            auto packet = enet_packet_create(&message, sizeof(message), 0);
+            const auto packet =  enet_packet_create(&message, sizeof(message), 0);
             client->send(packet);
         }
         break;
@@ -235,7 +235,7 @@ void ch::game_scene::update(
     if (map_index != player.map_index)
     {
         map_index = player.map_index;
-        active_map = std::make_unique<ch::active_map>(world->maps.at(map_index), display.get_renderer());
+        active_map = std::make_unique<ch::active_map>(world->maps.at(map_index), display->get_renderer());
     }
 
     {
@@ -263,7 +263,7 @@ void ch::game_scene::update(
         ch::message_input message;
         message.type = ch::message_type::INPUT;
         message.input = input;
-        auto packet = enet_packet_create(&message, sizeof(message), 0);
+        const auto packet =  enet_packet_create(&message, sizeof(message), 0);
         client->send(packet);
     }
 
@@ -276,8 +276,8 @@ void ch::game_scene::update(
 
     const auto &map = world->maps.at(map_index);
     constexpr std::size_t sprite_scale = 2;
-    const auto view_width = display.get_width() / sprite_scale;
-    const auto view_height = display.get_height() / sprite_scale;
+    const auto view_width = display->get_width() / sprite_scale;
+    const auto view_height = display->get_height() / sprite_scale;
     auto view_x = static_cast<std::int64_t>(player.pos_x - view_width / 2);
     auto view_y = static_cast<std::int64_t>(player.pos_y - view_height / 2);
     if (view_x + view_width > map.width * map.tile_width)
@@ -366,7 +366,7 @@ void ch::game_scene::update(
                         }
 
                         texture->render_ex(
-                            display.get_renderer(),
+                            display->get_renderer(),
                             &srcrect,
                             &dstrect,
                             angle,
@@ -421,7 +421,7 @@ void ch::game_scene::update(
                 double angle = object.rotation;
 
                 texture->render_ex(
-                    display.get_renderer(),
+                    display->get_renderer(),
                     &srcrect,
                     &dstrect,
                     angle,
@@ -467,9 +467,9 @@ void ch::game_scene::update(
                 static_cast<int>(16 * sprite_scale),
                 static_cast<int>(16 * sprite_scale)};
 
-            texture->render(display.get_renderer(), &srcrect, &dstrect);
+            texture->render(display->get_renderer(), &srcrect, &dstrect);
 
-            font->render(display.get_renderer(), dstrect.x + 24, dstrect.y - (24 * 2), display.get_width(), {255, 255, 255}, "{}", connection.id);
+            font->render(display->get_renderer(), dstrect.x + 24, dstrect.y - (24 * 2), display->get_width(), {255, 255, 255}, "{}", connection.id);
         }
     }
 
@@ -478,20 +478,20 @@ void ch::game_scene::update(
         const SDL_Rect rect = {
             12,
             12,
-            static_cast<int>(display.get_width()) - 24,
-            static_cast<int>(display.get_height()) - 24};
-        SDL_SetRenderDrawColor(display.get_renderer(), 0, 0, 0, 200);
-        SDL_SetRenderDrawBlendMode(display.get_renderer(), SDL_BLENDMODE_BLEND);
-        SDL_RenderFillRect(display.get_renderer(), &rect);
-        SDL_SetRenderDrawColor(display.get_renderer(), 0, 0, 0, SDL_ALPHA_OPAQUE);
-        SDL_SetRenderDrawBlendMode(display.get_renderer(), SDL_BLENDMODE_NONE);
+            static_cast<int>(display->get_width()) - 24,
+            static_cast<int>(display->get_height()) - 24};
+        SDL_SetRenderDrawColor(display->get_renderer(), 0, 0, 0, 200);
+        SDL_SetRenderDrawBlendMode(display->get_renderer(), SDL_BLENDMODE_BLEND);
+        SDL_RenderFillRect(display->get_renderer(), &rect);
+        SDL_SetRenderDrawColor(display->get_renderer(), 0, 0, 0, SDL_ALPHA_OPAQUE);
+        SDL_SetRenderDrawBlendMode(display->get_renderer(), SDL_BLENDMODE_NONE);
 
         for (std::size_t i = 0; i < player.quest_statuses.size(); i++)
         {
             const auto &status = player.quest_statuses.at(i);
             const auto &quest = world->quests.at(status.quest_index);
             const auto &stage = quest.stages.at(status.stage_index);
-            font->render(display.get_renderer(), 24, 24 * (i + 1), display.get_width() - 24, {255, 255, 255}, "{}: {}", quest.name, stage.description);
+            font->render(display->get_renderer(), 24, 24 * (i + 1), display->get_width() - 24, {255, 255, 255}, "{}: {}", quest.name, stage.description);
         }
     }
 
@@ -499,23 +499,23 @@ void ch::game_scene::update(
     {
         const SDL_Rect rect = {
             12,
-            static_cast<int>(display.get_height()) - 100 - 12,
-            static_cast<int>(display.get_width()) - 24,
+            static_cast<int>(display->get_height()) - 100 - 12,
+            static_cast<int>(display->get_width()) - 24,
             100};
-        SDL_SetRenderDrawColor(display.get_renderer(), 0, 0, 0, 200);
-        SDL_SetRenderDrawBlendMode(display.get_renderer(), SDL_BLENDMODE_BLEND);
-        SDL_RenderFillRect(display.get_renderer(), &rect);
-        SDL_SetRenderDrawColor(display.get_renderer(), 0, 0, 0, SDL_ALPHA_OPAQUE);
-        SDL_SetRenderDrawBlendMode(display.get_renderer(), SDL_BLENDMODE_NONE);
+        SDL_SetRenderDrawColor(display->get_renderer(), 0, 0, 0, 200);
+        SDL_SetRenderDrawBlendMode(display->get_renderer(), SDL_BLENDMODE_BLEND);
+        SDL_RenderFillRect(display->get_renderer(), &rect);
+        SDL_SetRenderDrawColor(display->get_renderer(), 0, 0, 0, SDL_ALPHA_OPAQUE);
+        SDL_SetRenderDrawBlendMode(display->get_renderer(), SDL_BLENDMODE_NONE);
 
-        font->render(display.get_renderer(), 24, display.get_height() - 100, display.get_width(), {255, 255, 255}, "{}", player.conversation_node->text);
+        font->render(display->get_renderer(), 24, display->get_height() - 100, display->get_width(), {255, 255, 255}, "{}", player.conversation_node->text);
 
         for (std::size_t i = 0; i < player.conversation_node->children.size(); i++)
         {
             const auto &child = player.conversation_node->children.at(i);
             if (child.type == ch::conversation_type::RESPONSE && child.check_conditions(player))
             {
-                font->render(display.get_renderer(), 24, (display.get_height() - 100) + 24 * (i + 1), display.get_width(), {255, 255, 255}, "{}) {}", i + 1, child.text);
+                font->render(display->get_renderer(), 24, (display->get_height() - 100) + 24 * (i + 1), display->get_width(), {255, 255, 255}, "{}) {}", i + 1, child.text);
             }
         }
     }

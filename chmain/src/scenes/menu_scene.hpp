@@ -3,7 +3,6 @@
 
 #include "../scene.hpp"
 #include <SDL2/SDL.h>
-#include <memory>
 
 namespace ch
 {
@@ -13,7 +12,7 @@ namespace ch
     class menu_scene : public ch::scene
     {
     public:
-        explicit menu_scene(const ch::display &display);
+        explicit menu_scene(std::shared_ptr<ch::display> display);
 
         void handle_event(const SDL_Event &event) override;
         void update(

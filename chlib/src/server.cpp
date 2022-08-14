@@ -75,8 +75,8 @@ void ch::server::update(const float delta_time)
             }
         }
 
-        auto packet = enet_packet_create(&message, sizeof(message), 0);
-        enet_host_broadcast(host->enet_host, 0, packet);
+        const auto packet = enet_packet_create(&message, sizeof(message), 0);
+        host->broadcast(packet);
     }
 }
 
@@ -85,7 +85,7 @@ void ch::server::listen()
     while (listening)
     {
         ENetEvent event;
-        while (enet_host_service(host->enet_host, &event, 0) > 0)
+        while (host->service(&event, 0) > 0)
         {
             switch (event.type)
             {
@@ -111,8 +111,8 @@ void ch::server::listen()
                         message.type = ch::message_type::QUEST_STATUS;
                         message.id = new_connection->id;
                         message.status = status;
-                        auto packet = enet_packet_create(&message, sizeof(message), ENET_PACKET_FLAG_RELIABLE);
-                        enet_host_broadcast(host->enet_host, 0, packet);
+                        const auto packet = enet_packet_create(&message, sizeof(message), ENET_PACKET_FLAG_RELIABLE);
+                        host->broadcast(packet);
                     };
                     event.peer->data = &*new_connection;
 
@@ -122,7 +122,7 @@ void ch::server::listen()
                         ch::message_id message;
                         message.type = ch::message_type::SERVER_JOINED;
                         message.id = new_connection->id;
-                        auto packet = enet_packet_create(&message, sizeof(message), ENET_PACKET_FLAG_RELIABLE);
+                        const auto packet = enet_packet_create(&message, sizeof(message), ENET_PACKET_FLAG_RELIABLE);
                         enet_peer_send(event.peer, 0, packet);
                     }
 
@@ -134,7 +134,7 @@ void ch::server::listen()
                             message.type = ch::message_type::QUEST_STATUS;
                             message.id = connection.id;
                             message.status = quest_status;
-                            auto packet = enet_packet_create(&message, sizeof(message), ENET_PACKET_FLAG_RELIABLE);
+                            const auto packet = enet_packet_create(&message, sizeof(message), ENET_PACKET_FLAG_RELIABLE);
                             enet_peer_send(event.peer, 0, packet);
                         }
                     }
@@ -143,8 +143,8 @@ void ch::server::listen()
                         ch::message_id message;
                         message.type = ch::message_type::PLAYER_JOINED;
                         message.id = new_connection->id;
-                        auto packet = enet_packet_create(&message, sizeof(message), ENET_PACKET_FLAG_RELIABLE);
-                        enet_host_broadcast(host->enet_host, 0, packet);
+                        const auto packet = enet_packet_create(&message, sizeof(message), ENET_PACKET_FLAG_RELIABLE);
+                        host->broadcast(packet);
                     }
                 }
                 else
@@ -153,7 +153,7 @@ void ch::server::listen()
 
                     ch::message message;
                     message.type = ch::message_type::SERVER_FULL;
-                    auto packet = enet_packet_create(&message, sizeof(message), ENET_PACKET_FLAG_RELIABLE);
+                    const auto packet = enet_packet_create(&message, sizeof(message), ENET_PACKET_FLAG_RELIABLE);
                     enet_peer_send(event.peer, 0, packet);
                 }
             }
@@ -232,7 +232,7 @@ void ch::server::listen()
                 break;
                 default:
                 {
-                    spdlog::error("[Server] Unknown message type {}", static_cast<int>(type));
+                    spdlog::warn("[Server] Unknown message type {}", static_cast<int>(type));
                 }
                 break;
                 }
@@ -250,8 +250,8 @@ void ch::server::listen()
                     ch::message_id message;
                     message.type = ch::message_type::PLAYER_DISCONNECTED;
                     message.id = connection->id;
-                    auto packet = enet_packet_create(&message, sizeof(message), ENET_PACKET_FLAG_RELIABLE);
-                    enet_host_broadcast(host->enet_host, 0, packet);
+                    const auto packet = enet_packet_create(&message, sizeof(message), ENET_PACKET_FLAG_RELIABLE);
+                    host->broadcast(packet);
                 }
 
                 {

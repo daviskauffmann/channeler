@@ -23,8 +23,8 @@ add_executable(${PROJECT_NAME}
     src/scenes/menu_scene.cpp
     src/sdl_image.cpp
     src/sdl_mixer.cpp
+    src/sdl_ttf.cpp
     src/texture.cpp
-    src/ttf.cpp
 )
 
 target_link_libraries(${PROJECT_NAME}

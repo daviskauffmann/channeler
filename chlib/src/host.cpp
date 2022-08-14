@@ -21,3 +21,18 @@ ch::host::~host()
 {
     enet_host_destroy(enet_host);
 }
+
+ENetHost *ch::host::get_enet_host() const
+{
+    return enet_host;
+}
+
+void ch::host::broadcast(ENetPacket *const packet) const
+{
+    enet_host_broadcast(enet_host, 0, packet);
+}
+
+int ch::host::service(ENetEvent *const event, const std::uint32_t timeout) const
+{
+    return enet_host_service(enet_host, event, timeout);
+}

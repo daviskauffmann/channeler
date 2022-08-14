@@ -20,13 +20,13 @@ ch::client::client(const char *const hostname, const std::uint16_t port, ch::wor
     ENetAddress address;
     enet_address_set_host(&address, hostname);
     address.port = port;
-    peer = std::make_unique<ch::peer>(host->enet_host, &address, 2, 0);
+    peer = std::make_unique<ch::peer>(host->get_enet_host(), &address, 2, 0);
 
     bool connected = false;
     std::string failure_reason = "Host timeout";
 
     ENetEvent event;
-    while (enet_host_service(host->enet_host, &event, 3000) > 0)
+    while (host->service(&event, 3000) > 0)
     {
         if (event.type == ENET_EVENT_TYPE_CONNECT)
         {
@@ -69,12 +69,10 @@ ch::client::client(const char *const hostname, const std::uint16_t port, ch::wor
 
 ch::client::~client()
 {
-    bool disconnected = false;
-
-    enet_peer_disconnect(peer->enet_peer, 0);
+    peer->disconnect();
 
     ENetEvent event;
-    while (enet_host_service(host->enet_host, &event, 3000) > 0)
+    while (host->service(&event, 3000) > 0)
     {
         if (event.type == ENET_EVENT_TYPE_RECEIVE)
         {
@@ -84,17 +82,15 @@ ch::client::~client()
         {
             spdlog::info("[Client] Successfully disconnected");
 
-            disconnected = true;
+            peer->set_successfully_disconnected();
 
             break;
         }
     }
 
-    if (!disconnected)
+    if (!peer->is_successfully_disconnected())
     {
-        spdlog::error("[Client] Server did not confirm disconnect");
-
-        enet_peer_reset(peer->enet_peer);
+        spdlog::warn("[Client] Server did not confirm disconnect");
     }
 }
 
@@ -105,7 +101,7 @@ void ch::client::handle_event(const SDL_Event &)
 void ch::client::update(const float)
 {
     ENetEvent event;
-    while (enet_host_service(host->enet_host, &event, 0) > 0)
+    while (host->service(&event, 0) > 0)
     {
         switch (event.type)
         {
@@ -174,7 +170,7 @@ void ch::client::update(const float)
             break;
             default:
             {
-                spdlog::error("[Client] Unknown message type {}", static_cast<int>(type));
+                spdlog::warn("[Client] Unknown message type {}", static_cast<int>(type));
             }
             break;
             }
@@ -190,8 +186,7 @@ void ch::client::update(const float)
 
 void ch::client::send(ENetPacket *packet) const
 {
-    // TODO: handle errors?
-    enet_peer_send(peer->enet_peer, 0, packet);
+    peer->send(packet);
 }
 
 const ch::player &ch::client::get_player() const
