@@ -32,7 +32,7 @@ ch::mouse_state ch::sdl::get_mouse_state() const
     return state;
 }
 
-bool ch::sdl::poll_event(SDL_Event &event)
+bool ch::sdl::poll_event(SDL_Event &event) const
 {
     return SDL_PollEvent(&event);
 }

@@ -27,7 +27,7 @@ namespace ch
         const std::uint8_t *get_keys() const;
         ch::mouse_state get_mouse_state() const;
 
-        bool poll_event(SDL_Event &event);
+        bool poll_event(SDL_Event &event) const;
     };
 }
 

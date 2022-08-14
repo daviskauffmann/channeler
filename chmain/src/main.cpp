@@ -1,19 +1,19 @@
 #include "audio.hpp"
 #include "display.hpp"
-#include "image.hpp"
-#include "mixer.hpp"
 #include "scene.hpp"
 #include "scenes/menu_scene.hpp"
+#include "sdl_image.hpp"
+#include "sdl_mixer.hpp"
 #include "ttf.hpp"
 #include <ch/enet.hpp>
 #include <ch/sdl.hpp>
 
 int main(int, char *[])
 {
-    ch::sdl sdl(SDL_INIT_AUDIO | SDL_INIT_VIDEO);
+    const ch::sdl sdl(SDL_INIT_AUDIO | SDL_INIT_VIDEO);
 
-    const ch::image image;
-    const ch::mixer mixer;
+    const ch::sdl_image sdl_image;
+    const ch::sdl_mixer sdl_mixer;
     const ch::ttf ttf;
     const ch::audio audio;
     const ch::enet enet;

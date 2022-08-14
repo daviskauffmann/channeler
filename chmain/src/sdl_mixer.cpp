@@ -1,9 +1,9 @@
-#include "mixer.hpp"
+#include "sdl_mixer.hpp"
 
 #include <SDL2/SDL_mixer.h>
 #include <stdexcept>
 
-ch::mixer::mixer()
+ch::sdl_mixer::sdl_mixer()
 {
     constexpr int mix_flags = 0;
     if (Mix_Init(mix_flags) != mix_flags)
@@ -12,7 +12,7 @@ ch::mixer::mixer()
     }
 }
 
-ch::mixer::~mixer()
+ch::sdl_mixer::~sdl_mixer()
 {
     Mix_Quit();
 }

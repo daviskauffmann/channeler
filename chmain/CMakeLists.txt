@@ -16,13 +16,13 @@ add_executable(${PROJECT_NAME}
     src/client.cpp
     src/display.cpp
     src/font.cpp
-    src/image.cpp
     src/main.cpp
-    src/mixer.cpp
     src/peer.cpp
     src/scene.cpp
     src/scenes/game_scene.cpp
     src/scenes/menu_scene.cpp
+    src/sdl_image.cpp
+    src/sdl_mixer.cpp
     src/texture.cpp
     src/ttf.cpp
 )
