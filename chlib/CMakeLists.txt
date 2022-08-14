@@ -13,9 +13,9 @@ add_library(${PROJECT_NAME}
     src/enet.cpp
     src/host.cpp
     src/map.cpp
-    src/platform.cpp
     src/player.cpp
     src/quest.cpp
+    src/sdl.cpp
     src/server.cpp
     src/tileset.cpp
     src/world.cpp
