@@ -27,14 +27,14 @@ namespace ch
 
         std::array<ch::connection, max_connections> connections;
 
-        server(std::uint16_t port, ch::world &world);
+        server(std::uint16_t port, std::shared_ptr<ch::world> world);
         ~server();
 
         void handle_event(const SDL_Event &event);
         void update(float delta_time);
 
     private:
-        ch::world &world;
+        std::shared_ptr<ch::world> world;
         std::unique_ptr<ch::host> host;
         bool listening;
         std::thread listen_thread;

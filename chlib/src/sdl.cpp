@@ -2,7 +2,7 @@
 
 #include <stdexcept>
 
-ch::sdl::sdl(std::uint32_t flags)
+ch::sdl::sdl(const std::uint32_t flags)
 {
     if (SDL_Init(flags) != 0)
     {

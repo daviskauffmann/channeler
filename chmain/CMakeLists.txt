@@ -12,7 +12,6 @@ find_package(SDL2_ttf CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
 
 add_executable(${PROJECT_NAME}
-    src/audio.cpp
     src/client.cpp
     src/display.cpp
     src/font.cpp
@@ -24,6 +23,7 @@ add_executable(${PROJECT_NAME}
     src/sdl_image.cpp
     src/sdl_mixer.cpp
     src/sdl_ttf.cpp
+    src/sound.cpp
     src/texture.cpp
 )
 

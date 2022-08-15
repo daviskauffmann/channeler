@@ -8,7 +8,7 @@
 #include <enet/enet.h>
 #include <spdlog/spdlog.h>
 
-ch::server::server(const std::uint16_t port, ch::world &world)
+ch::server::server(const std::uint16_t port, std::shared_ptr<ch::world> world)
     : world(world)
 {
     connections.fill(
@@ -43,7 +43,7 @@ void ch::server::update(const float delta_time)
     {
         if (connection.id != max_connections)
         {
-            connection.player.update(connection.input, world.maps.at(connection.player.map_index), delta_time);
+            connection.player.update(connection.input, world->maps.at(connection.player.map_index), delta_time);
         }
     }
 

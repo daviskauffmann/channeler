@@ -2,6 +2,7 @@
 #define CH_PLAYER_HPP
 
 #include <functional>
+#include <memory>
 #include <vector>
 
 namespace ch
@@ -61,7 +62,7 @@ namespace ch
 
         void attack();
 
-        void start_conversation(const ch::world &world, std::size_t root_index);
+        void start_conversation(std::shared_ptr<ch::world> world, std::size_t root_index);
         void advance_conversation();
         void choose_conversation_response(std::size_t choice_index);
         void end_conversation();

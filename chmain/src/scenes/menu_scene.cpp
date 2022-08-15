@@ -61,9 +61,9 @@ void ch::menu_scene::handle_event(const SDL_Event &event)
         case SDLK_ESCAPE:
             return delete_scene();
         case SDLK_1:
-            return change_scene<ch::game_scene>(std::ref(display), server_hostname, server_port, true);
+            return change_scene<ch::game_scene>(display, server_hostname, server_port, true);
         case SDLK_2:
-            return change_scene<ch::game_scene>(std::ref(display), server_hostname, server_port, false);
+            return change_scene<ch::game_scene>(display, server_hostname, server_port, false);
         }
     }
     break;

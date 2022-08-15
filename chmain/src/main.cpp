@@ -1,10 +1,10 @@
-#include "audio.hpp"
 #include "display.hpp"
 #include "scene.hpp"
 #include "scenes/menu_scene.hpp"
 #include "sdl_image.hpp"
 #include "sdl_mixer.hpp"
 #include "sdl_ttf.hpp"
+#include <SDL2/SDL_image.h>
 #include <ch/enet.hpp>
 #include <ch/sdl.hpp>
 #include <memory>
@@ -12,11 +12,9 @@
 int main(int, char *[])
 {
     const ch::sdl sdl(SDL_INIT_AUDIO | SDL_INIT_VIDEO);
-
     const ch::sdl_image sdl_image;
     const ch::sdl_mixer sdl_mixer;
     const ch::sdl_ttf sdl_ttf;
-    const ch::audio audio;
     const ch::enet enet;
 
     const auto display = std::make_shared<ch::display>(640, 480);

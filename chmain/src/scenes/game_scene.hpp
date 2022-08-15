@@ -12,6 +12,7 @@ namespace ch
     class client;
     class font;
     class server;
+    class sound;
     class texture;
     class world;
 
@@ -30,15 +31,18 @@ namespace ch
 
     private:
         std::unique_ptr<ch::font> font;
-        std::unique_ptr<ch::world> world;
+        std::shared_ptr<ch::world> world;
         std::unique_ptr<ch::server> server;
         std::unique_ptr<ch::client> client;
         std::unique_ptr<ch::active_map> active_map;
         std::size_t map_index;
+        std::unique_ptr<ch::sound> attack_sound;
         std::unique_ptr<ch::texture> player_idle_sprites;
         std::unique_ptr<ch::texture> player_walk_sprites;
         std::unique_ptr<ch::texture> player_attack_sprites;
+        std::unique_ptr<ch::texture> dialog_box;
         bool quest_log_open = false;
+        bool left_panel_open = false;
     };
 }
 

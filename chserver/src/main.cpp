@@ -3,17 +3,17 @@
 #include <ch/sdl.hpp>
 #include <ch/server.hpp>
 #include <ch/world.hpp>
+#include <memory>
 #include <spdlog/spdlog.h>
 
 constexpr std::uint16_t server_port = 8492;
 
 int main(int, char *[])
 {
-    ch::sdl sdl(SDL_INIT_EVENTS);
-
+    const ch::sdl sdl(SDL_INIT_EVENTS);
     const ch::enet enet;
 
-    ch::world world("assets/world.world", "assets/quests.json", "assets/conversations.json");
+    const auto world = std::make_shared<ch::world>("assets/world.world", "assets/quests.json", "assets/conversations.json");
 
     ch::server server(server_port, world);
 
