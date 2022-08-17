@@ -16,7 +16,6 @@
 #include <ch/world.hpp>
 #include <enet/enet.h>
 #include <exception>
-#include <iostream>
 #include <spdlog/spdlog.h>
 
 namespace ch
@@ -56,7 +55,7 @@ namespace ch
                 map.tilesets.begin(),
                 map.tilesets.end(),
                 std::back_inserter(loaded_tilesets),
-                [renderer](const ch::map_tileset &map_tileset)
+                [renderer](const auto &map_tileset)
                 {
                     return std::make_unique<ch::loaded_tileset>(map_tileset, renderer);
                 });

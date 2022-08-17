@@ -96,7 +96,7 @@ void ch::server::listen()
                 const auto new_connection = std::find_if(
                     connections.begin(),
                     connections.end(),
-                    [](const ch::connection &connection)
+                    [](const auto &connection)
                     {
                         return connection.id == max_connections;
                     });

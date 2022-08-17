@@ -110,7 +110,7 @@ const ch::map_tileset &ch::map::get_tileset(const size_t gid) const
     return *std::max_element(
         tilesets.begin(),
         tilesets.end(),
-        [gid](const ch::map_tileset &a, const ch::map_tileset &b)
+        [gid](const auto &a, const auto &b)
         {
             return a.first_gid < b.first_gid && b.first_gid <= gid;
         });
@@ -121,7 +121,7 @@ bool ch::map::is_solid(const std::size_t x, const std::size_t y) const
     const auto layer = std::find_if(
         layers.begin(),
         layers.end(),
-        [this, x, y](const ch::layer &layer)
+        [this, x, y](const auto &layer)
         {
             const auto datum = layer.get_datum(x, y);
             return datum && get_tileset(datum->gid).get_tile(datum->gid).solid;

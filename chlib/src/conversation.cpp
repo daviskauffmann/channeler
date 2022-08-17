@@ -78,7 +78,7 @@ bool ch::conversation::has_response_nodes() const
     return std::any_of(
         children.begin(),
         children.end(),
-        [](const ch::conversation &child)
+        [](const auto &child)
         {
             return child.type == ch::conversation_type::RESPONSE;
         });

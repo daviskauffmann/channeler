@@ -68,7 +68,7 @@ std::size_t ch::world::get_map_index(const std::string &filename) const
         std::find_if(
             maps.begin(),
             maps.end(),
-            [filename](const ch::map &map)
+            [filename](const auto &map)
             {
                 return map.filename == filename;
             }));
