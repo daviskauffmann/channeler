@@ -8,23 +8,23 @@ namespace ch
 {
     enum class message_type
     {
-        SERVER_JOINED,
-        SERVER_FULL,
+        server_joined,
+        server_full,
 
-        PLAYER_JOINED,
-        PLAYER_DISCONNECTED,
+        player_joined,
+        player_disconnected,
 
-        INPUT,
-        ATTACK,
-        CHANGE_MAP,
-        START_CONVERSATION,
-        ADVANCE_CONVERSATION,
-        CHOOSE_CONVERSATION_RESPONSE,
-        END_CONVERSATION,
+        input,
+        attack,
+        change_map,
+        start_conversation,
+        advance_conversation,
+        choose_conversation_response,
+        end_conversation,
 
-        QUEST_STATUS,
+        quest_status,
 
-        GAME_STATE
+        game_state
     };
 
     struct message

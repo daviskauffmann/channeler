@@ -33,7 +33,7 @@ namespace ch
         void disconnect() const;
 
         bool is_successfully_disconnected() const;
-        void set_successfully_disconnected();
+        void mark_successfully_disconnected();
 
     private:
         ENetPeer *enet_peer;

@@ -9,15 +9,15 @@ ch::conversation::conversation(const nlohmann::json &conversation_json, const st
     const std::string type_string = conversation_json.at("type");
     if (type_string == "root")
     {
-        type = ch::conversation_type::ROOT;
+        type = ch::conversation_type::root;
     }
     else if (type_string == "dialog")
     {
-        type = ch::conversation_type::DIALOG;
+        type = ch::conversation_type::dialog;
     }
     else if (type_string == "response")
     {
-        type = ch::conversation_type::RESPONSE;
+        type = ch::conversation_type::response;
     }
 
     if (conversation_json.contains("id"))
@@ -80,7 +80,7 @@ bool ch::conversation::has_response_nodes() const
         children.end(),
         [](const auto &child)
         {
-            return child.type == ch::conversation_type::RESPONSE;
+            return child.type == ch::conversation_type::response;
         });
 }
 

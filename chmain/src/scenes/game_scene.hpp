@@ -40,6 +40,7 @@ namespace ch
         std::unique_ptr<ch::texture> player_idle_sprites;
         std::unique_ptr<ch::texture> player_walk_sprites;
         std::unique_ptr<ch::texture> player_attack_sprites;
+        std::unique_ptr<ch::texture> sword_in_hand_sprite;
         std::unique_ptr<ch::texture> dialog_box;
         bool quest_log_open = false;
         bool left_panel_open = false;

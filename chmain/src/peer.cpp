@@ -39,7 +39,7 @@ bool ch::peer::is_successfully_disconnected() const
     return successfully_disconnected;
 }
 
-void ch::peer::set_successfully_disconnected()
+void ch::peer::mark_successfully_disconnected()
 {
     successfully_disconnected = true;
 }

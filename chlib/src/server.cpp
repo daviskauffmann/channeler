@@ -49,7 +49,7 @@ void ch::server::update(const float delta_time)
 
     {
         ch::message_game_state message;
-        message.type = ch::message_type::GAME_STATE;
+        message.type = ch::message_type::game_state;
         for (std::size_t i = 0; i < connections.size(); i++)
         {
             message.connections.at(i).id = connections.at(i).id;
@@ -108,7 +108,7 @@ void ch::server::listen()
                         spdlog::info("[Server] Player {} has advanced quest {} to stage {}", new_connection->id, status.quest_index, status.stage_index);
 
                         ch::message_quest_status message;
-                        message.type = ch::message_type::QUEST_STATUS;
+                        message.type = ch::message_type::quest_status;
                         message.id = new_connection->id;
                         message.status = status;
                         const auto packet = enet_packet_create(&message, sizeof(message), ENET_PACKET_FLAG_RELIABLE);
@@ -120,7 +120,7 @@ void ch::server::listen()
 
                     {
                         ch::message_id message;
-                        message.type = ch::message_type::SERVER_JOINED;
+                        message.type = ch::message_type::server_joined;
                         message.id = new_connection->id;
                         const auto packet = enet_packet_create(&message, sizeof(message), ENET_PACKET_FLAG_RELIABLE);
                         enet_peer_send(event.peer, 0, packet);
@@ -131,7 +131,7 @@ void ch::server::listen()
                         for (const auto &quest_status : connection.player.quest_statuses)
                         {
                             ch::message_quest_status message;
-                            message.type = ch::message_type::QUEST_STATUS;
+                            message.type = ch::message_type::quest_status;
                             message.id = connection.id;
                             message.status = quest_status;
                             const auto packet = enet_packet_create(&message, sizeof(message), ENET_PACKET_FLAG_RELIABLE);
@@ -141,7 +141,7 @@ void ch::server::listen()
 
                     {
                         ch::message_id message;
-                        message.type = ch::message_type::PLAYER_JOINED;
+                        message.type = ch::message_type::player_joined;
                         message.id = new_connection->id;
                         const auto packet = enet_packet_create(&message, sizeof(message), ENET_PACKET_FLAG_RELIABLE);
                         host->broadcast(packet);
@@ -152,7 +152,7 @@ void ch::server::listen()
                     spdlog::warn("[Server] Player tried to join, but server is full");
 
                     ch::message message;
-                    message.type = ch::message_type::SERVER_FULL;
+                    message.type = ch::message_type::server_full;
                     const auto packet = enet_packet_create(&message, sizeof(message), ENET_PACKET_FLAG_RELIABLE);
                     enet_peer_send(event.peer, 0, packet);
                 }
@@ -165,7 +165,7 @@ void ch::server::listen()
 
                 switch (type)
                 {
-                case ch::message_type::INPUT:
+                case ch::message_type::input:
                 {
                     const auto message = reinterpret_cast<ch::message_input *>(event.packet->data);
 
@@ -173,14 +173,14 @@ void ch::server::listen()
                     connection->input.dy = message->input.dy;
                 }
                 break;
-                case ch::message_type::ATTACK:
+                case ch::message_type::attack:
                 {
                     spdlog::info("[Server] Player {} attacking", connection->id);
 
                     connection->player.attack();
                 }
                 break;
-                case ch::message_type::CHANGE_MAP:
+                case ch::message_type::change_map:
                 {
                     const auto message = reinterpret_cast<ch::message_id *>(event.packet->data);
 
@@ -189,7 +189,7 @@ void ch::server::listen()
                     connection->player.map_index = message->id;
                 }
                 break;
-                case ch::message_type::START_CONVERSATION:
+                case ch::message_type::start_conversation:
                 {
                     const auto message = reinterpret_cast<ch::message_id *>(event.packet->data);
 
@@ -198,14 +198,14 @@ void ch::server::listen()
                     connection->player.start_conversation(world, message->id);
                 }
                 break;
-                case ch::message_type::ADVANCE_CONVERSATION:
+                case ch::message_type::advance_conversation:
                 {
                     spdlog::info("[Server] Player {} advancing conversation", connection->id);
 
                     connection->player.advance_conversation();
                 }
                 break;
-                case ch::message_type::CHOOSE_CONVERSATION_RESPONSE:
+                case ch::message_type::choose_conversation_response:
                 {
                     const auto message = reinterpret_cast<ch::message_id *>(event.packet->data);
 
@@ -214,14 +214,14 @@ void ch::server::listen()
                     connection->player.choose_conversation_response(message->id);
                 }
                 break;
-                case ch::message_type::END_CONVERSATION:
+                case ch::message_type::end_conversation:
                 {
                     spdlog::info("[Server] Player {} ending conversation", connection->id);
 
                     connection->player.end_conversation();
                 }
                 break;
-                case ch::message_type::QUEST_STATUS:
+                case ch::message_type::quest_status:
                 {
                     const auto message = reinterpret_cast<ch::message_quest_status *>(event.packet->data);
 
@@ -248,7 +248,7 @@ void ch::server::listen()
 
                 {
                     ch::message_id message;
-                    message.type = ch::message_type::PLAYER_DISCONNECTED;
+                    message.type = ch::message_type::player_disconnected;
                     message.id = connection->id;
                     const auto packet = enet_packet_create(&message, sizeof(message), ENET_PACKET_FLAG_RELIABLE);
                     host->broadcast(packet);

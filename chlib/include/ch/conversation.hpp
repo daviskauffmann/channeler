@@ -11,9 +11,9 @@ namespace ch
 {
     enum class conversation_type
     {
-        ROOT,
-        DIALOG,
-        RESPONSE,
+        root,
+        dialog,
+        response,
     };
 
     struct conversation_condition

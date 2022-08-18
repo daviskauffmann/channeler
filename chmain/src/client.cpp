@@ -36,7 +36,7 @@ ch::client::client(const char *const hostname, const std::uint16_t port, ch::wor
         {
             const auto type = reinterpret_cast<ch::message *>(event.packet->data)->type;
 
-            if (type == ch::message_type::SERVER_JOINED)
+            if (type == ch::message_type::server_joined)
             {
                 const auto message = reinterpret_cast<ch::message_id *>(event.packet->data);
 
@@ -46,7 +46,7 @@ ch::client::client(const char *const hostname, const std::uint16_t port, ch::wor
                 connection_id = message->id;
                 connections.at(connection_id).id = connection_id;
             }
-            else if (type == ch::message_type::SERVER_FULL)
+            else if (type == ch::message_type::server_full)
             {
                 failure_reason = "Server full";
             }
@@ -82,7 +82,7 @@ ch::client::~client()
         {
             spdlog::info("[Client] Successfully disconnected");
 
-            peer->set_successfully_disconnected();
+            peer->mark_successfully_disconnected();
 
             break;
         }
@@ -111,7 +111,7 @@ void ch::client::update(const float)
 
             switch (type)
             {
-            case ch::message_type::PLAYER_JOINED:
+            case ch::message_type::player_joined:
             {
                 const auto message = reinterpret_cast<ch::message_id *>(event.packet->data);
 
@@ -120,7 +120,7 @@ void ch::client::update(const float)
                 connections.at(message->id).id = message->id;
             }
             break;
-            case ch::message_type::PLAYER_DISCONNECTED:
+            case ch::message_type::player_disconnected:
             {
                 const auto message = reinterpret_cast<ch::message_id *>(event.packet->data);
 
@@ -129,7 +129,7 @@ void ch::client::update(const float)
                 connections.at(message->id).id = ch::server::max_connections;
             }
             break;
-            case ch::message_type::QUEST_STATUS:
+            case ch::message_type::quest_status:
             {
                 const auto message = reinterpret_cast<ch::message_quest_status *>(event.packet->data);
 
@@ -138,7 +138,7 @@ void ch::client::update(const float)
                 connections.at(message->id).player.set_quest_status(message->status);
             }
             break;
-            case ch::message_type::GAME_STATE:
+            case ch::message_type::game_state:
             {
                 const auto message = reinterpret_cast<ch::message_game_state *>(event.packet->data);
 
@@ -184,8 +184,9 @@ void ch::client::update(const float)
     // TODO: client side prediction?
 }
 
-void ch::client::send(ENetPacket *packet) const
+void ch::client::send(const void *const data, const std::size_t length, const std::uint32_t flags) const
 {
+    const auto packet = enet_packet_create(data, length, flags);
     peer->send(packet);
 }
 

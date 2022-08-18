@@ -10,7 +10,7 @@ void ch::player::update(const ch::input &input, const ch::map &map, const float 
 {
     if (attacking)
     {
-        animation = ch::animation::ATTACKING;
+        animation = ch::animation::attacking;
 
         attack_timer -= delta_time;
         if (attack_timer <= 0)
@@ -21,26 +21,26 @@ void ch::player::update(const ch::input &input, const ch::map &map, const float 
 
     if (!attacking)
     {
-        animation = ch::animation::IDLE;
+        animation = ch::animation::idle;
         if (input.dy == -1)
         {
-            direction = ch::direction::UP;
-            animation = ch::animation::WALKING;
+            direction = ch::direction::up;
+            animation = ch::animation::walking;
         }
         if (input.dx == -1)
         {
-            direction = ch::direction::LEFT;
-            animation = ch::animation::WALKING;
+            direction = ch::direction::left;
+            animation = ch::animation::walking;
         }
         if (input.dy == 1)
         {
-            direction = ch::direction::DOWN;
-            animation = ch::animation::WALKING;
+            direction = ch::direction::down;
+            animation = ch::animation::walking;
         }
         if (input.dx == 1)
         {
-            direction = ch::direction::RIGHT;
-            animation = ch::animation::WALKING;
+            direction = ch::direction::right;
+            animation = ch::animation::walking;
         }
     }
 
@@ -147,7 +147,7 @@ void ch::player::choose_conversation_response(const std::size_t choice_index)
     std::size_t valid_choice_index = 0;
     for (const auto &child : conversation_node->children)
     {
-        if (child.type == ch::conversation_type::RESPONSE && child.check_conditions(*this))
+        if (child.type == ch::conversation_type::response && child.check_conditions(*this))
         {
             valid_choice_index++;
             if (valid_choice_index == choice_index)

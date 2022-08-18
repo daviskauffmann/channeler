@@ -25,7 +25,7 @@ namespace ch
         void handle_event(const SDL_Event &event);
         void update(float delta_time);
 
-        void send(ENetPacket *packet) const;
+        void send(const void *data, std::size_t length, std::uint32_t flags) const;
 
         const ch::player &get_player() const;
 

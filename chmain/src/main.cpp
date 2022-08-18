@@ -48,10 +48,10 @@ int main(int, char *[])
 
             display->handle_event(event);
 
-            if (ch::scene::current_scene)
+            if (ch::scene::get_scene())
             {
-                ch::scene::current_scene->handle_event(event);
-                if (!ch::scene::current_scene)
+                ch::scene::get_scene()->handle_event(event);
+                if (!ch::scene::get_scene())
                 {
                     running = false;
                 }
@@ -60,10 +60,10 @@ int main(int, char *[])
 
         display->clear();
 
-        if (ch::scene::current_scene)
+        if (ch::scene::get_scene())
         {
-            ch::scene::current_scene->update(delta_time, keys, mouse, mouse_x, mouse_y);
-            if (!ch::scene::current_scene)
+            ch::scene::get_scene()->update(delta_time, keys, mouse, mouse_x, mouse_y);
+            if (!ch::scene::get_scene())
             {
                 running = false;
             }
@@ -72,7 +72,7 @@ int main(int, char *[])
         display->present();
     }
 
-    if (ch::scene::current_scene)
+    if (ch::scene::get_scene())
     {
         ch::scene::delete_scene();
     }

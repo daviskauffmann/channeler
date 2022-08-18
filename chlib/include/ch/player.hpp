@@ -14,17 +14,17 @@ namespace ch
 
     enum class direction
     {
-        DOWN,
-        UP,
-        LEFT,
-        RIGHT
+        down,
+        up,
+        left,
+        right
     };
 
     enum class animation
     {
-        IDLE,
-        WALKING,
-        ATTACKING
+        idle,
+        walking,
+        attacking
     };
 
     struct quest_status
@@ -47,8 +47,8 @@ namespace ch
         bool attacking = false;
         float attack_timer = 0;
 
-        ch::direction direction = ch::direction::DOWN;
-        ch::animation animation = ch::animation::IDLE;
+        ch::direction direction = ch::direction::down;
+        ch::animation animation = ch::animation::idle;
         float animation_timer = 0;
         std::size_t frame_index = 0;
 

@@ -14,8 +14,6 @@ namespace ch
     class scene
     {
     public:
-        static scene *current_scene;
-
         template <typename T, typename... Args>
         static void change_scene(Args... args)
         {
@@ -31,6 +29,7 @@ namespace ch
             }
         }
 
+        static scene *get_scene();
         static void delete_scene();
 
         scene(std::shared_ptr<ch::display> display)
@@ -51,6 +50,9 @@ namespace ch
 
     protected:
         std::shared_ptr<ch::display> display;
+
+    private:
+        static scene *current_scene;
     };
 
 }
