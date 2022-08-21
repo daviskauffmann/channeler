@@ -21,6 +21,10 @@ namespace ch
 
         client(const char *hostname, std::uint16_t port, ch::world &world);
         ~client();
+        client(const client &other) = delete;
+        client &operator=(const client &other) = delete;
+        client(client &&other) = delete;
+        client &operator=(client &&other) = delete;
 
         void handle_event(const SDL_Event &event);
         void update(float delta_time);

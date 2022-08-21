@@ -7,11 +7,11 @@ namespace ch
     {
     public:
         sdl_ttf();
-        sdl_ttf(sdl_ttf &&other) = delete;
-        sdl_ttf(const sdl_ttf &other) = delete;
-        sdl_ttf &operator=(sdl_ttf &&other) = delete;
-        sdl_ttf &operator=(const sdl_ttf &other) = delete;
         ~sdl_ttf();
+        sdl_ttf(const sdl_ttf &other) = delete;
+        sdl_ttf(sdl_ttf &&other) = delete;
+        sdl_ttf &operator=(const sdl_ttf &other) = delete;
+        sdl_ttf &operator=(sdl_ttf &&other) = delete;
     };
 }
 

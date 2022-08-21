@@ -10,6 +10,10 @@ namespace ch
     public:
         sound(const char *filename);
         ~sound();
+        sound(const sound &other) = delete;
+        sound &operator=(const sound &other) = delete;
+        sound(sound &&other) = delete;
+        sound &operator=(sound &&other) = delete;
 
         void play() const;
 

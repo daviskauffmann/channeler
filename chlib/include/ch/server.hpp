@@ -29,6 +29,10 @@ namespace ch
 
         server(std::uint16_t port, std::shared_ptr<ch::world> world);
         ~server();
+        server(const server &other) = delete;
+        server &operator=(const server &other) = delete;
+        server(server &&other) = delete;
+        server &operator=(server &&other) = delete;
 
         void handle_event(const SDL_Event &event);
         void update(float delta_time);

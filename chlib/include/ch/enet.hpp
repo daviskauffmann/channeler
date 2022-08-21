@@ -7,11 +7,11 @@ namespace ch
     {
     public:
         enet();
-        enet(enet &&other) = delete;
-        enet(const enet &other) = delete;
-        enet &operator=(enet &&other) = delete;
-        enet &operator=(const enet &other) = delete;
         ~enet();
+        enet(const enet &other) = delete;
+        enet &operator=(const enet &other) = delete;
+        enet(enet &&other) = delete;
+        enet &operator=(enet &&other) = delete;
     };
 }
 

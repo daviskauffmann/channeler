@@ -27,6 +27,10 @@ namespace ch
             std::size_t channel_count,
             std::uint32_t data);
         ~peer();
+        peer(const peer &other) = delete;
+        peer &operator=(const peer &other) = delete;
+        peer(peer &&other) = delete;
+        peer &operator=(peer &&other) = delete;
 
         int send(ENetPacket *packet) const;
 

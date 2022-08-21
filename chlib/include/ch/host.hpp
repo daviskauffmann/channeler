@@ -28,6 +28,10 @@ namespace ch
             std::uint32_t incoming_bandwidth,
             std::uint32_t outgoing_bandwidth);
         ~host();
+        host(const host &other) = delete;
+        host &operator=(const host &other) = delete;
+        host(host &&other) = delete;
+        host &operator=(host &&other) = delete;
 
         ENetHost *get_enet_host() const;
 

@@ -10,6 +10,10 @@ namespace ch
     public:
         texture(SDL_Renderer *renderer, const char *file);
         ~texture();
+        texture(const texture &other) = delete;
+        texture &operator=(const texture &other) = delete;
+        texture(texture &&other) = delete;
+        texture &operator=(texture &&other) = delete;
 
         void render(
             SDL_Renderer *renderer,

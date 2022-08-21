@@ -10,11 +10,11 @@ namespace ch
     {
     public:
         display(int width, int height);
-        display(display &&other) = delete;
-        display(const display &other) = delete;
-        display &operator=(display &&other) = delete;
-        display &operator=(const display &other) = delete;
         ~display();
+        display(const display &other) = delete;
+        display &operator=(const display &other) = delete;
+        display(display &&other) = delete;
+        display &operator=(display &&other) = delete;
 
         std::size_t get_width() const;
         std::size_t get_height() const;

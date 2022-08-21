@@ -14,6 +14,10 @@ namespace ch
     public:
         font(const char *file, int size);
         ~font();
+        font(const font &other) = delete;
+        font &operator=(const font &other) = delete;
+        font(font &&other) = delete;
+        font &operator=(font &&other) = delete;
 
         template <typename... Args>
         void render(

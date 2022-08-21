@@ -34,11 +34,11 @@ namespace ch
 
         scene(std::shared_ptr<ch::display> display)
             : display(display) {}
-        scene(scene &&other) = delete;
-        scene(const scene &other) = delete;
-        scene &operator=(scene &&other) = delete;
-        scene &operator=(const scene &other) = delete;
         virtual ~scene() = default;
+        scene(const scene &other) = delete;
+        scene &operator=(const scene &other) = delete;
+        scene(scene &&other) = delete;
+        scene &operator=(scene &&other) = delete;
 
         virtual void handle_event(const SDL_Event &event) = 0;
         virtual void update(
