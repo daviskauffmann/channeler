@@ -53,7 +53,7 @@ namespace ch
 
     struct map
     {
-        const std::string filename;
+        std::string filename;
 
         std::size_t width;
         std::size_t height;
