@@ -8,7 +8,9 @@
 #include <enet/enet.h>
 #include <spdlog/spdlog.h>
 
-ch::server::server(const std::uint16_t port, std::shared_ptr<ch::world> world)
+ch::server::server(
+    const std::uint16_t port,
+    const std::shared_ptr<ch::world> world)
     : world(world)
 {
     connections.fill(

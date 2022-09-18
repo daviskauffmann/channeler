@@ -27,7 +27,9 @@ namespace ch
 
         std::array<ch::connection, max_connections> connections;
 
-        server(std::uint16_t port, std::shared_ptr<ch::world> world);
+        server(
+            std::uint16_t port,
+            std::shared_ptr<ch::world> world);
         ~server();
         server(const server &other) = delete;
         server &operator=(const server &other) = delete;

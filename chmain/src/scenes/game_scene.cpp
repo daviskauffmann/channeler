@@ -62,7 +62,11 @@ namespace ch
     };
 };
 
-ch::game_scene::game_scene(std::shared_ptr<ch::display> display, const char *const hostname, const std::uint16_t port, const bool is_host)
+ch::game_scene::game_scene(
+    std::shared_ptr<ch::display> display,
+    const char *const hostname,
+    const std::uint16_t port,
+    const bool is_host)
     : scene(display)
 {
     const auto renderer = display->get_renderer();
@@ -86,7 +90,7 @@ ch::game_scene::game_scene(std::shared_ptr<ch::display> display, const char *con
     font->render(renderer, 0, 0, 0, {255, 255, 255}, "Connecting to server...");
     display->present();
 
-    client = std::make_unique<ch::client>(hostname, port, *world);
+    client = std::make_unique<ch::client>(hostname, port, world);
 
     map_index = 0; // TODO: get initial map from server when connecting
     active_map = std::make_unique<ch::active_map>(world->maps.at(map_index), renderer);
@@ -225,11 +229,11 @@ void ch::game_scene::handle_event(const SDL_Event &event)
 }
 
 void ch::game_scene::update(
-    float delta_time,
-    const std::uint8_t *keys,
-    std::uint32_t,
-    int,
-    int)
+    const float delta_time,
+    const std::uint8_t *const keys,
+    const std::uint32_t,
+    const int,
+    const int)
 {
     const auto &player = client->get_player();
     const auto renderer = display->get_renderer();

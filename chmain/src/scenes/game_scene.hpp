@@ -19,7 +19,11 @@ namespace ch
     class game_scene : public ch::scene
     {
     public:
-        game_scene(std::shared_ptr<ch::display> display, const char *hostname, std::uint16_t port, bool is_host);
+        game_scene(
+            std::shared_ptr<ch::display> display,
+            const char *hostname,
+            std::uint16_t port,
+            bool is_host);
 
         void handle_event(const SDL_Event &event) override;
         void update(

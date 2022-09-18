@@ -71,11 +71,11 @@ void ch::menu_scene::handle_event(const SDL_Event &event)
 }
 
 void ch::menu_scene::update(
-    float,
-    const std::uint8_t *,
-    std::uint32_t mouse,
-    int mouse_x,
-    int mouse_y)
+    const float,
+    const std::uint8_t *const,
+    const std::uint32_t mouse,
+    const int mouse_x,
+    const int mouse_y)
 {
     font->render(display->get_renderer(), 0, 18 * 0, 0, {255, 255, 255}, "Press 1 to host");
     font->render(display->get_renderer(), 0, 18 * 1, 0, {255, 255, 255}, "Press 2 to join");

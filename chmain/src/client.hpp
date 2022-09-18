@@ -19,7 +19,10 @@ namespace ch
     public:
         std::array<ch::connection, ch::server::max_connections> connections;
 
-        client(const char *hostname, std::uint16_t port, ch::world &world);
+        client(
+            const char *hostname,
+            std::uint16_t port,
+            std::shared_ptr<ch::world> world);
         ~client();
         client(const client &other) = delete;
         client &operator=(const client &other) = delete;
@@ -34,7 +37,7 @@ namespace ch
         const ch::player &get_player() const;
 
     private:
-        ch::world &world;
+        std::shared_ptr<ch::world> world;
         std::unique_ptr<ch::host> host;
         std::unique_ptr<ch::peer> peer;
         std::size_t connection_id;

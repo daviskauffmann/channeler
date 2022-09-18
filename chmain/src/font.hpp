@@ -4,7 +4,7 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
 #include <cstddef>
-#include <fmt/format.h>
+#include <format>
 #include <string>
 
 namespace ch
@@ -29,7 +29,7 @@ namespace ch
             const std::string &fmt,
             Args... args) const
         {
-            const std::string text = fmt::format(fmt, std::forward<Args>(args)...);
+            const std::string text = std::vformat(fmt, std::make_format_args(std::forward<Args>(args)...));
 
             const auto surface = TTF_RenderText_Blended_Wrapped(ttf_font, text.c_str(), fg, static_cast<uint32_t>(w));
             const auto texture = SDL_CreateTextureFromSurface(renderer, surface);

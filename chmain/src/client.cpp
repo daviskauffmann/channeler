@@ -9,7 +9,10 @@
 #include <spdlog/spdlog.h>
 #include <stdexcept>
 
-ch::client::client(const char *const hostname, const std::uint16_t port, ch::world &world)
+ch::client::client(
+    const char *const hostname,
+    const std::uint16_t port,
+    const std::shared_ptr<ch::world> world)
     : world(world)
 {
     connections.fill(
@@ -157,7 +160,7 @@ void ch::client::update(const float)
 
                     if (message->connections.at(i).player.in_conversation)
                     {
-                        connections.at(i).player.conversation_root = &world.conversations.at(message->connections.at(i).player.conversation_root_index);
+                        connections.at(i).player.conversation_root = &world->conversations.at(message->connections.at(i).player.conversation_root_index);
                         connections.at(i).player.conversation_node = connections.at(i).player.conversation_root->find_by_node_index(message->connections.at(i).player.conversation_node_index);
                     }
                     else

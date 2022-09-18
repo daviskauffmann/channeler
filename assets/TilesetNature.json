@@ -33,7 +33,7 @@
                 {
                  "name":"solid",
                  "type":"bool",
-                 "value":true
+                 "value":false
                 }]
         }, 
         {
@@ -42,7 +42,7 @@
                 {
                  "name":"solid",
                  "type":"bool",
-                 "value":true
+                 "value":false
                 }]
         }, 
         {
@@ -51,7 +51,7 @@
                 {
                  "name":"solid",
                  "type":"bool",
-                 "value":true
+                 "value":false
                 }]
         }, 
         {
@@ -60,7 +60,7 @@
                 {
                  "name":"solid",
                  "type":"bool",
-                 "value":true
+                 "value":false
                 }]
         }, 
         {
@@ -312,7 +312,7 @@
                 {
                  "name":"solid",
                  "type":"bool",
-                 "value":true
+                 "value":false
                 }]
         }, 
         {
@@ -321,7 +321,7 @@
                 {
                  "name":"solid",
                  "type":"bool",
-                 "value":true
+                 "value":false
                 }]
         }, 
         {
@@ -447,7 +447,7 @@
                 {
                  "name":"solid",
                  "type":"bool",
-                 "value":true
+                 "value":false
                 }]
         }, 
         {
@@ -474,7 +474,7 @@
                 {
                  "name":"solid",
                  "type":"bool",
-                 "value":true
+                 "value":false
                 }]
         }, 
         {
@@ -744,7 +744,7 @@
                 {
                  "name":"solid",
                  "type":"bool",
-                 "value":true
+                 "value":false
                 }]
         }, 
         {
@@ -753,7 +753,7 @@
                 {
                  "name":"solid",
                  "type":"bool",
-                 "value":true
+                 "value":false
                 }]
         }, 
         {
@@ -879,7 +879,7 @@
                 {
                  "name":"solid",
                  "type":"bool",
-                 "value":true
+                 "value":false
                 }]
         }, 
         {
@@ -906,7 +906,7 @@
                 {
                  "name":"solid",
                  "type":"bool",
-                 "value":true
+                 "value":false
                 }]
         }, 
         {
