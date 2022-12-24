@@ -22,6 +22,7 @@ find_package(spdlog CONFIG REQUIRED)
 target_link_libraries(${PROJECT_NAME} PRIVATE
     unofficial::enet::enet
     nlohmann_json nlohmann_json::nlohmann_json
-    SDL2::SDL2 SDL2::SDL2main
+    $<TARGET_NAME_IF_EXISTS:SDL2::SDL2main>
+    $<IF:$<TARGET_EXISTS:SDL2::SDL2>,SDL2::SDL2,SDL2::SDL2-static>
     spdlog::spdlog
 )

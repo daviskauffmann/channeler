@@ -91,9 +91,6 @@ ch::game_scene::game_scene(
     display->present();
 
     client = std::make_unique<ch::client>(hostname, port, world);
-
-    map_index = 0; // TODO: get initial map from server when connecting
-    active_map = std::make_unique<ch::active_map>(world->maps.at(map_index), renderer);
 }
 
 void ch::game_scene::handle_event(const SDL_Event &event)
@@ -238,7 +235,7 @@ void ch::game_scene::update(
     const auto &player = client->get_player();
     const auto renderer = display->get_renderer();
 
-    if (map_index != player.map_index)
+    if (!active_map || map_index != player.map_index)
     {
         map_index = player.map_index;
         active_map = std::make_unique<ch::active_map>(world->maps.at(map_index), renderer);

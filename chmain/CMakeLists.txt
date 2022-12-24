@@ -14,7 +14,7 @@ target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_20)
 find_package(unofficial-enet CONFIG REQUIRED)
 find_package(fmt CONFIG REQUIRED)
 find_package(SDL2 CONFIG REQUIRED)
-find_package(SDL2-image CONFIG REQUIRED)
+find_package(SDL2_image CONFIG REQUIRED)
 find_package(SDL2_mixer CONFIG REQUIRED)
 find_package(SDL2_ttf CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
@@ -22,8 +22,9 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     chlib
     unofficial::enet::enet
     fmt::fmt
-    SDL2::SDL2 SDL2::SDL2main
-    SDL2::SDL2_image
+    $<TARGET_NAME_IF_EXISTS:SDL2::SDL2main>
+    $<IF:$<TARGET_EXISTS:SDL2::SDL2>,SDL2::SDL2,SDL2::SDL2-static>
+    $<IF:$<TARGET_EXISTS:SDL2_image::SDL2_image>,SDL2_image::SDL2_image,SDL2_image::SDL2_image-static>
     $<IF:$<TARGET_EXISTS:SDL2_mixer::SDL2_mixer>,SDL2_mixer::SDL2_mixer,SDL2_mixer::SDL2_mixer-static>
     $<IF:$<TARGET_EXISTS:SDL2_ttf::SDL2_ttf>,SDL2_ttf::SDL2_ttf,SDL2_ttf::SDL2_ttf-static>
     spdlog::spdlog
