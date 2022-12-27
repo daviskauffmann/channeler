@@ -1,11 +1,14 @@
-#include "game_scene.hpp"
+#include "game.hpp"
 
-#include "../client.hpp"
-#include "../display.hpp"
-#include "../font.hpp"
-#include "../sound.hpp"
-#include "../texture.hpp"
-#include "menu_scene.hpp"
+#include "../../client.hpp"
+#include "../../display.hpp"
+#include "../../font.hpp"
+#include "../../sound.hpp"
+#include "../../texture.hpp"
+#include "../menu/menu.hpp"
+#include "active_map.hpp"
+#include "loaded_item.hpp"
+#include "loaded_tileset.hpp"
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 #include <ch/conversation.hpp>
@@ -17,69 +20,25 @@
 #include <exception>
 #include <spdlog/spdlog.h>
 
-namespace ch
-{
-    struct loaded_tileset
-    {
-        std::unique_ptr<ch::texture> image;
-        std::vector<std::unique_ptr<ch::texture>> tile_images;
-
-        loaded_tileset(const ch::map_tileset &map_tileset, SDL_Renderer *const renderer)
-        {
-            if (!map_tileset.tileset->image.empty())
-            {
-                spdlog::info("Loading tileset image {}", map_tileset.tileset->image);
-                image = std::make_unique<ch::texture>(renderer, map_tileset.tileset->image.c_str());
-            }
-
-            for (const auto &tile : map_tileset.tileset->tiles)
-            {
-                if (!tile.image.empty())
-                {
-                    spdlog::info("Loading tile image {}", tile.image);
-                    tile_images.push_back(std::make_unique<ch::texture>(renderer, tile.image.c_str()));
-                }
-            }
-        }
-    };
-
-    class active_map
-    {
-    public:
-        std::vector<std::unique_ptr<ch::loaded_tileset>> loaded_tilesets;
-
-        active_map(const ch::map &map, SDL_Renderer *const renderer)
-        {
-            std::transform(
-                map.tilesets.begin(),
-                map.tilesets.end(),
-                std::back_inserter(loaded_tilesets),
-                [renderer](const auto &map_tileset)
-                {
-                    return std::make_unique<ch::loaded_tileset>(map_tileset, renderer);
-                });
-        }
-    };
-};
-
-ch::game_scene::game_scene(
+ch::game::game(
     std::shared_ptr<ch::display> display,
     const char *const hostname,
     const std::uint16_t port,
     const bool is_host)
-    : scene(display)
+    : ch::scene(display)
 {
     const auto renderer = display->get_renderer();
 
     font = std::make_unique<ch::font>("assets/NinjaAdventure/HUD/Font/NormalFont.ttf", 18);
-    attack_sound = std::make_unique<ch::sound>("assets/NinjaAdventure/Sounds/Game/Sword.wav");
-    player_idle_sprites = std::make_unique<ch::texture>(renderer, "assets/NinjaAdventure/Actor/Characters/BlueNinja/SeparateAnim/Idle.png");
-    player_walk_sprites = std::make_unique<ch::texture>(renderer, "assets/NinjaAdventure/Actor/Characters/BlueNinja/SeparateAnim/Walk.png");
-    player_attack_sprites = std::make_unique<ch::texture>(renderer, "assets/NinjaAdventure/Actor/Characters/BlueNinja/SeparateAnim/Attack.png");
-    sword_in_hand_sprite = std::make_unique<ch::texture>(renderer, "assets/NinjaAdventure/Items/Weapons/Sword2/SpriteInHand.png");
+    player_spritesheet = std::make_unique<ch::texture>(renderer, "assets/NinjaAdventure/Actor/Characters/Knight/SpriteSheet.png");
+    shadow_sprite = std::make_unique<ch::texture>(renderer, "assets/NinjaAdventure/Actor/Characters/Shadow.png");
     dialog_box = std::make_unique<ch::texture>(renderer, "assets/NinjaAdventure/HUD/Dialog/DialogBox.png");
 
-    world = std::make_shared<ch::world>("assets/world.world", "assets/quests.json", "assets/conversations.json");
+    world = std::make_shared<ch::world>(
+        "assets/world.world",
+        "assets/quests.json",
+        "assets/conversations.json",
+        "assets/items.json");
 
     if (is_host)
     {
@@ -91,9 +50,20 @@ ch::game_scene::game_scene(
     display->present();
 
     client = std::make_unique<ch::client>(hostname, port, world);
+
+    std::transform(
+        world->items.begin(),
+        world->items.end(),
+        std::back_inserter(loaded_items),
+        [renderer](const auto &item)
+        {
+            return std::make_unique<ch::loaded_item>(item, renderer);
+        });
+
+    weapon_item_index = 0;
 }
 
-void ch::game_scene::handle_event(const SDL_Event &event)
+void ch::game::handle_event(const SDL_Event &event)
 {
     const auto &player = client->get_player();
 
@@ -126,7 +96,8 @@ void ch::game_scene::handle_event(const SDL_Event &event)
                 message.type = ch::message_type::attack;
                 client->send(&message, sizeof(message), 0);
 
-                attack_sound->play();
+                const auto &loaded_weapon = loaded_items.at(weapon_item_index);
+                loaded_weapon->attack_sound->play();
             }
         }
         break;
@@ -209,7 +180,7 @@ void ch::game_scene::handle_event(const SDL_Event &event)
         break;
         case SDLK_F10:
         {
-            return change_scene<ch::menu_scene>(display);
+            return change_scene<ch::menu>(display);
         }
         break;
         }
@@ -225,7 +196,7 @@ void ch::game_scene::handle_event(const SDL_Event &event)
     client->handle_event(event);
 }
 
-void ch::game_scene::update(
+void ch::game::update(
     const float delta_time,
     const std::uint8_t *const keys,
     const std::uint32_t,
@@ -428,49 +399,68 @@ void ch::game_scene::update(
     {
         if (connection.id != ch::server::max_connections && connection.player.map_index == map_index)
         {
-            ch::texture *texture;
-            SDL_Rect srcrect;
+            constexpr int player_sprite_size = 16;
+
+            SDL_Rect srcrect = {
+                0,
+                0,
+                player_sprite_size,
+                player_sprite_size};
             switch (connection.player.animation)
             {
             case ch::animation::idle:
-                texture = player_idle_sprites.get();
-                srcrect.x = static_cast<int>(connection.player.direction) * 16;
+            {
+                srcrect.x = static_cast<int>(connection.player.direction) * player_sprite_size;
                 srcrect.y = 0;
-                break;
-            case ch::animation::walking:
-                texture = player_walk_sprites.get();
-                srcrect.x = static_cast<int>(connection.player.direction) * 16;
-                srcrect.y = (connection.player.frame_index % 4) * 16;
-                break;
-            case ch::animation::attacking:
-                texture = player_attack_sprites.get();
-                srcrect.x = static_cast<int>(connection.player.direction) * 16;
-                srcrect.y = 0;
-                break;
-            default:
-                texture = nullptr;
-                break;
             }
-            srcrect.w = 16;
-            srcrect.h = 16;
+            break;
+            case ch::animation::walking:
+            {
+                srcrect.x = static_cast<int>(connection.player.direction) * player_sprite_size;
+                srcrect.y = (connection.player.frame_index % 4) * player_sprite_size;
+            }
+            break;
+            case ch::animation::attacking:
+            {
+                srcrect.x = static_cast<int>(connection.player.direction) * player_sprite_size;
+                srcrect.y = 4 * player_sprite_size;
+            }
+            break;
+            }
 
-            SDL_Rect dstrect = {
+            const SDL_Rect dstrect = {
                 static_cast<int>((connection.player.pos_x - view_x) * sprite_scale),
                 static_cast<int>((connection.player.pos_y - view_y) * sprite_scale),
-                static_cast<int>(16 * sprite_scale),
-                static_cast<int>(16 * sprite_scale)};
+                static_cast<int>(player_sprite_size * sprite_scale),
+                static_cast<int>(player_sprite_size * sprite_scale)};
 
-            texture->render(renderer, &srcrect, &dstrect);
+            player_spritesheet->render(renderer, &srcrect, &dstrect);
 
             if (connection.player.animation == ch::animation::attacking)
             {
-                srcrect.x = 0;
-                srcrect.y = 0;
-                srcrect.w = 6;
-                srcrect.h = 11;
-                dstrect.w = 6 * sprite_scale;
-                dstrect.h = 11 * sprite_scale;
-                sword_in_hand_sprite->render(renderer, &srcrect, &dstrect);
+                const auto &weapon = world->items.at(weapon_item_index);
+                const auto &loaded_weapon = loaded_items.at(weapon_item_index);
+                const auto &attack_position = weapon.attack_positions.at(static_cast<std::size_t>(connection.player.direction));
+
+                const SDL_Rect weapon_srcrect = {
+                    0,
+                    0,
+                    static_cast<int>(weapon.width),
+                    static_cast<int>(weapon.height)};
+                const SDL_Rect weapon_dstrect = {
+                    dstrect.x + static_cast<int>(attack_position.x_offset * sprite_scale),
+                    dstrect.y + static_cast<int>(attack_position.y_offset * sprite_scale),
+                    static_cast<int>(weapon.width * sprite_scale),
+                    static_cast<int>(weapon.height * sprite_scale)};
+                const auto weapon_angle = attack_position.angle;
+
+                loaded_weapon->attack_sprite->render_ex(
+                    renderer,
+                    &weapon_srcrect,
+                    &weapon_dstrect,
+                    weapon_angle,
+                    nullptr,
+                    SDL_FLIP_NONE);
             }
 
             font->render(renderer, dstrect.x + 24, dstrect.y - (24 * 2), display_width, {255, 255, 255}, "{}", connection.id);

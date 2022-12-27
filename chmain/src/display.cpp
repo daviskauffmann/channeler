@@ -80,7 +80,7 @@ void ch::display::handle_event(const SDL_Event &event) const
 
 void ch::display::clear() const
 {
-    SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
     SDL_RenderClear(renderer);
 }
 

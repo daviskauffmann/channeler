@@ -13,7 +13,11 @@ int main(int, char *[])
     const ch::sdl sdl(SDL_INIT_EVENTS);
     const ch::enet enet;
 
-    const auto world = std::make_shared<ch::world>("assets/world.world", "assets/quests.json", "assets/conversations.json");
+    const auto world = std::make_shared<ch::world>(
+        "assets/world.world",
+        "assets/quests.json",
+        "assets/conversations.json",
+        "assets/items.json");
 
     ch::server server(server_port, world);
 

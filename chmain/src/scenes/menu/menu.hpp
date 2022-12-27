@@ -1,7 +1,7 @@
-#ifndef CH_MENU_SCENE_HPP
-#define CH_MENU_SCENE_HPP
+#ifndef CH_MENU_HPP
+#define CH_MENU_HPP
 
-#include "../scene.hpp"
+#include "../../scene.hpp"
 #include <SDL2/SDL.h>
 
 namespace ch
@@ -9,10 +9,10 @@ namespace ch
     class font;
     class texture;
 
-    class menu_scene : public ch::scene
+    class menu : public ch::scene
     {
     public:
-        explicit menu_scene(std::shared_ptr<ch::display> display);
+        explicit menu(std::shared_ptr<ch::display> display);
 
         void handle_event(const SDL_Event &event) override;
         void update(

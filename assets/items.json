@@ -1,0 +1,32 @@
+[
+    {
+        "name": "Sword",
+        "sprite_filename": "NinjaAdventure/Items/Weapons/Sword2/Sprite.png",
+        "width": 6,
+        "height": 11,
+        "attack_positions": {
+            "down": {
+                "x_offset": 11,
+                "y_offset": 13,
+                "angle": 0
+            },
+            "up": {
+                "x_offset": 2,
+                "y_offset": -11,
+                "angle": 180
+            },
+            "left": {
+                "x_offset": -8,
+                "y_offset": 6.5,
+                "angle": 90
+            },
+            "right": {
+                "x_offset": 18,
+                "y_offset": 6.5,
+                "angle": 270
+            }
+        },
+        "attack_sprite_filename": "NinjaAdventure/Items/Weapons/Sword2/SpriteInHand.png",
+        "attack_sound_filename": "NinjaAdventure/Sounds/Game/Sword.wav"
+    }
+]

@@ -11,7 +11,8 @@
 ch::world::world(
     const std::string &world_filename,
     const std::string &quests_filename,
-    const std::string &conversations_filename)
+    const std::string &conversations_filename,
+    const std::string &items_filename)
 {
     {
         spdlog::info("Loading world {}", world_filename);
@@ -47,6 +48,17 @@ ch::world::world(
         {
             std::size_t node_index = 0;
             conversations.push_back({conversation_json, root_index++, &node_index});
+        }
+    }
+
+    {
+        spdlog::info("Loading items {}", items_filename);
+
+        const auto items_json = nlohmann::json::parse(std::ifstream(items_filename));
+
+        for (const auto &item_json : items_json)
+        {
+            items.push_back({item_json});
         }
     }
 }

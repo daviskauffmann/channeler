@@ -1,6 +1,6 @@
 #include "display.hpp"
 #include "scene.hpp"
-#include "scenes/menu_scene.hpp"
+#include "scenes/menu/menu.hpp"
 #include "sdl_image.hpp"
 #include "sdl_mixer.hpp"
 #include "sdl_ttf.hpp"
@@ -21,7 +21,7 @@ int main(int, char *[])
     display->set_title("Channeler");
     display->set_vsync(true);
 
-    ch::scene::change_scene<ch::menu_scene>(display);
+    ch::scene::change_scene<ch::menu>(display);
 
     std::uint64_t current_time = 0;
     bool running = true;

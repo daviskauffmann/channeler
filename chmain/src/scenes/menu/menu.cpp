@@ -1,9 +1,9 @@
-#include "menu_scene.hpp"
+#include "menu.hpp"
 
-#include "../display.hpp"
-#include "../font.hpp"
-#include "../texture.hpp"
-#include "game_scene.hpp"
+#include "../../display.hpp"
+#include "../../font.hpp"
+#include "../../texture.hpp"
+#include "../game/game.hpp"
 #include <SDL2/SDL_image.h>
 #include <spdlog/spdlog.h>
 
@@ -43,14 +43,16 @@ auto button(
     return (mouse & SDL_BUTTON_LEFT) && SDL_PointInRect(&mouse_point, &dstrect);
 }
 
-ch::menu_scene::menu_scene(std::shared_ptr<ch::display> display)
-    : scene(display)
+ch::menu::menu(std::shared_ptr<ch::display> display)
+    : ch::scene(display)
 {
+    const auto renderer = display->get_renderer();
+
     font = std::make_unique<ch::font>("assets/NinjaAdventure/HUD/Font/NormalFont.ttf", 18);
-    button_texture = std::make_unique<ch::texture>(display->get_renderer(), "assets/NinjaAdventure/HUD/Dialog/ChoiceBox.png");
+    button_texture = std::make_unique<ch::texture>(renderer, "assets/NinjaAdventure/HUD/Dialog/ChoiceBox.png");
 }
 
-void ch::menu_scene::handle_event(const SDL_Event &event)
+void ch::menu::handle_event(const SDL_Event &event)
 {
     switch (event.type)
     {
@@ -61,37 +63,39 @@ void ch::menu_scene::handle_event(const SDL_Event &event)
         case SDLK_ESCAPE:
             return delete_scene();
         case SDLK_1:
-            return change_scene<ch::game_scene>(display, server_hostname, server_port, true);
+            return change_scene<ch::game>(display, server_hostname, server_port, true);
         case SDLK_2:
-            return change_scene<ch::game_scene>(display, server_hostname, server_port, false);
+            return change_scene<ch::game>(display, server_hostname, server_port, false);
         }
     }
     break;
     }
 }
 
-void ch::menu_scene::update(
+void ch::menu::update(
     const float,
     const std::uint8_t *const,
     const std::uint32_t mouse,
     const int mouse_x,
     const int mouse_y)
 {
-    font->render(display->get_renderer(), 0, 18 * 0, 0, {255, 255, 255}, "Press 1 to host");
-    font->render(display->get_renderer(), 0, 18 * 1, 0, {255, 255, 255}, "Press 2 to join");
-    font->render(display->get_renderer(), 0, 18 * 2, 0, {255, 255, 255}, "Press ESC to exit");
+    const auto renderer = display->get_renderer();
 
-    if (button(display->get_renderer(), button_texture.get(), font.get(), 100, 100, mouse, mouse_x, mouse_y, "Button 1"))
+    font->render(renderer, 0, 18 * 0, 0, {255, 255, 255}, "Press 1 to host");
+    font->render(renderer, 0, 18 * 1, 0, {255, 255, 255}, "Press 2 to join");
+    font->render(renderer, 0, 18 * 2, 0, {255, 255, 255}, "Press ESC to exit");
+
+    if (button(renderer, button_texture.get(), font.get(), 100, 100, mouse, mouse_x, mouse_y, "Button 1"))
     {
         spdlog::info("Button 1 Clicked");
     }
 
-    if (button(display->get_renderer(), button_texture.get(), font.get(), 100, 200, mouse, mouse_x, mouse_y, "Button 2"))
+    if (button(renderer, button_texture.get(), font.get(), 100, 200, mouse, mouse_x, mouse_y, "Button 2"))
     {
         spdlog::info("Button 2 Clicked");
     }
 
-    if (button(display->get_renderer(), button_texture.get(), font.get(), 100, 300, mouse, mouse_x, mouse_y, "Button 3"))
+    if (button(renderer, button_texture.get(), font.get(), 100, 300, mouse, mouse_x, mouse_y, "Button 3"))
     {
         spdlog::info("Button 3 Clicked");
     }

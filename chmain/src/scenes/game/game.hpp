@@ -1,14 +1,15 @@
-#ifndef CH_GAME_SCENE_HPP
-#define CH_GAME_SCENE_HPP
+#ifndef CH_GAME_HPP
+#define CH_GAME_HPP
 
-#include "../scene.hpp"
+#include "../../scene.hpp"
 #include <cstddef>
 #include <cstdint>
 #include <memory>
 
 namespace ch
 {
-    class active_map;
+    struct active_map;
+    struct loaded_item;
     class client;
     class font;
     class server;
@@ -16,10 +17,10 @@ namespace ch
     class texture;
     class world;
 
-    class game_scene : public ch::scene
+    class game : public ch::scene
     {
     public:
-        game_scene(
+        game(
             std::shared_ptr<ch::display> display,
             const char *hostname,
             std::uint16_t port,
@@ -39,12 +40,11 @@ namespace ch
         std::unique_ptr<ch::server> server;
         std::unique_ptr<ch::client> client;
         std::unique_ptr<ch::active_map> active_map;
+        std::vector<std::unique_ptr<ch::loaded_item>> loaded_items;
         std::size_t map_index;
-        std::unique_ptr<ch::sound> attack_sound;
-        std::unique_ptr<ch::texture> player_idle_sprites;
-        std::unique_ptr<ch::texture> player_walk_sprites;
-        std::unique_ptr<ch::texture> player_attack_sprites;
-        std::unique_ptr<ch::texture> sword_in_hand_sprite;
+        std::size_t weapon_item_index;
+        std::unique_ptr<ch::texture> player_spritesheet;
+        std::unique_ptr<ch::texture> shadow_sprite;
         std::unique_ptr<ch::texture> dialog_box;
         bool quest_log_open = false;
         bool left_panel_open = false;
