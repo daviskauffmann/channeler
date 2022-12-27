@@ -51,49 +51,46 @@ void ch::player::update(const ch::input &input, const ch::map &map, const float 
         frame_index++;
     }
 
-    acc_x = static_cast<float>(input.dx);
-    acc_y = static_cast<float>(input.dy);
+    acceleration = {
+        static_cast<float>(input.dx),
+        static_cast<float>(input.dy)};
 
-    const auto acc_len = sqrtf(powf(acc_x, 2) + powf(acc_y, 2));
-    if (acc_len > 1)
+    const auto acceleration_length = acceleration.length();
+    if (acceleration_length > 1)
     {
-        acc_x /= acc_len;
-        acc_y /= acc_len;
+        acceleration /= acceleration_length;
     }
 
     constexpr auto speed = 1000.0f;
-    acc_x *= speed;
-    acc_y *= speed;
+    acceleration *= speed;
 
     constexpr auto drag = 20.0f;
-    acc_x -= vel_x * drag;
-    acc_y -= vel_y * drag;
+    acceleration -= velocity * drag;
 
-    const auto new_pos_x = 0.5f * acc_x * powf(delta_time, 2) + vel_x * delta_time + pos_x;
-    const auto new_pos_y = 0.5f * acc_y * powf(delta_time, 2) + vel_y * delta_time + pos_y;
+    const auto new_position = 0.5f * acceleration * powf(delta_time, 2) + velocity * delta_time + position;
 
-    const auto tile_nx_x = static_cast<std::size_t>(roundf(new_pos_x / map.tile_width));
-    const auto tile_nx_y = static_cast<std::size_t>(roundf(pos_y / map.tile_height));
+    const auto tile_nx_x = static_cast<std::size_t>(roundf(new_position.x / map.tile_width));
+    const auto tile_nx_y = static_cast<std::size_t>(roundf(position.y / map.tile_height));
     if (map.is_solid(tile_nx_x, tile_nx_y))
     {
-        vel_x = 0;
+        velocity.x = 0;
     }
     else
     {
-        pos_x = new_pos_x;
-        vel_x = acc_x * delta_time + vel_x;
+        position.x = new_position.x;
+        velocity.x = acceleration.x * delta_time + velocity.x;
     }
 
-    const auto tile_ny_x = static_cast<std::size_t>(roundf(pos_x / map.tile_width));
-    const auto tile_ny_y = static_cast<std::size_t>(roundf(new_pos_y / map.tile_height));
+    const auto tile_ny_x = static_cast<std::size_t>(roundf(position.x / map.tile_width));
+    const auto tile_ny_y = static_cast<std::size_t>(roundf(new_position.y / map.tile_height));
     if (map.is_solid(tile_ny_x, tile_ny_y))
     {
-        vel_y = 0;
+        velocity.y = 0;
     }
     else
     {
-        pos_y = new_pos_y;
-        vel_y = acc_y * delta_time + vel_y;
+        position.y = new_position.y;
+        velocity.y = acceleration.y * delta_time + velocity.y;
     }
 }
 

@@ -31,7 +31,6 @@ ch::game::game(
 
     font = std::make_unique<ch::font>("assets/NinjaAdventure/HUD/Font/NormalFont.ttf", 18);
     player_spritesheet = std::make_unique<ch::texture>(renderer, "assets/NinjaAdventure/Actor/Characters/Knight/SpriteSheet.png");
-    shadow_sprite = std::make_unique<ch::texture>(renderer, "assets/NinjaAdventure/Actor/Characters/Shadow.png");
     dialog_box = std::make_unique<ch::texture>(renderer, "assets/NinjaAdventure/HUD/Dialog/DialogBox.png");
 
     world = std::make_shared<ch::world>(
@@ -255,26 +254,26 @@ void ch::game::update(
     const auto view_width = display_width / sprite_scale / (left_panel_open ? 2 : 1);
     const auto view_height = display_height / sprite_scale;
     const auto view_x = std::clamp(
-        static_cast<std::int64_t>(player.pos_x - view_width / 2),
+        static_cast<std::int64_t>(player.position.x - view_width / 2),
         static_cast<std::int64_t>(0.0f),
         static_cast<std::int64_t>((map.width * map.tile_width) - view_width));
     const auto view_y = std::clamp(
-        static_cast<std::int64_t>(player.pos_y - view_height / 2),
+        static_cast<std::int64_t>(player.position.y - view_height / 2),
         static_cast<std::int64_t>(0.0f),
         static_cast<std::int64_t>((map.height * map.tile_height) - view_height));
 
     for (const auto &layer : map.layers)
     {
-        if (layer.data.size())
+        if (layer.tiles.size())
         {
             for (auto y = static_cast<std::int64_t>(view_y / map.tile_height); y <= static_cast<std::int64_t>((view_y + view_height) / map.tile_height); y++)
             {
                 for (auto x = static_cast<std::int64_t>(view_x / map.tile_width); x <= static_cast<std::int64_t>((view_x + view_width) / map.tile_width); x++)
                 {
-                    const auto datum = layer.get_datum(x, y);
-                    if (datum)
+                    const auto layer_tile = layer.get_tile(x, y);
+                    if (layer_tile)
                     {
-                        const auto &map_tileset = map.get_tileset(datum->gid);
+                        const auto &map_tileset = map.get_tileset(layer_tile->gid);
                         const auto tileset = map_tileset.tileset;
 
                         ch::texture *texture;
@@ -282,26 +281,26 @@ void ch::game::update(
                         SDL_Rect dstrect;
                         if (tileset->image.empty())
                         {
-                            const auto &tile = map_tileset.get_tile(datum->gid);
+                            const auto &tileset_tile = map_tileset.get_tile(layer_tile->gid);
 
-                            texture = active_map->loaded_tilesets.at(map_tileset.index)->tile_images.at(tile.index).get();
+                            texture = active_map->loaded_tilesets.at(map_tileset.index)->tile_images.at(tileset_tile.index).get();
                             srcrect = {
                                 0,
                                 0,
-                                static_cast<int>(tile.width),
-                                static_cast<int>(tile.height)};
+                                static_cast<int>(tileset_tile.width),
+                                static_cast<int>(tileset_tile.height)};
                             dstrect = {
                                 static_cast<int>(((x * map.tile_width) - view_x) * sprite_scale),
                                 static_cast<int>(((y * map.tile_height) - view_y) * sprite_scale),
-                                static_cast<int>(tile.width * sprite_scale),
-                                static_cast<int>(tile.height * sprite_scale)};
+                                static_cast<int>(tileset_tile.width * sprite_scale),
+                                static_cast<int>(tileset_tile.height * sprite_scale)};
                         }
                         else
                         {
                             texture = active_map->loaded_tilesets.at(map_tileset.index)->image.get();
                             srcrect = {
-                                static_cast<int>(((datum->gid - map_tileset.first_gid) % tileset->columns) * map.tile_width),
-                                static_cast<int>(((datum->gid - map_tileset.first_gid) / tileset->columns) * map.tile_height),
+                                static_cast<int>(((layer_tile->gid - map_tileset.first_gid) % tileset->columns) * map.tile_width),
+                                static_cast<int>(((layer_tile->gid - map_tileset.first_gid) / tileset->columns) * map.tile_height),
                                 static_cast<int>(map.tile_width),
                                 static_cast<int>(map.tile_height)};
                             dstrect = {
@@ -312,20 +311,20 @@ void ch::game::update(
                         }
 
                         auto angle = 0.0;
-                        if (datum->d_flip)
+                        if (layer_tile->d_flip)
                         {
-                            if (datum->h_flip)
+                            if (layer_tile->h_flip)
                             {
                                 angle = 90.0;
                             }
-                            if (datum->v_flip)
+                            if (layer_tile->v_flip)
                             {
                                 angle = 270.0;
                             }
                         }
                         else
                         {
-                            if (datum->h_flip && datum->v_flip)
+                            if (layer_tile->h_flip && layer_tile->v_flip)
                             {
                                 angle = 180.0;
                             }
@@ -400,6 +399,8 @@ void ch::game::update(
         if (connection.id != ch::server::max_connections && connection.player.map_index == map_index)
         {
             constexpr int player_sprite_size = 16;
+            const int player_x = static_cast<int>((connection.player.position.x - view_x) * sprite_scale);
+            const int player_y = static_cast<int>((connection.player.position.y - view_y) * sprite_scale);
 
             SDL_Rect srcrect = {
                 0,
@@ -429,8 +430,8 @@ void ch::game::update(
             }
 
             const SDL_Rect dstrect = {
-                static_cast<int>((connection.player.pos_x - view_x) * sprite_scale),
-                static_cast<int>((connection.player.pos_y - view_y) * sprite_scale),
+                player_x,
+                player_y,
                 static_cast<int>(player_sprite_size * sprite_scale),
                 static_cast<int>(player_sprite_size * sprite_scale)};
 
@@ -448,8 +449,8 @@ void ch::game::update(
                     static_cast<int>(weapon.width),
                     static_cast<int>(weapon.height)};
                 const SDL_Rect weapon_dstrect = {
-                    dstrect.x + static_cast<int>(attack_position.x_offset * sprite_scale),
-                    dstrect.y + static_cast<int>(attack_position.y_offset * sprite_scale),
+                    player_x + static_cast<int>(attack_position.x_offset * sprite_scale),
+                    player_y + static_cast<int>(attack_position.y_offset * sprite_scale),
                     static_cast<int>(weapon.width * sprite_scale),
                     static_cast<int>(weapon.height * sprite_scale)};
                 const auto weapon_angle = attack_position.angle;

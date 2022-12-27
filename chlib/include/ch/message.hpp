@@ -57,8 +57,8 @@ namespace ch
             {
                 std::size_t map_index;
 
-                float pos_x;
-                float pos_y;
+                float position_x;
+                float position_y;
 
                 ch::direction direction;
                 ch::animation animation;

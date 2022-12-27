@@ -20,7 +20,7 @@ ch::tileset::tileset(const std::string &filename)
 
     for (const auto &tile_json : tileset_json.at("tiles"))
     {
-        ch::tile tile;
+        ch::tileset_tile tile;
 
         tile.index = tile_json.at("id");
 

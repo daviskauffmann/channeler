@@ -6,7 +6,7 @@
 
 namespace ch
 {
-    struct tile
+    struct tileset_tile
     {
         std::size_t index;
 
@@ -21,7 +21,7 @@ namespace ch
     {
         std::size_t columns;
         std::string image = "";
-        std::vector<ch::tile> tiles;
+        std::vector<ch::tileset_tile> tiles;
 
         tileset(const std::string &filename);
     };

@@ -25,9 +25,9 @@ const std::uint8_t *ch::sdl::get_keys() const
     return SDL_GetKeyboardState(nullptr);
 }
 
-ch::mouse_state ch::sdl::get_mouse_state() const
+ch::sdl_mouse_state ch::sdl::get_mouse_state() const
 {
-    ch::mouse_state state;
+    ch::sdl_mouse_state state;
     state.mouse = SDL_GetMouseState(&state.mouse_x, &state.mouse_y);
     return state;
 }

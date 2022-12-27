@@ -58,8 +58,8 @@ void ch::server::update(const float delta_time)
 
             message.connections.at(i).player.map_index = connections.at(i).player.map_index;
 
-            message.connections.at(i).player.pos_x = connections.at(i).player.pos_x;
-            message.connections.at(i).player.pos_y = connections.at(i).player.pos_y;
+            message.connections.at(i).player.position_x = connections.at(i).player.position.x;
+            message.connections.at(i).player.position_y = connections.at(i).player.position.y;
 
             message.connections.at(i).player.direction = connections.at(i).player.direction;
             message.connections.at(i).player.animation = connections.at(i).player.animation;

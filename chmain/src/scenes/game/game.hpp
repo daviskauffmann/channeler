@@ -44,7 +44,6 @@ namespace ch
         std::size_t map_index;
         std::size_t weapon_item_index;
         std::unique_ptr<ch::texture> player_spritesheet;
-        std::unique_ptr<ch::texture> shadow_sprite;
         std::unique_ptr<ch::texture> dialog_box;
         bool quest_log_open = false;
         bool left_panel_open = false;

@@ -1,6 +1,7 @@
 #ifndef CH_PLAYER_HPP
 #define CH_PLAYER_HPP
 
+#include "vec2.hpp"
 #include <functional>
 #include <memory>
 #include <vector>
@@ -37,12 +38,9 @@ namespace ch
     {
         std::size_t map_index = 0;
 
-        float pos_x = 100;
-        float pos_y = 100;
-        float vel_x = 0;
-        float vel_y = 0;
-        float acc_x = 0;
-        float acc_y = 0;
+        ch::vec2 position = {100, 100};
+        ch::vec2 velocity = {0, 0};
+        ch::vec2 acceleration = {0, 0};
 
         bool attacking = false;
         float attack_timer = 0;

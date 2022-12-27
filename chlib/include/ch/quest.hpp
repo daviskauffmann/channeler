@@ -10,8 +10,6 @@ namespace ch
     struct quest_stage
     {
         std::string description;
-
-        quest_stage(const nlohmann::json &stage_json);
     };
 
     struct quest
