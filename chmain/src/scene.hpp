@@ -4,8 +4,6 @@
 #include <SDL2/SDL.h>
 #include <cstdint>
 #include <memory>
-#include <spdlog/spdlog.h>
-#include <stdexcept>
 
 namespace ch
 {
@@ -14,24 +12,6 @@ namespace ch
     class scene
     {
     public:
-        template <typename T, typename... Args>
-        static void change_scene(Args... args)
-        {
-            try
-            {
-                const auto new_scene = new T(std::forward<Args>(args)...);
-                delete current_scene;
-                current_scene = new_scene;
-            }
-            catch (const std::exception &e)
-            {
-                spdlog::error("Failed to change scene: {}", e.what());
-            }
-        }
-
-        static scene *get_scene();
-        static void delete_scene();
-
         scene(std::shared_ptr<ch::display> display)
             : display(display) {}
         virtual ~scene() = default;
@@ -40,8 +20,8 @@ namespace ch
         scene(scene &&other) = delete;
         scene &operator=(scene &&other) = delete;
 
-        virtual void handle_event(const SDL_Event &event) = 0;
-        virtual void update(
+        virtual ch::scene *handle_event(const SDL_Event &event) = 0;
+        virtual ch::scene *update(
             float delta_time,
             const std::uint8_t *keys,
             std::uint32_t mouse,
@@ -51,8 +31,22 @@ namespace ch
     protected:
         std::shared_ptr<ch::display> display;
 
-    private:
-        static scene *current_scene;
+        template <typename T, typename... Args>
+        ch::scene *change_scene(Args... args)
+        {
+            auto scene = new T(std::forward<Args>(args)...);
+
+            delete this;
+
+            return scene;
+        }
+
+        ch::scene *exit_game()
+        {
+            delete this;
+
+            return nullptr;
+        }
     };
 
 }

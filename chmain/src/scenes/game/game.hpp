@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
+#include <vector>
 
 namespace ch
 {
@@ -26,8 +27,8 @@ namespace ch
             std::uint16_t port,
             bool is_host);
 
-        void handle_event(const SDL_Event &event) override;
-        void update(
+        ch::scene *handle_event(const SDL_Event &event) override;
+        ch::scene *update(
             float delta_time,
             const std::uint8_t *keys,
             std::uint32_t mouse,

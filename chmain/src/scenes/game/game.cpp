@@ -62,7 +62,7 @@ ch::game::game(
     weapon_item_index = 0;
 }
 
-void ch::game::handle_event(const SDL_Event &event)
+ch::scene *ch::game::handle_event(const SDL_Event &event)
 {
     const auto &player = client->get_player();
 
@@ -193,9 +193,11 @@ void ch::game::handle_event(const SDL_Event &event)
     }
 
     client->handle_event(event);
+
+    return this;
 }
 
-void ch::game::update(
+ch::scene *ch::game::update(
     const float delta_time,
     const std::uint8_t *const keys,
     const std::uint32_t,
@@ -522,4 +524,6 @@ void ch::game::update(
             }
         }
     }
+
+    return this;
 }

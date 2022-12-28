@@ -52,7 +52,7 @@ ch::menu::menu(std::shared_ptr<ch::display> display)
     button_texture = std::make_unique<ch::texture>(renderer, "assets/NinjaAdventure/HUD/Dialog/ChoiceBox.png");
 }
 
-void ch::menu::handle_event(const SDL_Event &event)
+ch::scene *ch::menu::handle_event(const SDL_Event &event)
 {
     switch (event.type)
     {
@@ -61,18 +61,47 @@ void ch::menu::handle_event(const SDL_Event &event)
         switch (event.key.keysym.sym)
         {
         case SDLK_ESCAPE:
-            return delete_scene();
+        {
+            return exit_game();
+        }
+        break;
         case SDLK_1:
-            return change_scene<ch::game>(display, server_hostname, server_port, true);
+        {
+            try
+            {
+                return change_scene<ch::game>(display, server_hostname, server_port, true);
+            }
+            catch (const std::exception &e)
+            {
+                spdlog::error(e.what());
+
+                error_message = e.what();
+            }
+        }
+        break;
         case SDLK_2:
-            return change_scene<ch::game>(display, server_hostname, server_port, false);
+        {
+            try
+            {
+                return change_scene<ch::game>(display, server_hostname, server_port, false);
+            }
+            catch (const std::exception &e)
+            {
+                spdlog::error(e.what());
+
+                error_message = e.what();
+            }
+        }
+        break;
         }
     }
     break;
     }
+
+    return this;
 }
 
-void ch::menu::update(
+ch::scene *ch::menu::update(
     const float,
     const std::uint8_t *const,
     const std::uint32_t mouse,
@@ -85,18 +114,28 @@ void ch::menu::update(
     font->render(renderer, 0, 18 * 1, 0, {255, 255, 255}, "Press 2 to join");
     font->render(renderer, 0, 18 * 2, 0, {255, 255, 255}, "Press ESC to exit");
 
-    if (button(renderer, button_texture.get(), font.get(), 100, 100, mouse, mouse_x, mouse_y, "Button 1"))
+    if (!error_message.empty())
     {
-        spdlog::info("Button 1 Clicked");
+        font->render(renderer, 0, 18 * 4, 0, {255, 0, 0}, error_message);
     }
 
-    if (button(renderer, button_texture.get(), font.get(), 100, 200, mouse, mouse_x, mouse_y, "Button 2"))
+    if (false)
     {
-        spdlog::info("Button 2 Clicked");
+        if (button(renderer, button_texture.get(), font.get(), 100, 100, mouse, mouse_x, mouse_y, "Button 1"))
+        {
+            spdlog::info("Button 1 Clicked");
+        }
+
+        if (button(renderer, button_texture.get(), font.get(), 100, 200, mouse, mouse_x, mouse_y, "Button 2"))
+        {
+            spdlog::info("Button 2 Clicked");
+        }
+
+        if (button(renderer, button_texture.get(), font.get(), 100, 300, mouse, mouse_x, mouse_y, "Button 3"))
+        {
+            spdlog::info("Button 3 Clicked");
+        }
     }
 
-    if (button(renderer, button_texture.get(), font.get(), 100, 300, mouse, mouse_x, mouse_y, "Button 3"))
-    {
-        spdlog::info("Button 3 Clicked");
-    }
+    return this;
 }

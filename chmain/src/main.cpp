@@ -21,7 +21,7 @@ int main(int, char *[])
     display->set_title("Channeler");
     display->set_vsync(true);
 
-    ch::scene::change_scene<ch::menu>(display);
+    ch::scene *scene = new ch::menu(display);
 
     std::uint64_t current_time = 0;
     bool running = true;
@@ -48,10 +48,10 @@ int main(int, char *[])
 
             display->handle_event(event);
 
-            if (ch::scene::get_scene())
+            if (scene)
             {
-                ch::scene::get_scene()->handle_event(event);
-                if (!ch::scene::get_scene())
+                scene = scene->handle_event(event);
+                if (!scene)
                 {
                     running = false;
                 }
@@ -60,10 +60,10 @@ int main(int, char *[])
 
         display->clear();
 
-        if (ch::scene::get_scene())
+        if (scene)
         {
-            ch::scene::get_scene()->update(delta_time, keys, mouse, mouse_x, mouse_y);
-            if (!ch::scene::get_scene())
+            scene = scene->update(delta_time, keys, mouse, mouse_x, mouse_y);
+            if (!scene)
             {
                 running = false;
             }
@@ -72,9 +72,9 @@ int main(int, char *[])
         display->present();
     }
 
-    if (ch::scene::get_scene())
+    if (scene)
     {
-        ch::scene::delete_scene();
+        delete scene;
     }
 
     return 0;

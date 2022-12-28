@@ -3,6 +3,7 @@
 
 #include "../../scene.hpp"
 #include <SDL2/SDL.h>
+#include <string>
 
 namespace ch
 {
@@ -14,8 +15,8 @@ namespace ch
     public:
         explicit menu(std::shared_ptr<ch::display> display);
 
-        void handle_event(const SDL_Event &event) override;
-        void update(
+        ch::scene *handle_event(const SDL_Event &event) override;
+        ch::scene *update(
             float delta_time,
             const std::uint8_t *keys,
             std::uint32_t mouse,
@@ -25,6 +26,8 @@ namespace ch
     private:
         std::unique_ptr<ch::font> font;
         std::unique_ptr<ch::texture> button_texture;
+
+        std::string error_message = "";
     };
 }
 
