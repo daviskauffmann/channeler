@@ -256,11 +256,11 @@ ch::scene *ch::game::update(
     const auto view_width = display_width / sprite_scale / (left_panel_open ? 2 : 1);
     const auto view_height = display_height / sprite_scale;
     const auto view_x = std::clamp(
-        static_cast<std::int64_t>(player.position.x - view_width / 2),
+        static_cast<std::int64_t>(player.position_x - view_width / 2),
         static_cast<std::int64_t>(0.0f),
         static_cast<std::int64_t>((map.width * map.tile_width) - view_width));
     const auto view_y = std::clamp(
-        static_cast<std::int64_t>(player.position.y - view_height / 2),
+        static_cast<std::int64_t>(player.position_y - view_height / 2),
         static_cast<std::int64_t>(0.0f),
         static_cast<std::int64_t>((map.height * map.tile_height) - view_height));
 
@@ -401,8 +401,8 @@ ch::scene *ch::game::update(
         if (connection.id != ch::server::max_connections && connection.player.map_index == map_index)
         {
             constexpr int player_sprite_size = 16;
-            const int player_x = static_cast<int>((connection.player.position.x - view_x) * sprite_scale);
-            const int player_y = static_cast<int>((connection.player.position.y - view_y) * sprite_scale);
+            const int player_x = static_cast<int>((connection.player.position_x - view_x) * sprite_scale);
+            const int player_y = static_cast<int>((connection.player.position_y - view_y) * sprite_scale);
 
             SDL_Rect srcrect = {
                 0,

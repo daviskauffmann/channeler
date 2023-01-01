@@ -1,7 +1,7 @@
 #ifndef CH_PLAYER_HPP
 #define CH_PLAYER_HPP
 
-#include "vec2.hpp"
+#include <box2d/box2d.h>
 #include <functional>
 #include <memory>
 #include <vector>
@@ -10,7 +10,6 @@ namespace ch
 {
     struct conversation;
     struct input;
-    struct map;
     class world;
 
     enum class direction
@@ -38,9 +37,9 @@ namespace ch
     {
         std::size_t map_index = 0;
 
-        ch::vec2 position = {100, 100};
-        ch::vec2 velocity = {0, 0};
-        ch::vec2 acceleration = {0, 0};
+        b2Body *body = nullptr;
+        float position_x;
+        float position_y;
 
         bool attacking = false;
         float attack_timer = 0;
@@ -56,7 +55,7 @@ namespace ch
         std::vector<ch::quest_status> quest_statuses;
         std::function<void(const ch::quest_status &)> on_quest_status_set;
 
-        void update(const ch::input &input, const ch::map &map, float delta_time);
+        void update(const ch::input &input, float delta_time);
 
         void attack();
 

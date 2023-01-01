@@ -6,7 +6,7 @@
 #include <ch/tileset.hpp>
 #include <ch/world.hpp>
 
-void ch::player::update(const ch::input &input, const ch::map &map, const float delta_time)
+void ch::player::update(const ch::input &input, const float delta_time)
 {
     if (attacking)
     {
@@ -51,47 +51,17 @@ void ch::player::update(const ch::input &input, const ch::map &map, const float 
         frame_index++;
     }
 
-    acceleration = {
-        static_cast<float>(input.dx),
-        static_cast<float>(input.dy)};
+    constexpr auto speed = 100.0f;
+    auto velocity = b2Vec2(input.dx * speed, input.dy * speed);
 
-    const auto acceleration_length = acceleration.length();
-    if (acceleration_length > 1)
+    const auto velocity_length = velocity.Length();
+    if (velocity_length > speed)
     {
-        acceleration /= acceleration_length;
+        velocity.x *= (1 / velocity_length) * speed;
+        velocity.y *= (1 / velocity_length) * speed;
     }
 
-    constexpr auto speed = 1000.0f;
-    acceleration *= speed;
-
-    constexpr auto drag = 20.0f;
-    acceleration -= velocity * drag;
-
-    const auto new_position = 0.5f * acceleration * powf(delta_time, 2) + velocity * delta_time + position;
-
-    const auto tile_nx_x = static_cast<std::size_t>(roundf(new_position.x / map.tile_width));
-    const auto tile_nx_y = static_cast<std::size_t>(roundf(position.y / map.tile_height));
-    if (map.is_solid(tile_nx_x, tile_nx_y))
-    {
-        velocity.x = 0;
-    }
-    else
-    {
-        position.x = new_position.x;
-        velocity.x = acceleration.x * delta_time + velocity.x;
-    }
-
-    const auto tile_ny_x = static_cast<std::size_t>(roundf(position.x / map.tile_width));
-    const auto tile_ny_y = static_cast<std::size_t>(roundf(new_position.y / map.tile_height));
-    if (map.is_solid(tile_ny_x, tile_ny_y))
-    {
-        velocity.y = 0;
-    }
-    else
-    {
-        position.y = new_position.y;
-        velocity.y = acceleration.y * delta_time + velocity.y;
-    }
+    body->SetLinearVelocity(velocity);
 }
 
 void ch::player::attack()

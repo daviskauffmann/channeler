@@ -114,7 +114,7 @@ void ch::client::update(const float)
 
             switch (type)
             {
-            case ch::message_type::player_joined:
+            case ch::message_type::player_connected:
             {
                 const auto message = reinterpret_cast<ch::message_id *>(event.packet->data);
 
@@ -151,9 +151,8 @@ void ch::client::update(const float)
 
                     connections.at(i).player.map_index = message->connections.at(i).player.map_index;
 
-                    connections.at(i).player.position = {
-                        message->connections.at(i).player.position_x,
-                        message->connections.at(i).player.position_y};
+                    connections.at(i).player.position_x = message->connections.at(i).player.position_x;
+                    connections.at(i).player.position_y = message->connections.at(i).player.position_y;
 
                     connections.at(i).player.direction = message->connections.at(i).player.direction;
                     connections.at(i).player.animation = message->connections.at(i).player.animation;

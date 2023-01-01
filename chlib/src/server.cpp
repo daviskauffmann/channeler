@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <ch/conversation.hpp>
 #include <ch/host.hpp>
+#include <ch/map.hpp>
 #include <ch/message.hpp>
 #include <ch/world.hpp>
 #include <enet/enet.h>
@@ -45,7 +46,20 @@ void ch::server::update(const float delta_time)
     {
         if (connection.id != max_connections)
         {
-            connection.player.update(connection.input, world->maps.at(connection.player.map_index), delta_time);
+            connection.player.update(connection.input, delta_time);
+        }
+    }
+
+    world->update(delta_time);
+
+    for (auto &connection : connections)
+    {
+        if (connection.id != max_connections)
+        {
+            const auto position = connection.player.body->GetPosition();
+
+            connection.player.position_x = position.x;
+            connection.player.position_y = position.y;
         }
     }
 
@@ -58,8 +72,8 @@ void ch::server::update(const float delta_time)
 
             message.connections.at(i).player.map_index = connections.at(i).player.map_index;
 
-            message.connections.at(i).player.position_x = connections.at(i).player.position.x;
-            message.connections.at(i).player.position_y = connections.at(i).player.position.y;
+            message.connections.at(i).player.position_x = connections.at(i).player.position_x;
+            message.connections.at(i).player.position_y = connections.at(i).player.position_y;
 
             message.connections.at(i).player.direction = connections.at(i).player.direction;
             message.connections.at(i).player.animation = connections.at(i).player.animation;
@@ -84,6 +98,18 @@ void ch::server::update(const float delta_time)
 
 void ch::server::listen()
 {
+    b2BodyDef body_def;
+    body_def.type = b2_dynamicBody;
+    body_def.position.Set(100.0f, 100.0f);
+
+    b2PolygonShape dynamicBox;
+    dynamicBox.SetAsBox(1.0f, 1.0f);
+
+    b2FixtureDef fixtureDef;
+    fixtureDef.shape = &dynamicBox;
+    fixtureDef.density = 1.0f;
+    fixtureDef.friction = 0.3f;
+
     while (listening)
     {
         ENetEvent event;
@@ -105,6 +131,8 @@ void ch::server::listen()
                 if (new_connection != connections.end())
                 {
                     new_connection->id = std::distance(connections.begin(), new_connection);
+                    new_connection->player.body = world->maps.at(new_connection->player.map_index).b2_world->CreateBody(&body_def);
+                    new_connection->player.body->CreateFixture(&fixtureDef);
                     new_connection->player.on_quest_status_set = [this, new_connection](const ch::quest_status &status)
                     {
                         spdlog::info("[Server] Player {} has advanced quest {} to stage {}", new_connection->id, status.quest_index, status.stage_index);
@@ -143,7 +171,7 @@ void ch::server::listen()
 
                     {
                         ch::message_id message;
-                        message.type = ch::message_type::player_joined;
+                        message.type = ch::message_type::player_connected;
                         message.id = new_connection->id;
                         const auto packet = enet_packet_create(&message, sizeof(message), ENET_PACKET_FLAG_RELIABLE);
                         host->broadcast(packet);
@@ -188,7 +216,10 @@ void ch::server::listen()
 
                     spdlog::info("[Server] Player {} changing map to {}", connection->id, message->id);
 
+                    world->maps.at(connection->player.map_index).b2_world->DestroyBody(connection->player.body);
                     connection->player.map_index = message->id;
+                    connection->player.body = world->maps.at(connection->player.map_index).b2_world->CreateBody(&body_def);
+                    connection->player.body->CreateFixture(&fixtureDef);
                 }
                 break;
                 case ch::message_type::start_conversation:
@@ -247,6 +278,8 @@ void ch::server::listen()
                 const auto connection = static_cast<ch::connection *>(event.peer->data);
 
                 spdlog::info("[Server] Player {} disconnected", connection->id);
+
+                world->maps.at(connection->player.map_index).b2_world->DestroyBody(connection->player.body);
 
                 {
                     ch::message_id message;

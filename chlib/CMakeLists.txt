@@ -15,11 +15,13 @@ target_include_directories(${PROJECT_NAME} PUBLIC
     ${PROJECT_SOURCE_DIR}/include
 )
 
+find_package(box2d CONFIG REQUIRED)
 find_package(unofficial-enet CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(SDL2 CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
 target_link_libraries(${PROJECT_NAME} PRIVATE
+    box2d::box2d
     unofficial::enet::enet
     nlohmann_json nlohmann_json::nlohmann_json
     $<TARGET_NAME_IF_EXISTS:SDL2::SDL2main>

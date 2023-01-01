@@ -30,6 +30,8 @@ namespace ch
 
         std::size_t get_map_index(const std::string &filename) const;
 
+        void update(float delta_time);
+
     private:
         std::unordered_map<std::string, std::shared_ptr<ch::tileset>> tilesets;
     };

@@ -85,3 +85,11 @@ std::size_t ch::world::get_map_index(const std::string &filename) const
                 return map.filename == filename;
             }));
 }
+
+void ch::world::update(const float delta_time)
+{
+    for (auto &map : maps)
+    {
+        map.update(delta_time);
+    }
+}

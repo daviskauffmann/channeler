@@ -3,6 +3,7 @@
     "name": "channeler",
     "version-semver": "0.0.0",
     "dependencies": [
+        "box2d",
         "enet",
         "fmt",
         "nlohmann-json",

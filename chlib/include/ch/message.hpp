@@ -11,7 +11,7 @@ namespace ch
         server_joined,
         server_full,
 
-        player_joined,
+        player_connected,
         player_disconnected,
 
         input,
