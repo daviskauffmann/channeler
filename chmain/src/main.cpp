@@ -1,3 +1,4 @@
+#include "audio.hpp"
 #include "display.hpp"
 #include "scene.hpp"
 #include "scenes/menu/menu.hpp"
@@ -13,6 +14,7 @@ int main(int, char *[])
     const ch::sdl sdl(SDL_INIT_AUDIO | SDL_INIT_VIDEO);
     const ch::sdl_image sdl_image;
     const ch::sdl_mixer sdl_mixer;
+    const ch::audio audio(MIX_DEFAULT_FREQUENCY, MIX_DEFAULT_FORMAT, MIX_DEFAULT_CHANNELS, 4096);
     const ch::sdl_ttf sdl_ttf;
     const ch::enet enet;
 
