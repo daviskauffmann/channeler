@@ -29,7 +29,7 @@ ch::game::game(
 {
     const auto renderer = display->get_renderer();
 
-    font = std::make_unique<ch::font>("assets/NinjaAdventure/HUD/Font/NormalFont.ttf", 18);
+    font = std::make_unique<ch::font>(renderer, "assets/NinjaAdventure/HUD/Font/NormalFont.ttf", 18);
     player_spritesheet = std::make_unique<ch::texture>(renderer, "assets/NinjaAdventure/Actor/Characters/Knight/SpriteSheet.png");
     dialog_box = std::make_unique<ch::texture>(renderer, "assets/NinjaAdventure/HUD/Dialog/DialogBox.png");
 
@@ -45,7 +45,7 @@ ch::game::game(
     }
 
     display->clear();
-    font->render(renderer, 0, 0, 0, {255, 255, 255}, "Connecting to server...");
+    font->render(0, 0, 0, {255, 255, 255}, "Connecting to server...");
     display->present();
 
     client = std::make_unique<ch::client>(hostname, port, world);
@@ -311,7 +311,6 @@ ch::scene *ch::game::update(
                         }
 
                         texture->render_ex(
-                            renderer,
                             &srcrect,
                             &dstrect,
                             layer_tile->angle(),
@@ -364,7 +363,6 @@ ch::scene *ch::game::update(
                 }
 
                 texture->render_ex(
-                    renderer,
                     &srcrect,
                     &dstrect,
                     static_cast<double>(object.rotation),
@@ -415,7 +413,7 @@ ch::scene *ch::game::update(
                 static_cast<int>(player_sprite_size * sprite_scale),
                 static_cast<int>(player_sprite_size * sprite_scale)};
 
-            player_spritesheet->render(renderer, &srcrect, &dstrect);
+            player_spritesheet->render(&srcrect, &dstrect);
 
             if (_player.animation == ch::animation::attacking)
             {
@@ -436,7 +434,6 @@ ch::scene *ch::game::update(
                 const auto weapon_angle = attack_position.angle;
 
                 loaded_weapon->attack_sprite->render_ex(
-                    renderer,
                     &weapon_srcrect,
                     &weapon_dstrect,
                     weapon_angle,
@@ -444,7 +441,7 @@ ch::scene *ch::game::update(
                     SDL_FLIP_NONE);
             }
 
-            font->render(renderer, dstrect.x + 24, dstrect.y - (24 * 2), display_width, {255, 255, 255}, "{}", _player.id);
+            font->render(dstrect.x + 24, dstrect.y - (24 * 2), display_width, {255, 255, 255}, "{}", _player.id);
         }
     }
 
@@ -466,7 +463,7 @@ ch::scene *ch::game::update(
             const auto &status = player.quest_statuses.at(i);
             const auto &quest = world->quests.at(status.quest_index);
             const auto &stage = quest.stages.at(status.stage_index);
-            font->render(renderer, 24, 24 * (i + 1), display_width - 24, {255, 255, 255}, "{}: {}", quest.name, stage.description);
+            font->render(24, 24 * (i + 1), display_width - 24, {255, 255, 255}, "{}: {}", quest.name, stage.description);
         }
     }
 
@@ -490,15 +487,15 @@ ch::scene *ch::game::update(
         const auto y = static_cast<int>(display_height - h);
         const SDL_Rect dstrect = {x, y, w, h};
 
-        dialog_box->render(renderer, nullptr, &dstrect);
-        font->render(renderer, x + 18, y + 36, w, {0, 0, 0}, "{}", player.conversation_node->text);
+        dialog_box->render(nullptr, &dstrect);
+        font->render(x + 18, y + 36, w, {0, 0, 0}, "{}", player.conversation_node->text);
 
         for (std::size_t i = 0; i < player.conversation_node->children.size(); i++)
         {
             const auto &child = player.conversation_node->children.at(i);
             if (child.type == ch::conversation_type::response && child.check_conditions(player))
             {
-                font->render(renderer, x + 18, y + 36 + (18 * (i + 1)), w, {0, 0, 0}, "{}) {}", i + 1, child.text);
+                font->render(x + 18, y + 36 + (18 * (i + 1)), w, {0, 0, 0}, "{}) {}", i + 1, child.text);
             }
         }
     }

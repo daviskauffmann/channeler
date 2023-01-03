@@ -4,7 +4,6 @@
 #include "sdl_image.hpp"
 #include "sdl_mixer.hpp"
 #include "sdl_ttf.hpp"
-#include <SDL2/SDL_image.h>
 #include <ch/enet.hpp>
 #include <ch/sdl.hpp>
 #include <memory>

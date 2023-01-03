@@ -16,12 +16,10 @@ namespace ch
         texture &operator=(texture &&other) = delete;
 
         void render(
-            SDL_Renderer *renderer,
             const SDL_Rect *srcrect,
             const SDL_Rect *dstrect) const;
 
         void render_ex(
-            SDL_Renderer *renderer,
             const SDL_Rect *srcrect,
             const SDL_Rect *dstrect,
             const double angle,
@@ -29,6 +27,7 @@ namespace ch
             const SDL_RendererFlip flip) const;
 
     private:
+        SDL_Renderer *renderer;
         SDL_Texture *sdl_texture;
     };
 }

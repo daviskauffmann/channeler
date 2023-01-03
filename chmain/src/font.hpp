@@ -12,7 +12,7 @@ namespace ch
     class font
     {
     public:
-        font(const char *file, int size);
+        font(SDL_Renderer *renderer, const char *file, int size);
         ~font();
         font(const font &other) = delete;
         font &operator=(const font &other) = delete;
@@ -21,7 +21,6 @@ namespace ch
 
         template <typename... Args>
         void render(
-            SDL_Renderer *const renderer,
             const std::size_t x,
             const std::size_t y,
             const std::size_t w,
@@ -47,6 +46,7 @@ namespace ch
         }
 
     private:
+        SDL_Renderer *renderer;
         TTF_Font *ttf_font;
     };
 }

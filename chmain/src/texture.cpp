@@ -3,7 +3,8 @@
 #include <SDL2/SDL_image.h>
 #include <stdexcept>
 
-ch::texture::texture(SDL_Renderer *renderer, const char *file)
+ch::texture::texture(SDL_Renderer *const renderer, const char *const file)
+    : renderer(renderer)
 {
     sdl_texture = IMG_LoadTexture(renderer, file);
     if (!sdl_texture)
@@ -18,7 +19,6 @@ ch::texture::~texture()
 }
 
 void ch::texture::render(
-    SDL_Renderer *const renderer,
     const SDL_Rect *const srcrect,
     const SDL_Rect *const dstrect) const
 {
@@ -26,7 +26,6 @@ void ch::texture::render(
 }
 
 void ch::texture::render_ex(
-    SDL_Renderer *const renderer,
     const SDL_Rect *const srcrect,
     const SDL_Rect *const dstrect,
     const double angle,

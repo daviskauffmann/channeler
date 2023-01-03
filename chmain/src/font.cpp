@@ -2,7 +2,8 @@
 
 #include <stdexcept>
 
-ch::font::font(const char *const file, const int size)
+ch::font::font(SDL_Renderer *const renderer, const char *const file, const int size)
+    : renderer(renderer)
 {
     ttf_font = TTF_OpenFont(file, size);
     if (!ttf_font)
