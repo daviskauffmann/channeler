@@ -214,30 +214,28 @@ ch::scene *ch::game::update(
     }
 
     {
-        ch::input input;
-        input.dx = 0;
-        input.dy = 0;
+        ch::message_input message;
+        message.type = ch::message_type::input;
+        message.input_x = 0;
+        message.input_y = 0;
 
         if (keys[SDL_SCANCODE_W])
         {
-            input.dy = -1;
+            message.input_y = -1;
         }
         if (keys[SDL_SCANCODE_A])
         {
-            input.dx = -1;
+            message.input_x = -1;
         }
         if (keys[SDL_SCANCODE_S])
         {
-            input.dy = 1;
+            message.input_y = 1;
         }
         if (keys[SDL_SCANCODE_D])
         {
-            input.dx = 1;
+            message.input_x = 1;
         }
 
-        ch::message_input message;
-        message.type = ch::message_type::input;
-        message.input = input;
         client->send(&message, sizeof(message), 0);
     }
 
@@ -312,31 +310,11 @@ ch::scene *ch::game::update(
                                 static_cast<int>(map.tile_height * sprite_scale)};
                         }
 
-                        auto angle = 0.0;
-                        if (layer_tile->d_flip)
-                        {
-                            if (layer_tile->h_flip)
-                            {
-                                angle = 90.0;
-                            }
-                            if (layer_tile->v_flip)
-                            {
-                                angle = 270.0;
-                            }
-                        }
-                        else
-                        {
-                            if (layer_tile->h_flip && layer_tile->v_flip)
-                            {
-                                angle = 180.0;
-                            }
-                        }
-
                         texture->render_ex(
                             renderer,
                             &srcrect,
                             &dstrect,
-                            angle,
+                            layer_tile->angle(),
                             nullptr,
                             SDL_FLIP_NONE);
                     }
@@ -396,36 +374,36 @@ ch::scene *ch::game::update(
         }
     }
 
-    for (const auto &connection : client->connections)
+    for (const auto &_player : client->players)
     {
-        if (connection.id != ch::server::max_connections && connection.player.map_index == map_index)
+        if (_player.id != ch::server::max_players && _player.map_index == map_index)
         {
             constexpr int player_sprite_size = 16;
-            const int player_x = static_cast<int>((connection.player.position_x - view_x) * sprite_scale);
-            const int player_y = static_cast<int>((connection.player.position_y - view_y) * sprite_scale);
+            const int player_x = static_cast<int>((_player.position_x - view_x) * sprite_scale);
+            const int player_y = static_cast<int>((_player.position_y - view_y) * sprite_scale);
 
             SDL_Rect srcrect = {
                 0,
                 0,
                 player_sprite_size,
                 player_sprite_size};
-            switch (connection.player.animation)
+            switch (_player.animation)
             {
             case ch::animation::idle:
             {
-                srcrect.x = static_cast<int>(connection.player.direction) * player_sprite_size;
+                srcrect.x = static_cast<int>(_player.direction) * player_sprite_size;
                 srcrect.y = 0;
             }
             break;
             case ch::animation::walking:
             {
-                srcrect.x = static_cast<int>(connection.player.direction) * player_sprite_size;
-                srcrect.y = (connection.player.frame_index % 4) * player_sprite_size;
+                srcrect.x = static_cast<int>(_player.direction) * player_sprite_size;
+                srcrect.y = (_player.frame_index % 4) * player_sprite_size;
             }
             break;
             case ch::animation::attacking:
             {
-                srcrect.x = static_cast<int>(connection.player.direction) * player_sprite_size;
+                srcrect.x = static_cast<int>(_player.direction) * player_sprite_size;
                 srcrect.y = 4 * player_sprite_size;
             }
             break;
@@ -439,11 +417,11 @@ ch::scene *ch::game::update(
 
             player_spritesheet->render(renderer, &srcrect, &dstrect);
 
-            if (connection.player.animation == ch::animation::attacking)
+            if (_player.animation == ch::animation::attacking)
             {
                 const auto &weapon = world->items.at(weapon_item_index);
                 const auto &loaded_weapon = loaded_items.at(weapon_item_index);
-                const auto &attack_position = weapon.attack_positions.at(static_cast<std::size_t>(connection.player.direction));
+                const auto &attack_position = weapon.attack_positions.at(static_cast<std::size_t>(_player.direction));
 
                 const SDL_Rect weapon_srcrect = {
                     0,
@@ -466,7 +444,7 @@ ch::scene *ch::game::update(
                     SDL_FLIP_NONE);
             }
 
-            font->render(renderer, dstrect.x + 24, dstrect.y - (24 * 2), display_width, {255, 255, 255}, "{}", connection.id);
+            font->render(renderer, dstrect.x + 24, dstrect.y - (24 * 2), display_width, {255, 255, 255}, "{}", _player.id);
         }
     }
 

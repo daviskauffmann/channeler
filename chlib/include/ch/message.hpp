@@ -39,7 +39,8 @@ namespace ch
 
     struct message_input : message
     {
-        ch::input input;
+        int8_t input_x;
+        int8_t input_y;
     };
 
     struct message_quest_status : message
@@ -50,27 +51,25 @@ namespace ch
 
     struct message_game_state : message
     {
-        struct connection
+        struct player
         {
             std::size_t id;
-            struct
-            {
-                std::size_t map_index;
 
-                float position_x;
-                float position_y;
+            std::size_t map_index;
 
-                ch::direction direction;
-                ch::animation animation;
-                std::size_t frame_index;
+            float position_x;
+            float position_y;
 
-                bool in_conversation;
-                std::size_t conversation_root_index;
-                std::size_t conversation_node_index;
-            } player;
+            ch::direction direction;
+            ch::animation animation;
+            std::size_t frame_index;
+
+            bool in_conversation;
+            std::size_t conversation_root_index;
+            std::size_t conversation_node_index;
         };
 
-        std::array<connection, ch::server::max_connections> connections;
+        std::array<player, ch::server::max_players> players;
     };
 }
 

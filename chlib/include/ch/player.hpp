@@ -9,7 +9,6 @@
 namespace ch
 {
     struct conversation;
-    struct input;
     class world;
 
     enum class direction
@@ -35,7 +34,12 @@ namespace ch
 
     struct player
     {
+        std::size_t id;
+
         std::size_t map_index = 0;
+
+        int8_t input_x = 0;
+        int8_t input_y = 0;
 
         b2Body *body = nullptr;
         float position_x;
@@ -55,7 +59,7 @@ namespace ch
         std::vector<ch::quest_status> quest_statuses;
         std::function<void(const ch::quest_status &)> on_quest_status_set;
 
-        void update(const ch::input &input, float delta_time);
+        void update(float delta_time);
 
         void attack();
 

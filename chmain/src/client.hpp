@@ -12,12 +12,11 @@ namespace ch
 {
     class host;
     class peer;
-    struct player;
 
     class client
     {
     public:
-        std::array<ch::connection, ch::server::max_connections> connections;
+        std::array<ch::player, ch::server::max_players> players;
 
         client(
             const char *hostname,
@@ -40,7 +39,7 @@ namespace ch
         std::shared_ptr<ch::world> world;
         std::unique_ptr<ch::host> host;
         std::unique_ptr<ch::peer> peer;
-        std::size_t connection_id;
+        std::size_t player_id;
     };
 }
 

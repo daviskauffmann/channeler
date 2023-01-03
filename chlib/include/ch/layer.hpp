@@ -12,6 +12,27 @@ namespace ch
         bool h_flip;
         bool v_flip;
         bool d_flip;
+
+        inline double angle() const
+        {
+            if (d_flip)
+            {
+                if (h_flip)
+                {
+                    return 90.0;
+                }
+                else if (v_flip)
+                {
+                    return 270.0;
+                }
+            }
+            else if (h_flip && v_flip)
+            {
+                return 180.0;
+            }
+
+            return 0.0;
+        }
     };
 
     struct layer_object

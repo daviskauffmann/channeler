@@ -15,8 +15,8 @@ ch::client::client(
     const std::shared_ptr<ch::world> world)
     : world(world)
 {
-    connections.fill(
-        {.id = ch::server::max_connections});
+    players.fill(
+        {.id = ch::server::max_players});
 
     host = std::make_unique<ch::host>(nullptr, 1, 2, 0, 0);
 
@@ -46,8 +46,8 @@ ch::client::client(
                 spdlog::info("[Client] Successfully joined with ID {}", message->id);
 
                 connected = true;
-                connection_id = message->id;
-                connections.at(connection_id).id = connection_id;
+                player_id = message->id;
+                players.at(player_id).id = player_id;
             }
             else if (type == ch::message_type::server_full)
             {
@@ -120,7 +120,7 @@ void ch::client::update(const float)
 
                 spdlog::info("[Client] Player {} connected", message->id);
 
-                connections.at(message->id).id = message->id;
+                players.at(message->id).id = message->id;
             }
             break;
             case ch::message_type::player_disconnected:
@@ -129,7 +129,7 @@ void ch::client::update(const float)
 
                 spdlog::info("[Client] Player {} disconnected", message->id);
 
-                connections.at(message->id).id = ch::server::max_connections;
+                players.at(message->id).id = ch::server::max_players;
             }
             break;
             case ch::message_type::quest_status:
@@ -138,35 +138,35 @@ void ch::client::update(const float)
 
                 spdlog::info("[Client] Player {} has advanced quest {} to state {}", message->id, message->status.quest_index, message->status.stage_index);
 
-                connections.at(message->id).player.set_quest_status(message->status);
+                players.at(message->id).set_quest_status(message->status);
             }
             break;
             case ch::message_type::game_state:
             {
                 const auto message = reinterpret_cast<ch::message_game_state *>(event.packet->data);
 
-                for (std::size_t i = 0; i < message->connections.size(); i++)
+                for (std::size_t i = 0; i < message->players.size(); i++)
                 {
-                    connections.at(i).id = message->connections.at(i).id;
+                    players.at(i).id = message->players.at(i).id;
 
-                    connections.at(i).player.map_index = message->connections.at(i).player.map_index;
+                    players.at(i).map_index = message->players.at(i).map_index;
 
-                    connections.at(i).player.position_x = message->connections.at(i).player.position_x;
-                    connections.at(i).player.position_y = message->connections.at(i).player.position_y;
+                    players.at(i).position_x = message->players.at(i).position_x;
+                    players.at(i).position_y = message->players.at(i).position_y;
 
-                    connections.at(i).player.direction = message->connections.at(i).player.direction;
-                    connections.at(i).player.animation = message->connections.at(i).player.animation;
-                    connections.at(i).player.frame_index = message->connections.at(i).player.frame_index;
+                    players.at(i).direction = message->players.at(i).direction;
+                    players.at(i).animation = message->players.at(i).animation;
+                    players.at(i).frame_index = message->players.at(i).frame_index;
 
-                    if (message->connections.at(i).player.in_conversation)
+                    if (message->players.at(i).in_conversation)
                     {
-                        connections.at(i).player.conversation_root = &world->conversations.at(message->connections.at(i).player.conversation_root_index);
-                        connections.at(i).player.conversation_node = connections.at(i).player.conversation_root->find_by_node_index(message->connections.at(i).player.conversation_node_index);
+                        players.at(i).conversation_root = &world->conversations.at(message->players.at(i).conversation_root_index);
+                        players.at(i).conversation_node = players.at(i).conversation_root->find_by_node_index(message->players.at(i).conversation_node_index);
                     }
                     else
                     {
-                        connections.at(i).player.conversation_root = nullptr;
-                        connections.at(i).player.conversation_node = nullptr;
+                        players.at(i).conversation_root = nullptr;
+                        players.at(i).conversation_node = nullptr;
                     }
                 }
             }
@@ -195,5 +195,5 @@ void ch::client::send(const void *const data, const std::size_t length, const st
 
 const ch::player &ch::client::get_player() const
 {
-    return connections.at(connection_id).player;
+    return players.at(player_id);
 }

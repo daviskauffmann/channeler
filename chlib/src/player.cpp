@@ -1,12 +1,11 @@
 #include <ch/player.hpp>
 
 #include <ch/conversation.hpp>
-#include <ch/input.hpp>
 #include <ch/map.hpp>
 #include <ch/tileset.hpp>
 #include <ch/world.hpp>
 
-void ch::player::update(const ch::input &input, const float delta_time)
+void ch::player::update(const float delta_time)
 {
     if (attacking)
     {
@@ -22,22 +21,22 @@ void ch::player::update(const ch::input &input, const float delta_time)
     if (!attacking)
     {
         animation = ch::animation::idle;
-        if (input.dy == -1)
+        if (input_y == -1)
         {
             direction = ch::direction::up;
             animation = ch::animation::walking;
         }
-        if (input.dx == -1)
+        if (input_x == -1)
         {
             direction = ch::direction::left;
             animation = ch::animation::walking;
         }
-        if (input.dy == 1)
+        if (input_y == 1)
         {
             direction = ch::direction::down;
             animation = ch::animation::walking;
         }
-        if (input.dx == 1)
+        if (input_x == 1)
         {
             direction = ch::direction::right;
             animation = ch::animation::walking;
@@ -52,7 +51,7 @@ void ch::player::update(const ch::input &input, const float delta_time)
     }
 
     constexpr auto speed = 100.0f;
-    auto velocity = b2Vec2(input.dx * speed, input.dy * speed);
+    auto velocity = b2Vec2(input_x * speed, input_y * speed);
 
     const auto velocity_length = velocity.Length();
     if (velocity_length > speed)
