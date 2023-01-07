@@ -1,7 +1,7 @@
 #include "audio.hpp"
 #include "display.hpp"
 #include "scene.hpp"
-#include "scenes/menu/menu.hpp"
+#include "scenes/menu/menu_scene.hpp"
 #include "sdl_image.hpp"
 #include "sdl_mixer.hpp"
 #include "sdl_ttf.hpp"
@@ -22,7 +22,7 @@ int main(int, char *[])
     display->set_title("Channeler");
     display->set_vsync(true);
 
-    ch::scene *scene = new ch::menu(display);
+    ch::scene *scene = new ch::menu_scene(display);
 
     std::uint64_t current_time = 0;
     bool running = true;

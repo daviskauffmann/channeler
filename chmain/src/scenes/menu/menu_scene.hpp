@@ -11,10 +11,10 @@ namespace ch
     class music;
     class texture;
 
-    class menu : public ch::scene
+    class menu_scene : public ch::scene
     {
     public:
-        explicit menu(std::shared_ptr<ch::display> display);
+        explicit menu_scene(std::shared_ptr<ch::display> display);
 
         ch::scene *handle_event(const SDL_Event &event) override;
         ch::scene *update(

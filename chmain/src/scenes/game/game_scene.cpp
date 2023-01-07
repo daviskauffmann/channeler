@@ -1,11 +1,11 @@
-#include "game.hpp"
+#include "game_scene.hpp"
 
 #include "../../client.hpp"
 #include "../../display.hpp"
 #include "../../font.hpp"
 #include "../../sound.hpp"
 #include "../../texture.hpp"
-#include "../menu/menu.hpp"
+#include "../menu/menu_scene.hpp"
 #include "active_map.hpp"
 #include "loaded_item.hpp"
 #include "loaded_tileset.hpp"
@@ -20,7 +20,7 @@
 #include <exception>
 #include <spdlog/spdlog.h>
 
-ch::game::game(
+ch::game_scene::game_scene(
     std::shared_ptr<ch::display> display,
     const char *const hostname,
     const std::uint16_t port,
@@ -62,7 +62,7 @@ ch::game::game(
     weapon_item_index = 0;
 }
 
-ch::scene *ch::game::handle_event(const SDL_Event &event)
+ch::scene *ch::game_scene::handle_event(const SDL_Event &event)
 {
     const auto &player = client->get_player();
 
@@ -179,7 +179,7 @@ ch::scene *ch::game::handle_event(const SDL_Event &event)
         break;
         case SDLK_F10:
         {
-            return change_scene<ch::menu>(display);
+            return change_scene<ch::menu_scene>(display);
         }
         break;
         }
@@ -197,7 +197,7 @@ ch::scene *ch::game::handle_event(const SDL_Event &event)
     return this;
 }
 
-ch::scene *ch::game::update(
+ch::scene *ch::game_scene::update(
     const float delta_time,
     const std::uint8_t *const keys,
     const std::uint32_t,

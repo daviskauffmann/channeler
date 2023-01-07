@@ -18,10 +18,10 @@ namespace ch
     class texture;
     class world;
 
-    class game : public ch::scene
+    class game_scene : public ch::scene
     {
     public:
-        game(
+        game_scene(
             std::shared_ptr<ch::display> display,
             const char *hostname,
             std::uint16_t port,

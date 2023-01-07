@@ -1,10 +1,10 @@
-#include "menu.hpp"
+#include "menu_scene.hpp"
 
 #include "../../display.hpp"
 #include "../../font.hpp"
 #include "../../music.hpp"
 #include "../../texture.hpp"
-#include "../game/game.hpp"
+#include "../game/game_scene.hpp"
 #include <SDL2/SDL_image.h>
 #include <spdlog/spdlog.h>
 
@@ -43,7 +43,7 @@ auto button(
     return (mouse & SDL_BUTTON_LEFT) && SDL_PointInRect(&mouse_point, &dstrect);
 }
 
-ch::menu::menu(std::shared_ptr<ch::display> display)
+ch::menu_scene::menu_scene(std::shared_ptr<ch::display> display)
     : ch::scene(display)
 {
     const auto renderer = display->get_renderer();
@@ -55,7 +55,7 @@ ch::menu::menu(std::shared_ptr<ch::display> display)
     music->play();
 }
 
-ch::scene *ch::menu::handle_event(const SDL_Event &event)
+ch::scene *ch::menu_scene::handle_event(const SDL_Event &event)
 {
     switch (event.type)
     {
@@ -72,7 +72,7 @@ ch::scene *ch::menu::handle_event(const SDL_Event &event)
         {
             try
             {
-                return change_scene<ch::game>(display, server_hostname, server_port, true);
+                return change_scene<ch::game_scene>(display, server_hostname, server_port, true);
             }
             catch (const std::exception &e)
             {
@@ -86,7 +86,7 @@ ch::scene *ch::menu::handle_event(const SDL_Event &event)
         {
             try
             {
-                return change_scene<ch::game>(display, server_hostname, server_port, false);
+                return change_scene<ch::game_scene>(display, server_hostname, server_port, false);
             }
             catch (const std::exception &e)
             {
@@ -104,7 +104,7 @@ ch::scene *ch::menu::handle_event(const SDL_Event &event)
     return this;
 }
 
-ch::scene *ch::menu::update(
+ch::scene *ch::menu_scene::update(
     const float,
     const std::uint8_t *const,
     const std::uint32_t mouse,
