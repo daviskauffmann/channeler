@@ -8,7 +8,7 @@ namespace ch
     class sound
     {
     public:
-        sound(const char *filename);
+        explicit sound(const char *filename);
         ~sound();
         sound(const sound &other) = delete;
         sound &operator=(const sound &other) = delete;

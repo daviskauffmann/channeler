@@ -8,6 +8,7 @@
 namespace ch
 {
     class font;
+    class music;
     class texture;
 
     class menu : public ch::scene
@@ -26,6 +27,7 @@ namespace ch
     private:
         std::unique_ptr<ch::font> font;
         std::unique_ptr<ch::texture> button_texture;
+        std::unique_ptr<ch::music> music;
 
         std::string error_message = "";
     };

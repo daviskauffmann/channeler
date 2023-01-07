@@ -69,7 +69,7 @@ void ch::player::attack()
     attack_timer = 0.1f;
 }
 
-void ch::player::start_conversation(std::shared_ptr<ch::world> world, const std::size_t root_index)
+void ch::player::start_conversation(const std::shared_ptr<const ch::world> world, const std::size_t root_index)
 {
     conversation_root = conversation_node = &world->conversations.at(root_index);
     advance_conversation();

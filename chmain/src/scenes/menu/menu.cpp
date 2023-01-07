@@ -2,6 +2,7 @@
 
 #include "../../display.hpp"
 #include "../../font.hpp"
+#include "../../music.hpp"
 #include "../../texture.hpp"
 #include "../game/game.hpp"
 #include <SDL2/SDL_image.h>
@@ -49,6 +50,9 @@ ch::menu::menu(std::shared_ptr<ch::display> display)
 
     font = std::make_unique<ch::font>(renderer, "assets/NinjaAdventure/HUD/Font/NormalFont.ttf", 18);
     button_texture = std::make_unique<ch::texture>(renderer, "assets/NinjaAdventure/HUD/Dialog/ChoiceBox.png");
+    music = std::make_unique<ch::music>("assets/NinjaAdventure/Musics/1 - Adventure Begin.ogg");
+
+    music->play();
 }
 
 ch::scene *ch::menu::handle_event(const SDL_Event &event)
