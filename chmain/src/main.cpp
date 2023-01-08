@@ -51,11 +51,7 @@ int main(int, char *[])
 
             if (scene)
             {
-                scene = scene->handle_event(event);
-                if (!scene)
-                {
-                    running = false;
-                }
+                running = scene = scene->handle_event(event);
             }
         }
 
@@ -63,11 +59,7 @@ int main(int, char *[])
 
         if (scene)
         {
-            scene = scene->update(delta_time, keys, mouse, mouse_x, mouse_y);
-            if (!scene)
-            {
-                running = false;
-            }
+            running = scene = scene->update(delta_time, keys, mouse, mouse_x, mouse_y);
         }
 
         display->present();
