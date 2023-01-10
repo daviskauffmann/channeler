@@ -25,8 +25,8 @@ int main(int, char *[])
     ch::scene *scene = new ch::menu_scene(display);
 
     std::uint64_t current_time = 0;
-    bool running = true;
-    while (running)
+
+    while (scene)
     {
         const auto previous_time = current_time;
         current_time = sdl.get_ticks();
@@ -42,7 +42,12 @@ int main(int, char *[])
             {
             case SDL_QUIT:
             {
-                running = false;
+                if (scene)
+                {
+                    delete scene;
+                }
+
+                scene = nullptr;
             }
             break;
             }
@@ -51,7 +56,7 @@ int main(int, char *[])
 
             if (scene)
             {
-                running = scene = scene->handle_event(event);
+                scene = scene->handle_event(event);
             }
         }
 
@@ -59,7 +64,7 @@ int main(int, char *[])
 
         if (scene)
         {
-            running = scene = scene->update(delta_time, keys, mouse, mouse_x, mouse_y);
+            scene = scene->update(delta_time, keys, mouse, mouse_x, mouse_y);
         }
 
         display->present();

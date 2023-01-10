@@ -2,6 +2,12 @@ cmake_minimum_required(VERSION 3.0.0)
 
 project(chlib LANGUAGES CXX)
 
+find_package(box2d CONFIG REQUIRED)
+find_package(unofficial-enet CONFIG REQUIRED)
+find_package(nlohmann_json CONFIG REQUIRED)
+find_package(SDL2 CONFIG REQUIRED)
+find_package(spdlog CONFIG REQUIRED)
+
 file(
     GLOB_RECURSE SOURCE_FILES
     CONFIGURE_DEPENDS
@@ -15,11 +21,6 @@ target_include_directories(${PROJECT_NAME} PUBLIC
     ${PROJECT_SOURCE_DIR}/include
 )
 
-find_package(box2d CONFIG REQUIRED)
-find_package(unofficial-enet CONFIG REQUIRED)
-find_package(nlohmann_json CONFIG REQUIRED)
-find_package(SDL2 CONFIG REQUIRED)
-find_package(spdlog CONFIG REQUIRED)
 target_link_libraries(${PROJECT_NAME} PRIVATE
     box2d::box2d
     unofficial::enet::enet
