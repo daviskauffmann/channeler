@@ -7,6 +7,7 @@ find_package(unofficial-enet CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(SDL2 CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
+find_package(tinyxml2 CONFIG REQUIRED)
 
 file(
     GLOB_RECURSE SOURCE_FILES
@@ -28,4 +29,5 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     $<TARGET_NAME_IF_EXISTS:SDL2::SDL2main>
     $<IF:$<TARGET_EXISTS:SDL2::SDL2>,SDL2::SDL2,SDL2::SDL2-static>
     spdlog::spdlog
+    tinyxml2::tinyxml2
 )

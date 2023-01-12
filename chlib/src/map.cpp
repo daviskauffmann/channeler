@@ -3,31 +3,46 @@
 #include <algorithm>
 #include <ch/tileset.hpp>
 #include <ch/world.hpp>
-#include <fstream>
-#include <nlohmann/json.hpp>
 #include <spdlog/spdlog.h>
+#include <stdexcept>
+#include <tinyxml2.h>
 
 ch::map::map(const std::string &filename, ch::world &world)
     : filename(filename)
 {
     spdlog::info("Loading map {}", filename);
 
-    const auto map_json = nlohmann::json::parse(std::ifstream(filename));
-
-    width = map_json.at("width");
-    height = map_json.at("height");
-    tile_width = map_json.at("tilewidth");
-    tile_height = map_json.at("tileheight");
-
-    for (const auto &layer_json : map_json.at("layers"))
+    tinyxml2::XMLDocument map_xml;
+    if (map_xml.LoadFile(filename.c_str()) != tinyxml2::XML_SUCCESS)
     {
-        layers.push_back({layer_json});
+        throw std::runtime_error("Failed to load map");
     }
 
-    std::size_t index = 0;
-    for (const auto &tileset_json : map_json.at("tilesets"))
+    const auto root = map_xml.FirstChildElement("map");
+    if (!root)
     {
-        tilesets.push_back({tileset_json, index++, world});
+        throw std::runtime_error("Failed to load map");
+    }
+
+    width = root->Unsigned64Attribute("width");
+    height = root->Unsigned64Attribute("height");
+    tile_width = root->Unsigned64Attribute("tilewidth");
+    tile_height = root->Unsigned64Attribute("tileheight");
+
+    std::size_t index = 0;
+    for (auto tileset_xml = root->FirstChildElement("tileset"); tileset_xml; tileset_xml = tileset_xml->NextSiblingElement("tileset"))
+    {
+        tilesets.push_back({tileset_xml, index++, world});
+    }
+
+    for (auto layer_xml = root->FirstChildElement("layer"); layer_xml; layer_xml = layer_xml->NextSiblingElement("layer"))
+    {
+        layers.push_back({layer_xml});
+    }
+
+    for (auto objectgroup_xml = root->FirstChildElement("objectgroup"); objectgroup_xml; objectgroup_xml = objectgroup_xml->NextSiblingElement("objectgroup"))
+    {
+        objectgroups.push_back({objectgroup_xml});
     }
 
     b2_world = std::make_unique<b2World>(b2Vec2(0.0f, 0.0f));

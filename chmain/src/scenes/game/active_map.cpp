@@ -1,7 +1,9 @@
 #include "active_map.hpp"
 
 #include "loaded_tileset.hpp"
+#include <algorithm>
 #include <ch/map.hpp>
+#include <iterator>
 
 ch::active_map::active_map(const ch::map &map, SDL_Renderer *const renderer)
 {

@@ -1,47 +1,36 @@
 #include <ch/layer.hpp>
 
-ch::layer::layer(const nlohmann::json &layer_json)
+#include <sstream>
+#include <string>
+
+ch::layer::layer(const tinyxml2::XMLElement *layer_xml)
 {
-    if (layer_json.contains("width"))
-    {
-        width = layer_json.at("width");
-    }
+    width = layer_xml->Unsigned64Attribute("width");
+    height = layer_xml->Unsigned64Attribute("height");
 
-    if (layer_json.contains("height"))
+    const auto data_xml = layer_xml->FirstChildElement("data");
+    if (data_xml)
     {
-        height = layer_json.at("height");
-    }
-
-    if (layer_json.contains("data"))
-    {
-        for (const auto &tile_json : layer_json.at("data"))
+        const auto data = data_xml->GetText();
+        if (data)
         {
-            const std::int64_t gid = tile_json;
-            constexpr std::uint32_t h_flip_flag = 0x80000000;
-            constexpr std::uint32_t v_flip_flag = 0x40000000;
-            constexpr std::uint32_t d_flip_flag = 0x20000000;
+            std::stringstream ss(data);
+            std::string token;
+            while (std::getline(ss, token, ','))
+            {
+                const std::int64_t gid = std::stoll(token);
+                constexpr std::uint32_t h_flip_flag = 0x80000000;
+                constexpr std::uint32_t v_flip_flag = 0x40000000;
+                constexpr std::uint32_t d_flip_flag = 0x20000000;
 
-            ch::layer_tile tile;
-            tile.gid = gid & ~(h_flip_flag | v_flip_flag | d_flip_flag);
-            tile.h_flip = gid & h_flip_flag;
-            tile.v_flip = gid & v_flip_flag;
-            tile.d_flip = gid & d_flip_flag;
+                ch::layer_tile tile;
+                tile.gid = gid & ~(h_flip_flag | v_flip_flag | d_flip_flag);
+                tile.h_flip = gid & h_flip_flag;
+                tile.v_flip = gid & v_flip_flag;
+                tile.d_flip = gid & d_flip_flag;
 
-            tiles.push_back(tile);
-        }
-    }
-
-    if (layer_json.contains("objects"))
-    {
-        for (const auto &object_json : layer_json.at("objects"))
-        {
-            ch::layer_object object;
-            object.gid = object_json.at("gid");
-            object.x = object_json.at("x");
-            object.y = object_json.at("y");
-            object.rotation = object_json.at("rotation");
-
-            objects.push_back(object);
+                tiles.push_back(tile);
+            }
         }
     }
 }

@@ -3,6 +3,7 @@
 
 #include "layer.hpp"
 #include "map_tileset.hpp"
+#include "objectgroup.hpp"
 #include "tileset.hpp"
 #include <box2d/box2d.h>
 #include <memory>
@@ -21,8 +22,9 @@ namespace ch
         std::size_t height;
         std::size_t tile_width;
         std::size_t tile_height;
-        std::vector<ch::layer> layers;
         std::vector<ch::map_tileset> tilesets;
+        std::vector<ch::layer> layers;
+        std::vector<ch::objectgroup> objectgroups;
         std::unique_ptr<b2World> b2_world;
 
         map(const std::string &filename, ch::world &world);
