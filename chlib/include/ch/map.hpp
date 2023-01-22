@@ -25,6 +25,8 @@ namespace ch
         std::vector<ch::map_tileset> tilesets;
         std::vector<ch::layer> layers;
         std::vector<ch::objectgroup> objectgroups;
+
+        float physics_time_accumulator = 0;
         std::unique_ptr<b2World> b2_world;
 
         map(const std::string &filename, ch::world &world);

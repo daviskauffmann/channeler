@@ -95,5 +95,12 @@ bool ch::map::is_solid(const std::size_t x, const std::size_t y) const
 
 void ch::map::update(const float delta_time)
 {
-    b2_world->Step(delta_time, 8, 3);
+    constexpr auto physics_delta_time = 1.0f / 60.0f;
+    physics_time_accumulator += delta_time;
+    while (physics_time_accumulator >= physics_delta_time)
+    {
+        physics_time_accumulator -= physics_delta_time;
+
+        b2_world->Step(physics_delta_time, 8, 3);
+    }
 }
