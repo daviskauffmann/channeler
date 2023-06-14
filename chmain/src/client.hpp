@@ -33,13 +33,13 @@ namespace ch
 
         void send(const void *data, std::size_t length, std::uint32_t flags) const;
 
-        const ch::player &get_player() const;
+        const ch::player &get_self() const;
 
     private:
         std::shared_ptr<ch::world> world;
         std::unique_ptr<ch::host> host;
         std::unique_ptr<ch::peer> peer;
-        std::size_t player_id;
+        std::size_t self_id;
     };
 }
 

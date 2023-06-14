@@ -46,8 +46,8 @@ ch::client::client(
                 spdlog::info("[Client] Successfully joined with ID {}", message->id);
 
                 connected = true;
-                player_id = message->id;
-                players.at(player_id).id = player_id;
+                self_id = message->id;
+                players.at(self_id).id = self_id;
             }
             else if (type == ch::message_type::server_full)
             {
@@ -193,7 +193,7 @@ void ch::client::send(const void *const data, const std::size_t length, const st
     peer->send(packet);
 }
 
-const ch::player &ch::client::get_player() const
+const ch::player &ch::client::get_self() const
 {
-    return players.at(player_id);
+    return players.at(self_id);
 }

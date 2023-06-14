@@ -90,6 +90,7 @@ bool ch::map::is_solid(const std::size_t x, const std::size_t y) const
             const auto tile = layer.get_tile(x, y);
             return tile && get_tileset(tile->gid).get_tile(tile->gid).solid;
         });
+
     return layer != layers.end();
 }
 

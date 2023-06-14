@@ -65,7 +65,7 @@ ch::game_scene::game_scene(
 
 ch::scene *ch::game_scene::handle_event(const SDL_Event &event)
 {
-    const auto &player = client->get_player();
+    const auto &player = client->get_self();
 
     switch (event.type)
     {
@@ -205,12 +205,12 @@ ch::scene *ch::game_scene::update(
     const int,
     const int)
 {
-    const auto &player = client->get_player();
+    const auto &self = client->get_self();
     const auto renderer = display->get_renderer();
 
-    if (!active_map || map_index != player.map_index)
+    if (!active_map || map_index != self.map_index)
     {
-        map_index = player.map_index;
+        map_index = self.map_index;
         active_map = std::make_unique<ch::active_map>(world->maps.at(map_index), renderer);
     }
 
@@ -255,11 +255,11 @@ ch::scene *ch::game_scene::update(
     const auto view_width = display_width / sprite_scale / (left_panel_open ? 2 : 1);
     const auto view_height = display_height / sprite_scale;
     const auto view_x = std::clamp(
-        static_cast<std::int64_t>(player.position_x - view_width / 2),
+        static_cast<std::int64_t>(self.position_x - view_width / 2),
         static_cast<std::int64_t>(0.0f),
         static_cast<std::int64_t>((map.width * map.tile_width) - view_width));
     const auto view_y = std::clamp(
-        static_cast<std::int64_t>(player.position_y - view_height / 2),
+        static_cast<std::int64_t>(self.position_y - view_height / 2),
         static_cast<std::int64_t>(0.0f),
         static_cast<std::int64_t>((map.height * map.tile_height) - view_height));
 
@@ -371,13 +371,13 @@ ch::scene *ch::game_scene::update(
         }
     }
 
-    for (const auto &_player : client->players)
+    for (const auto &player : client->players)
     {
-        if (_player.id != ch::server::max_players && _player.map_index == map_index)
+        if (player.id != ch::server::max_players && player.map_index == map_index)
         {
             constexpr int player_sprite_size = 16;
-            const int player_x = static_cast<int>((_player.position_x - view_x) * sprite_scale);
-            const int player_y = static_cast<int>((_player.position_y - view_y) * sprite_scale);
+            const int player_x = static_cast<int>((player.position_x - view_x) * sprite_scale);
+            const int player_y = static_cast<int>((player.position_y - view_y) * sprite_scale);
 
             ch::renderable renderable;
 
@@ -388,23 +388,23 @@ ch::scene *ch::game_scene::update(
                 0,
                 player_sprite_size,
                 player_sprite_size};
-            switch (_player.animation)
+            switch (player.animation)
             {
             case ch::animation::idle:
             {
-                renderable.srcrect.x = static_cast<int>(_player.direction) * player_sprite_size;
+                renderable.srcrect.x = static_cast<int>(player.direction) * player_sprite_size;
                 renderable.srcrect.y = 0;
             }
             break;
             case ch::animation::walking:
             {
-                renderable.srcrect.x = static_cast<int>(_player.direction) * player_sprite_size;
-                renderable.srcrect.y = (_player.frame_index % 4) * player_sprite_size;
+                renderable.srcrect.x = static_cast<int>(player.direction) * player_sprite_size;
+                renderable.srcrect.y = (player.frame_index % 4) * player_sprite_size;
             }
             break;
             case ch::animation::attacking:
             {
-                renderable.srcrect.x = static_cast<int>(_player.direction) * player_sprite_size;
+                renderable.srcrect.x = static_cast<int>(player.direction) * player_sprite_size;
                 renderable.srcrect.y = 4 * player_sprite_size;
             }
             break;
@@ -416,15 +416,15 @@ ch::scene *ch::game_scene::update(
                 static_cast<int>(player_sprite_size * sprite_scale),
                 static_cast<int>(player_sprite_size * sprite_scale)};
             renderable.angle = 0;
-            renderable.y = static_cast<int>(_player.position_y);
+            renderable.y = static_cast<int>(player.position_y);
 
             renderables.push_back(renderable);
 
-            if (_player.animation == ch::animation::attacking)
+            if (player.animation == ch::animation::attacking)
             {
                 const auto &weapon = world->items.at(weapon_item_index);
                 const auto &loaded_weapon = loaded_items.at(weapon_item_index);
-                const auto &attack_position = weapon.attack_positions.at(static_cast<std::size_t>(_player.direction));
+                const auto &attack_position = weapon.attack_positions.at(static_cast<std::size_t>(player.direction));
 
                 ch::renderable weapon_renderable;
 
@@ -440,7 +440,7 @@ ch::scene *ch::game_scene::update(
                     static_cast<int>(weapon.width * sprite_scale),
                     static_cast<int>(weapon.height * sprite_scale)};
                 weapon_renderable.angle = attack_position.angle;
-                weapon_renderable.y = static_cast<int>(_player.position_y);
+                weapon_renderable.y = static_cast<int>(player.position_y);
 
                 renderables.push_back(weapon_renderable);
             }
@@ -462,14 +462,14 @@ ch::scene *ch::game_scene::update(
             SDL_FLIP_NONE);
     }
 
-    for (const auto &_player : client->players)
+    for (const auto &player : client->players)
     {
-        if (_player.id != ch::server::max_players && _player.map_index == map_index)
+        if (player.id != ch::server::max_players && player.map_index == map_index)
         {
-            const int player_x = static_cast<int>((_player.position_x - view_x) * sprite_scale);
-            const int player_y = static_cast<int>((_player.position_y - view_y) * sprite_scale);
+            const int player_x = static_cast<int>((player.position_x - view_x) * sprite_scale);
+            const int player_y = static_cast<int>((player.position_y - view_y) * sprite_scale);
 
-            font->render(player_x, player_y, display_width, {255, 255, 255}, "{}", _player.id);
+            font->render(player_x, player_y, display_width, {255, 255, 255}, "{}", player.id);
         }
     }
 
@@ -486,9 +486,9 @@ ch::scene *ch::game_scene::update(
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
         SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
 
-        for (std::size_t i = 0; i < player.quest_statuses.size(); i++)
+        for (std::size_t i = 0; i < self.quest_statuses.size(); i++)
         {
-            const auto &status = player.quest_statuses.at(i);
+            const auto &status = self.quest_statuses.at(i);
             const auto &quest = world->quests.at(status.quest_index);
             const auto &stage = quest.stages.at(status.stage_index);
 
@@ -509,7 +509,7 @@ ch::scene *ch::game_scene::update(
         SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
     }
 
-    if (player.conversation_node)
+    if (self.conversation_node)
     {
         const auto w = static_cast<int>(display_width);
         const auto h = static_cast<int>(display_height / 3);
@@ -518,12 +518,12 @@ ch::scene *ch::game_scene::update(
         const SDL_Rect dstrect = {x, y, w, h};
 
         dialog_box->render(nullptr, &dstrect);
-        font->render(x + 18, y + 36, w, {0, 0, 0}, "{}", player.conversation_node->text);
+        font->render(x + 18, y + 36, w, {0, 0, 0}, "{}", self.conversation_node->text);
 
-        for (std::size_t i = 0; i < player.conversation_node->children.size(); i++)
+        for (std::size_t i = 0; i < self.conversation_node->children.size(); i++)
         {
-            const auto &child = player.conversation_node->children.at(i);
-            if (child.type == ch::conversation_type::response && child.check_conditions(player))
+            const auto &child = self.conversation_node->children.at(i);
+            if (child.type == ch::conversation_type::response && child.check_conditions(self))
             {
                 font->render(x + 18, y + 36 + (18 * (i + 1)), w, {0, 0, 0}, "{}) {}", i + 1, child.text);
             }
