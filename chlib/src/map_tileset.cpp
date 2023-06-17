@@ -10,7 +10,7 @@ ch::map_tileset::map_tileset(const tinyxml2::XMLElement *tileset_xml, const std:
 
     const char *source;
     tileset_xml->QueryStringAttribute("source", &source);
-    tileset = world.load_tileset("assets/" + std::string(source));
+    tileset = world.load_tileset("data/" + std::string(source));
 }
 
 const ch::tileset_tile &ch::map_tileset::get_tile(const std::size_t gid) const

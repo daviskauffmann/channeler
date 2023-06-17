@@ -27,7 +27,7 @@ ch::tileset::tileset(const std::string &filename)
         const auto source_attr = image_xml->Attribute("source");
         if (source_attr)
         {
-            this->image = "assets/" + std::string(source_attr);
+            this->image = "data/" + std::string(source_attr);
         }
     }
 
@@ -43,7 +43,7 @@ ch::tileset::tileset(const std::string &filename)
             const auto source_attr = tile_image_xml->Attribute("source");
             if (source_attr)
             {
-                tile.image = "assets/" + std::string(source_attr);
+                tile.image = "data/" + std::string(source_attr);
             }
 
             tile.width = tile_image_xml->Unsigned64Attribute("width");

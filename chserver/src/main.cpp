@@ -14,10 +14,10 @@ int main(int, char *[])
     const ch::enet enet;
 
     const auto world = std::make_shared<ch::world>(
-        "assets/world.world",
-        "assets/quests.json",
-        "assets/conversations.json",
-        "assets/items.json");
+        "data/world.world",
+        "data/quests.json",
+        "data/conversations.json",
+        "data/items.json");
 
     ch::server server(server_port, world);
 

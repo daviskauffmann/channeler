@@ -26,7 +26,7 @@ ch::item::item(const nlohmann::json &item_json)
         attack_positions_json.at("right").at("y_offset"),
         attack_positions_json.at("right").at("angle")};
     const std::string attack_sprite_filename_string = item_json.at("attack_sprite_filename");
-    attack_sprite_filename = "assets/" + attack_sprite_filename_string;
+    attack_sprite_filename = "data/" + attack_sprite_filename_string;
     const std::string attack_sound_filename_string = item_json.at("attack_sound_filename");
-    attack_sound_filename = "assets/" + attack_sound_filename_string;
+    attack_sound_filename = "data/" + attack_sound_filename_string;
 }

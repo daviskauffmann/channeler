@@ -22,7 +22,7 @@ ch::world::world(
         for (const auto &map_json : world_json.at("maps"))
         {
             const std::string filename_json = map_json.at("fileName");
-            const auto map_filename = "assets/" + filename_json;
+            const auto map_filename = "data/" + filename_json;
             maps.push_back({map_filename, *this});
         }
     }

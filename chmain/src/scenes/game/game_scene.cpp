@@ -30,15 +30,15 @@ ch::game_scene::game_scene(
 {
     const auto renderer = display->get_renderer();
 
-    font = std::make_unique<ch::font>(renderer, "assets/NinjaAdventure/HUD/Font/NormalFont.ttf", 18);
-    player_spritesheet = std::make_unique<ch::texture>(renderer, "assets/NinjaAdventure/Actor/Characters/Knight/SpriteSheet.png");
-    dialog_box = std::make_unique<ch::texture>(renderer, "assets/NinjaAdventure/HUD/Dialog/DialogBox.png");
+    font = std::make_unique<ch::font>(renderer, "data/NinjaAdventure/HUD/Font/NormalFont.ttf", 18);
+    player_spritesheet = std::make_unique<ch::texture>(renderer, "data/NinjaAdventure/Actor/Characters/Knight/SpriteSheet.png");
+    dialog_box = std::make_unique<ch::texture>(renderer, "data/NinjaAdventure/HUD/Dialog/DialogBox.png");
 
     world = std::make_shared<ch::world>(
-        "assets/world.world",
-        "assets/quests.json",
-        "assets/conversations.json",
-        "assets/items.json");
+        "data/world.world",
+        "data/quests.json",
+        "data/conversations.json",
+        "data/items.json");
 
     if (is_host)
     {
