@@ -7,21 +7,27 @@ ch::tileset::tileset(const std::string &filename)
 {
     spdlog::info("Loading tileset {}", filename);
 
-    tinyxml2::XMLDocument tileset_xml;
-    if (tileset_xml.LoadFile(filename.c_str()) != tinyxml2::XML_SUCCESS)
+    tinyxml2::XMLDocument xml;
+    if (xml.LoadFile(filename.c_str()) != tinyxml2::XML_SUCCESS)
     {
         throw std::runtime_error("Failed to load tileset");
     }
 
-    const auto root = tileset_xml.FirstChildElement("tileset");
-    if (!root)
+    const auto tileset_xml = xml.FirstChildElement("tileset");
+    if (!tileset_xml)
     {
         throw std::runtime_error("Failed to load tileset");
     }
 
-    columns = root->Unsigned64Attribute("columns");
+    columns = tileset_xml->Unsigned64Attribute("columns");
 
-    const auto image_xml = root->FirstChildElement("image");
+    const auto tile_count = tileset_xml->Unsigned64Attribute("tilecount");
+    for (std::size_t i = 0; i < tile_count; ++i)
+    {
+        tiles.push_back({});
+    }
+
+    const auto image_xml = tileset_xml->FirstChildElement("image");
     if (image_xml)
     {
         const auto source_attr = image_xml->Attribute("source");
@@ -31,45 +37,50 @@ ch::tileset::tileset(const std::string &filename)
         }
     }
 
-    for (auto tile_xml = root->FirstChildElement("tile"); tile_xml; tile_xml = tile_xml->NextSiblingElement("tile"))
+    auto tile_xml = tileset_xml->FirstChildElement("tile");
+
+    if (tile_xml)
     {
-        ch::tileset_tile tile;
-
-        tile.index = tile_xml->Unsigned64Attribute("id");
-
-        const auto tile_image_xml = tile_xml->FirstChildElement("image");
-        if (tile_image_xml)
+        for (; tile_xml; tile_xml = tile_xml->NextSiblingElement("tile"))
         {
-            const auto source_attr = tile_image_xml->Attribute("source");
-            if (source_attr)
+            const auto id = tile_xml->Unsigned64Attribute("id");
+
+            auto tile = &tiles.at(id);
+
+            tile->index = id;
+
+            const auto tile_image_xml = tile_xml->FirstChildElement("image");
+            if (tile_image_xml)
             {
-                tile.image = "data/" + std::string(source_attr);
+                const auto source_attr = tile_image_xml->Attribute("source");
+                if (source_attr)
+                {
+                    tile->image = "data/" + std::string(source_attr);
+                }
+
+                tile->width = tile_image_xml->Unsigned64Attribute("width");
+                tile->height = tile_image_xml->Unsigned64Attribute("height");
             }
 
-            tile.width = tile_image_xml->Unsigned64Attribute("width");
-            tile.height = tile_image_xml->Unsigned64Attribute("height");
-        }
-
-        const auto tile_properties_xml = tile_xml->FirstChildElement("properties");
-        if (tile_properties_xml)
-        {
-            for (auto tile_property_xml = tile_properties_xml->FirstChildElement("property"); tile_property_xml; tile_property_xml = tile_property_xml->NextSiblingElement("property"))
+            const auto tile_properties_xml = tile_xml->FirstChildElement("properties");
+            if (tile_properties_xml)
             {
-                const auto name_attr = tile_property_xml->Attribute("name");
-                if (name_attr)
+                for (auto tile_property_xml = tile_properties_xml->FirstChildElement("property"); tile_property_xml; tile_property_xml = tile_property_xml->NextSiblingElement("property"))
                 {
-                    const auto value_attr = tile_property_xml->Attribute("value");
-                    if (value_attr)
+                    const auto name_attr = tile_property_xml->Attribute("name");
+                    if (name_attr)
                     {
-                        if (std::string(name_attr) == "solid")
+                        const auto value_attr = tile_property_xml->Attribute("value");
+                        if (value_attr)
                         {
-                            tile.solid = std::string(value_attr) == "true";
+                            if (std::string(name_attr) == "solid")
+                            {
+                                tile->solid = std::string(value_attr) == "true";
+                            }
                         }
                     }
                 }
             }
         }
-
-        tiles.push_back(tile);
     }
 }

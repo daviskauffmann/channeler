@@ -1,5 +1,5 @@
-#ifndef CH_GAME_HPP
-#define CH_GAME_HPP
+#ifndef CH_SCENES_GAME_SCENE_HPP
+#define CH_SCENES_GAME_SCENE_HPP
 
 #include "../../scene.hpp"
 #include <cstddef>
@@ -48,6 +48,8 @@ namespace ch
         std::unique_ptr<ch::texture> dialog_box;
         bool quest_log_open = false;
         bool left_panel_open = false;
+        std::int8_t input_x = 0;
+        std::int8_t input_y = 0;
     };
 }
 

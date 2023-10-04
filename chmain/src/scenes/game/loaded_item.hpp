@@ -1,5 +1,5 @@
-#ifndef CH_LOADED_ITEM_HPP
-#define CH_LOADED_ITEM_HPP
+#ifndef CH_SCENES_LOADED_ITEM_HPP
+#define CH_SCENES_LOADED_ITEM_HPP
 
 #include <SDL2/SDL.h>
 #include <memory>

@@ -33,6 +33,26 @@ ch::layer::layer(const tinyxml2::XMLElement *layer_xml)
             }
         }
     }
+
+    const auto properties_xml = layer_xml->FirstChildElement("properties");
+    if (properties_xml)
+    {
+        for (auto property_xml = properties_xml->FirstChildElement("property"); property_xml; property_xml = property_xml->NextSiblingElement("property"))
+        {
+            const auto name = property_xml->Attribute("name");
+            if (name)
+            {
+                const auto value = property_xml->Attribute("value");
+                if (value)
+                {
+                    if (std::string(name) == "depth")
+                    {
+                        depth = std::string(value) == "true";
+                    }
+                }
+            }
+        }
+    }
 }
 
 const ch::layer_tile *ch::layer::get_tile(const std::size_t x, const std::size_t y) const

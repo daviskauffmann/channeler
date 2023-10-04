@@ -1,5 +1,5 @@
-#ifndef CH_MENU_HPP
-#define CH_MENU_HPP
+#ifndef CH_SCENES_MENU_SCENE_HPP
+#define CH_SCENES_MENU_SCENE_HPP
 
 #include "../../scene.hpp"
 #include <SDL2/SDL.h>

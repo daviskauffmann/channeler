@@ -313,7 +313,7 @@ ch::scene *ch::game_scene::update(
                         }
 
                         renderable.angle = layer_tile->angle();
-                        renderable.y = layer_index == 0 ? -1 : static_cast<int>(y * map.tile_height);
+                        renderable.y = layer.depth ? static_cast<int>(y * map.tile_height) : -1;
 
                         renderables.push_back(renderable);
                     }

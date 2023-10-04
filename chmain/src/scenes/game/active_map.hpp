@@ -1,5 +1,5 @@
-#ifndef CH_ACTIVE_MAP_HPP
-#define CH_ACTIVE_MAP_HPP
+#ifndef CH_SCENES_ACTIVE_MAP_HPP
+#define CH_SCENES_ACTIVE_MAP_HPP
 
 #include <SDL2/SDL.h>
 #include <memory>

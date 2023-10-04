@@ -1,5 +1,5 @@
-#ifndef CH_LOADED_TILESET_HPP
-#define CH_LOADED_TILESET_HPP
+#ifndef CH_SCENES_LOADED_TILESET_HPP
+#define CH_SCENES_LOADED_TILESET_HPP
 
 #include "../../texture.hpp"
 #include <SDL2/SDL.h>

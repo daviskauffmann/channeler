@@ -40,6 +40,7 @@ namespace ch
         std::size_t width = 0;
         std::size_t height = 0;
         std::vector<ch::layer_tile> tiles;
+        bool depth = false;
 
         layer(const tinyxml2::XMLElement *layer_xml);
 

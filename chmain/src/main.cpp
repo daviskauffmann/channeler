@@ -11,7 +11,7 @@
 
 int main(int, char *[])
 {
-    const ch::sdl sdl(SDL_INIT_AUDIO | SDL_INIT_VIDEO);
+    const ch::sdl sdl(SDL_INIT_AUDIO | SDL_INIT_VIDEO | SDL_INIT_JOYSTICK);
     const ch::sdl_image sdl_image;
     const ch::sdl_mixer sdl_mixer;
     const ch::audio audio;
